@@ -527,7 +527,7 @@ function changed(){ save(); if(ui.res) recompute(); renderAll(); }
 function commit(fn){ pushUndo(); fn(); changed(); }
 function undo(){ if(!ui.undo.length) return; ui.redo.push(JSON.stringify(M)); M=JSON.parse(ui.undo.pop()); clearSel(); changed(); }
 function redo(){ if(!ui.redo.length) return; ui.undo.push(JSON.stringify(M)); M=JSON.parse(ui.redo.pop()); clearSel(); changed(); }
-function clearSel(){ ui.sel={t:null,ids:new Set()}; }
+function clearSel(){ ui.sel={t:null,ids:new Set(),dims:new Set()}; }
 function selMembers(){ return ui.sel.t==='m'?[...ui.sel.ids].map(memById).filter(Boolean):[]; }
 function selNodes(){ return ui.sel.t==='n'?[...ui.sel.ids].map(nodeById).filter(Boolean):[]; }
 
@@ -574,11 +574,13 @@ function insertMember(A,B){
 function insertNode(p){ pushUndo(); resolvePoint(p); changed(); }
 function insertDim(a,b,c){ const d={id:M.next.d++,ax:a.x,ay:a.y,bx:b.x,by:b.y,off:0}; const n=dimN(d); d.off=(c.x-a.x)*n[0]+(c.y-a.y)*n[1]; if(Math.hypot(b.x-a.x,b.y-a.y)<1e-9) return; pushUndo(); M.dims.push(d); changed(); }
 function deleteSel(){ if(!ui.sel.t) return; commit(()=>{
-  if(ui.sel.t==='m') M.members=M.members.filter(m=>!ui.sel.ids.has(m.id));
-  if(ui.sel.t==='n') M.members=M.members.filter(m=>!ui.sel.ids.has(m.i)&&!ui.sel.ids.has(m.j));
-  if(ui.sel.t==='d') M.dims=M.dims.filter(d=>!ui.sel.ids.has(d.id));
+  const gone=ui.sel.t==='m'?M.members.filter(m=>ui.sel.ids.has(m.id)):ui.sel.t==='n'?M.members.filter(m=>ui.sel.ids.has(m.i)||ui.sel.ids.has(m.j)):[];
+  const touched=new Set(gone.flatMap(m=>[m.i,m.j]));
+  M.members=M.members.filter(m=>!gone.includes(m));
+  const dims=new Set([...(ui.sel.t==='d'?ui.sel.ids:[]),...(ui.sel.dims||[])]); M.dims=M.dims.filter(d=>!dims.has(d.id));
   const used=new Set(); M.members.forEach(m=>{used.add(m.i);used.add(m.j);});
-  M.nodes=M.nodes.filter(n=>!(ui.sel.t==='n'&&ui.sel.ids.has(n.id))&&(used.has(n.id)||n.sup||n.load));
+  // nodes left without members by this deletion go too (with their supports and loads); standalone nodes inserted on purpose stay
+  M.nodes=M.nodes.filter(n=>!(ui.sel.t==='n'&&ui.sel.ids.has(n.id))&&(used.has(n.id)||!touched.has(n.id)));
   clearSel(); }); }
 
 /* ================= Drawing ================= */
@@ -598,7 +600,7 @@ function drawGrid(){ if(!M.grid.on||!(M.grid.dx>0)||!(M.grid.dy>0)) return; cons
   const sx=M.grid.dx*kx, sy=M.grid.dy*ky, [wx0,wy1]=toW(0,0),[wx1,wy0]=toW(W,H); if((wx1-wx0)/sx*(wy1-wy0)/sy>60000) return;
   ctx.fillStyle=P.grid; for(let i=Math.floor(wx0/sx);i<=Math.ceil(wx1/sx);i++) for(let j=Math.floor(wy0/sy);j<=Math.ceil(wy1/sy);j++){ const [x,y]=toS(i*sx,j*sy); ctx.fillRect(Math.round(x),Math.round(y),1,1); } }
 function drawDims(){ if(!M.disp.dims) return; const P=C();
-  for(const d of M.dims){ const sel=ui.sel.t==='d'&&ui.sel.ids.has(d.id), col=sel?P.sel:P.dim, n=dimN(d), o=d.off;
+  for(const d of M.dims){ const sel=ui.sel.t==='d'&&ui.sel.ids.has(d.id)||!!ui.sel.dims?.has(d.id), col=sel?P.sel:P.dim, n=dimN(d), o=d.off;
     const [ax,ay]=toS(d.ax,d.ay),[bx,by]=toS(d.bx,d.by),[cx,cy]=toS(d.ax+n[0]*o,d.ay+n[1]*o),[ex,ey]=toS(d.bx+n[0]*o,d.by+n[1]*o);
     const nsx=n[0]*Math.sign(o||1), nsy=-n[1]*Math.sign(o||1); ctx.strokeStyle=col; ctx.lineWidth=1;
     line(ax+nsx*3,ay+nsy*3,cx+nsx*5,cy+nsy*5); line(bx+nsx*3,by+nsy*3,ex+nsx*5,ey+nsy*5);
@@ -1007,8 +1009,11 @@ cv.addEventListener('pointerup',e=>{ const [sx,sy]=sp(e); if(panMid){ panMid=nul
   let mids=[], nids=[];
   if(!want||want==='m') mids=M.members.filter(m=>{ const a=nodeById(m.i),b=nodeById(m.j),[ax,ay]=toS(a.x,a.y),[bx,by]=toS(b.x,b.y); return window_?inside(ax,ay)&&inside(bx,by):crossesSeg(ax,ay,bx,by); }).map(m=>m.id);
   if((!want&&!mids.length)||want==='n') nids=M.nodes.filter(n=>inside(...toS(n.x,n.y))).map(n=>n.id);
-  const t=mids.length?'m':nids.length?'n':want, ids=mids.length?mids:nids;
-  if(d.shift&&ui.sel.t===t) ids.forEach(i=>ui.sel.ids.add(i)); else ui.sel={t:ids.length?t:null,ids:new Set(ids)};
+  const dids=!M.disp.dims||(want&&want!=='d'&&!ui.sel.dims)?[]:M.dims.filter(dm=>{ const n=dimN(dm),o=dm.off, P=[toS(dm.ax,dm.ay),toS(dm.bx,dm.by),toS(dm.ax+n[0]*o,dm.ay+n[1]*o),toS(dm.bx+n[0]*o,dm.by+n[1]*o)];
+    return window_?P.every(p=>inside(...p)):crossesSeg(...P[2],...P[3])||crossesSeg(...P[0],...P[2])||crossesSeg(...P[1],...P[3]); }).map(dm=>dm.id);
+  const t=mids.length?'m':nids.length?'n':dids.length?'d':want, ids=mids.length?mids:nids.length?nids:dids, extra=t==='d'?[]:dids;
+  if(d.shift&&ui.sel.t===t){ ids.forEach(i=>ui.sel.ids.add(i)); ui.sel.dims=new Set([...(ui.sel.dims||[]),...extra]); }
+  else ui.sel={t:ids.length?t:null,ids:new Set(ids),dims:new Set(extra)};
   renderAll(); });
 function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy), hd=!hm&&!hn?hitDim(sx,sy):null;
   const pick=hn?['n',hn.id]:hm?['m',hm.m.id]:hd?['d',hd.id]:null;
