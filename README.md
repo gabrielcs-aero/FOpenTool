@@ -42,6 +42,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Reading Ftool `.ftl` files
 - Section stresses: normal stress from axial force and bending (σ = N/A ± M·c/I) at any point along a member
 - Stress diagrams over the cross-section (normal stress distribution and neutral axis, and shear stress τ = V·Q/(I·b))
+- Truss analysis: a truss mode with pin-jointed, axial-only members and a table of member forces marked tension or compression (for now, trusses can be modeled by releasing rotations at the nodes)
 
 ## Verification
 
