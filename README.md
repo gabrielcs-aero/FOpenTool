@@ -15,7 +15,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 **Attributes** (named lists, applied to the current selection, as in Ftool)
 - Materials: generic, steel, concrete, aluminium (E, ν, α).
-- Sections: integral properties, rectangle, I, T, C, circle, ring, box.
+- Sections: integral properties, rectangle, I, angle, T, C, Z, circle, ring, double angle, box.
 - Supports: free, fixed or spring in X, Y and rotation; inclined supports; prescribed displacements (settlements).
 - Rotation releases at nodes and member ends.
 - Deformation constraints: axial deformation on or off, shear deformation (Timoshenko), rigid members.
@@ -37,9 +37,11 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 - Load trains (moving loads) and their envelopes
 - Load cases and combinations
-- Tabulated steel shapes, and angle, Z and girder sections
+- Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills and Vallourec shapes) and the girder section
 - Mouse-driven transformations
 - Reading Ftool `.ftl` files
+- Section stresses: normal stress from axial force and bending (σ = N/A ± M·c/I) at any point along a member
+- Stress diagrams over the cross-section (normal stress distribution and neutral axis, and shear stress τ = V·Q/(I·b))
 
 ## Verification
 

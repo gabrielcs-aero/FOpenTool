@@ -64,8 +64,17 @@ button,input,select{font:inherit;color:inherit}
 .dirs{display:grid;grid-template-columns:auto auto;gap:4px 10px;justify-content:center}
 .shape{display:block;margin:4px auto}
 .sh{font-weight:700;text-align:center;margin-top:6px}
-.newf{display:flex;flex-direction:column;gap:4px;margin:6px 0;padding:6px;border:1px solid var(--chrome-line);background:#FAFAFA}
-.newf input,.newf select{height:22px;border:1px solid var(--chrome-line);background:var(--field);width:100%}
+.newf{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
+.newf .nl{text-align:center}
+.newf #newName{height:22px;border:0;border-bottom:2px solid var(--hot-line);background:var(--field);width:150px;margin:0 auto 4px;padding:0 4px}
+.newf select{border:1px solid var(--chrome-line);background:var(--field);width:100%}
+.tree details{margin:1px 0}
+.tree summary{list-style:none;cursor:default;padding-left:2px}
+.tree summary::-webkit-details-marker{display:none}
+.tree summary::before{content:"▶";display:inline-block;font-size:9px;width:14px}
+.tree details[open]>summary::before{content:"▼"}
+.tree .ck{padding:1px 0 1px 16px}
+.tree .ck.na{color:var(--disabled)}
 .btnrow{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
 .pb{min-width:64px;height:24px;border:1px solid #ADADAD;background:#E1E1E1;border-radius:2px;padding:0 10px;cursor:default}
 .pb:hover{background:var(--hot);border-color:var(--hot-line)}
@@ -320,13 +329,22 @@ const SEC_TYPES={
   circle:{label:'Circle',p:['D'],def:{D:.1}},
   ring:{label:'Ring',p:['D','t'],def:{D:.1,t:.005}},
   box:{label:'Box',p:['d','b','t'],def:{d:.2,b:.1,t:.006}},
+  angle:{label:'Angle',p:['d','b','tw','tf'],def:{d:.1,b:.1,tw:.008,tf:.008}},
+  Z:{label:'Z-shape',p:['d','b','tw','tf'],def:{d:.2,b:.075,tw:.006,tf:.01}},
+  dangle:{label:'Double Angle',p:['d','b','tw','tf'],def:{d:.1,b:.1,tw:.008,tf:.008}},
 };
+// The new-section list, grouped and ordered as in Ftool. Entries without a key are not available yet.
+const SEC_TREE=[['Generic',[['integral','Integral Properties']]],
+  ['Parameterized',[['rect','Rectangle'],['I','I-shape'],['angle','Angle'],['T','T-shape'],['C','C-shape'],['Z','Z-shape'],['circle','Circle'],['ring','Ring'],['dangle','Double Angle'],[null,'Girder Section'],['box','Box']]],
+  ['Profile Tables',[[null,'Welded I-shapes (BR)'],[null,'Electro-Welded I-shapes (BR)'],[null,'Gerdau-AcoMinas I-shapes (BR)'],[null,'AISC Parallel I-shapes'],[null,'Mills shapes (BR)'],[null,'Vallourec tubes (BR)']]]];
 function secCalc(s){
   const P=s.p||{}; let A,As,I,d,yb;
   switch(s.type){
     case 'integral': ({A,As,I,d,yb}=P); break;
     case 'rect': A=P.b*P.h; As=A*5/6; I=P.b*P.h**3/12; d=P.h; yb=d/2; break;
-    case 'I': case 'C': { const h=P.d-2*P.tf; A=2*P.b*P.tf+P.tw*h; As=P.tw*P.d; I=(P.b*P.d**3-(P.b-P.tw)*h**3)/12; d=P.d; yb=d/2; break; }
+    case 'angle': case 'dangle': { const n=s.type==='dangle'?2:1, Aw=P.tw*P.d, Af=(P.b-P.tw)*P.tf, A1=Aw+Af; yb=(Aw*P.d/2+Af*P.tf/2)/A1;
+      const I1=P.tw*P.d**3/12+Aw*(P.d/2-yb)**2+(P.b-P.tw)*P.tf**3/12+Af*(P.tf/2-yb)**2; A=n*A1; I=n*I1; As=n*P.tw*P.d; d=P.d; break; }
+    case 'I': case 'C': case 'Z': { const h=P.d-2*P.tf; A=2*P.b*P.tf+P.tw*h; As=P.tw*P.d; I=(P.b*P.d**3-(P.b-P.tw)*h**3)/12; d=P.d; yb=d/2; break; }
     case 'T': { const hw=P.d-P.tf, Aw=P.tw*hw, Af=P.b*P.tf; A=Aw+Af; yb=(Aw*hw/2+Af*(P.d-P.tf/2))/A; I=P.tw*hw**3/12+Aw*(yb-hw/2)**2+P.b*P.tf**3/12+Af*(P.d-P.tf/2-yb)**2; As=P.tw*P.d; d=P.d; break; }
     case 'circle': A=Math.PI*P.D**2/4; As=.9*A; I=Math.PI*P.D**4/64; d=P.D; yb=d/2; break;
     case 'ring': { const Di=P.D-2*P.t; A=Math.PI*(P.D**2-Di**2)/4; As=A/2; I=Math.PI*(P.D**4-Di**4)/64; d=P.D; yb=d/2; break; }
@@ -781,11 +799,21 @@ function listHead(k){ const cur=item(k,M.cur[k]), lst=L_(k), isLoad=!['mat','sec
   h+=`<div class="grp"><div class="row">${ib('l-new','lnew','Create new')}${ib('l-imp','limp','Import list from file (not available)',true)}${ib('l-ren','lren','Rename current',!cur)}${ib('l-del','ldel','Delete current',!cur)}${ib('l-con','lcon','Condense list (remove unused)')}</div>
     <div class="row">${ib('a-sel','asel',`Select ${nodeL?'nodes':'members'} with current`)}${['mat','sec'].includes(k)?ib('a-all','aall','Apply current to all members',!cur):''}${ib('a-un','aun',`Unapply from selected ${nodeL?'nodes':'members'}`)}${ib('a-app','aapp',`Apply current to selected ${nodeL?'nodes':'members'}`)}</div></div>`;
   return h; }
+// As in Ftool: type a label, then press Enter or pick a type. Esc cancels.
 function createForm(k){ let sel='';
-  if(k==='mat') sel=`<label>Material type:<select id="newType">${Object.entries(MAT_TYPES).map(([t,v])=>`<option value="${t}" ${t==='steel'?'selected':''}>${v[0]}</option>`).join('')}</select></label>`;
-  if(k==='sec') sel=`<label>Section type:<select id="newType">${Object.entries(SEC_TYPES).map(([t,v])=>`<option value="${t}" ${t==='rect'?'selected':''}>${v.label}</option>`).join('')}</select></label>`;
-  const def={mat:'Material',sec:'Section',nodal:'Nodal Load',endm:'End Moments',unif:'Uniform Load',lin:'Linear Load',therm:'Thermal Load'}[k]+' '+(L_(k).length+1);
-  return `<div class="newf"><label>New Label:<input id="newName" value="${esc(def)}"></label>${sel}<div class="btnrow"><button class="pb def" data-act="new-ok">OK</button><button class="pb" data-act="cancel">Cancel</button></div></div>`; }
+  if(k==='mat') sel=`<label class="nl" for="newType">Material type:</label><select id="newType" size="4">${Object.entries(MAT_TYPES).map(([t,v])=>`<option value="${t}" ${t==='generic'?'selected':''}>${v[0]}</option>`).join('')}</select>`;
+  if(k==='sec'){ const cur=ui.newSecType||'integral';
+    sel=`<div class="tree">${SEC_TREE.map(([g,items])=>`<details open><summary>${g}</summary>${items.map(([t,l])=>`<label class="ck${t?'':' na'}" ${t?'':'title="Not available yet"'}><input type="checkbox" data-st="${t||''}" ${t===cur?'checked':''} ${t?'':'disabled'}> ${l}</label>`).join('')}</details>`).join('')}</div>`; }
+  return `<div class="newf"><label class="nl" for="newName">New Label:</label><input id="newName" autocomplete="off">${sel}</div>`; }
+function createItem(P,type){ const inp=$('#newName'), name=inp?inp.value.trim():'';
+  if(!name){ ui.msg=`Type a label for the new ${P==='sec'?'section':P==='mat'?'material':'load'}, then press Enter.`; renderTop(); if(inp) inp.focus(); return; }
+  if(L_(P).some(x=>x.name===name)){ ui.msg='Use a label different from the existing ones.'; renderTop(); inp.focus(); return; }
+  ui.msg=''; commit(()=>{ let o={name};
+    if(P==='mat'){ const t=MAT_TYPES[type]; o={...o,type,E:t[1],nu:t[2],alpha:t[3]}; }
+    if(P==='sec') o={...o,type,p:type==='integral'?{A:.01,As:.0083,I:1e-4,d:.3,yb:.15}:{...SEC_TYPES[type].def}};
+    if(P==='nodal') o={...o,fx:0,fy:0,mz:0}; if(P==='endm') o={...o,ma:0,mb:0}; if(P==='unif') o={...o,dir:'global',qx:0,qy:0};
+    if(P==='lin') o={...o,dir:'global',pxi:0,pyi:0,pxj:0,pyj:0}; if(P==='therm') o={...o,tt:0,tb:0};
+    M.cur[P]=newItem(P,o).id; ui.creating=null; ui.newSecType=null; }); }
 function shapeSVG(t){ const s='stroke="#1414E6" stroke-width="1.6" fill="#E6ECFF"';
   const lbl=(x,y,t)=>`<text x="${x}" y="${y}" font-size="11" font-family="Arial" fill="#000" text-anchor="middle">${t}</text>`;
   const body={
@@ -795,6 +823,9 @@ function shapeSVG(t){ const s='stroke="#1414E6" stroke-width="1.6" fill="#E6ECFF
     C:`<path d="M32 12h40v10H45v50h27v10H32z" ${s}/>${lbl(52,96,'b')}${lbl(86,50,'d')}${lbl(22,50,'tw')}${lbl(80,20,'tf')}`,
     circle:`<circle cx="50" cy="47" r="34" ${s}/>${lbl(50,96,'D')}`,
     ring:`<circle cx="50" cy="47" r="34" ${s}/><circle cx="50" cy="47" r="26" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'D')}${lbl(88,50,'t')}`,
+    angle:`<path d="M30 12h10v60h34v10H30z" ${s}/>${lbl(52,96,'b')}${lbl(18,50,'d')}${lbl(35,9,'tw')}${lbl(84,80,'tf')}`,
+    Z:`<path d="M45 12H78V22H55V82H22V72H45z" ${s}/>${lbl(62,9,'b')}${lbl(88,50,'d')}${lbl(38,50,'tw')}${lbl(14,80,'tf')}`,
+    dangle:`<path d="M46 12h3v70H18v-8h28z" ${s}/><path d="M51 12h3v62h28v8H51z" ${s}/>${lbl(32,96,'b')}${lbl(91,50,'d')}${lbl(50,9,'tw')}${lbl(10,80,'tf')}`,
     box:`<path d="M28 12h44v70H28z" ${s}/><path d="M35 19h30v56H35z" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'b')}${lbl(84,50,'d')}${lbl(31,9,'t')}`,
     integral:`<path d="M30 14h40v66H30z" ${s} stroke-dasharray="4 3"/><path d="M22 65h56" stroke="#D00000" stroke-dasharray="3 2"/>${lbl(50,96,'A, As, I')}${lbl(86,74,'ȳ')}${lbl(86,48,'d')}`}[t];
   return `<svg class="shape" width="104" height="102" viewBox="0 0 100 100" aria-hidden="true">${body||''}</svg>`; }
@@ -868,6 +899,9 @@ function renderSide(){ const fk=document.activeElement&&side.contains(document.a
   if(fk){ const el=side.querySelector(`[data-k="${fk}"]`); if(el&&el.tagName==='INPUT'&&el.type!=='checkbox') el.focus(); }
   const ni=$('#newName')||$('#renIn'); if(ni){ ni.focus(); ni.select(); } }
 
+side.addEventListener('change',e=>{ const el=e.target, P0=ui.panel;
+  if(el.dataset.st!=null){ ui.newSecType=el.dataset.st; side.querySelectorAll('[data-st]').forEach(c=>c.checked=c.dataset.st===ui.newSecType); if($('#newName').value.trim()) createItem('sec',ui.newSecType); else $('#newName').focus(); return; }
+  if(el.id==='newType'){ if($('#newName').value.trim()) createItem(P0,el.value); else $('#newName').focus(); return; } });
 side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) return; const P=ui.panel;
   if(k==='cur'){ M.cur[P]=el.value||null; save(); renderSide(); return; }
   if(k.startsWith('sup.')){ const f=k.slice(4), s=M.cur.sup;
@@ -890,13 +924,7 @@ function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='cancel'){ ui.creating=null; ui.renaming=null; renderSide(); return; }
   if(cmd==='info-close'){ ui.info=null; renderSide(); return; }
   if(cmd==='l-new'){ ui.creating=P; ui.renaming=null; renderSide(); return; }
-  if(cmd==='new-ok'){ const name=$('#newName').value.trim(); if(!name||L_(P).some(x=>x.name===name)){ ui.msg='Use a name different from the existing ones.'; renderTop(); return; } const type=$('#newType')?.value;
-    commit(()=>{ let o={name};
-      if(P==='mat'){ const t=MAT_TYPES[type]; o={...o,type,E:t[1],nu:t[2],alpha:t[3]}; }
-      if(P==='sec') o={...o,type,p:type==='integral'?{A:.01,As:.0083,I:1e-4,d:.3,yb:.15}:{...SEC_TYPES[type].def}};
-      if(P==='nodal') o={...o,fx:0,fy:0,mz:0}; if(P==='endm') o={...o,ma:0,mb:0}; if(P==='unif') o={...o,dir:'global',qx:0,qy:0};
-      if(P==='lin') o={...o,dir:'global',pxi:0,pyi:0,pxj:0,pyj:0}; if(P==='therm') o={...o,tt:0,tb:0};
-      M.cur[P]=newItem(P,o).id; ui.creating=null; }); return; }
+  if(cmd==='new-ok'){ createItem(P,P==='sec'?(ui.newSecType||'integral'):$('#newType')?.value); return; }
   if(cmd==='l-ren'){ ui.renaming=P; renderSide(); return; }
   if(cmd==='ren-ok'){ const name=$('#renIn').value.trim(), cur=item(P,M.cur[P]); if(!name||L_(P).some(x=>x.name===name&&x!==cur)){ ui.msg='Use a name different from the existing ones.'; renderTop(); return; } commit(()=>{ cur.name=name; ui.renaming=null; }); return; }
   if(cmd==='l-del'){ const id=M.cur[P]; commit(()=>{ M.lists[P]=L_(P).filter(x=>x.id!==id); unassign(P,id); M.cur[P]=L_(P)[0]?.id??null; }); return; }
