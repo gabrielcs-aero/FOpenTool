@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Barra Structural Analysis</title>
+<title>FOpenTool</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: a classic Windows engineering window. Menu bar, three control rulers, edit toolbar on the left, drawing canvas, attribute panel on the right, coordinate bar at the bottom. Single light look on purpose (the Display menu switches the canvas background). */
@@ -207,7 +207,7 @@ button,input,select{font:inherit;color:inherit}
 <script>
 'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const LS='barra.ftool.v2';
+const LS='fopentool.v2', LS_OLD='barra.ftool.v2';
 
 /* ================= Icons (drawn for this app) ================= */
 const IC={
@@ -1069,7 +1069,7 @@ window.addEventListener('keydown',e=>{
 /* ================= Menus ================= */
 let openMenu=null;
 function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
-  if(name==='file') return [['About Barra','about'],['Sign Convention...','sign'],'-',['New','new'],['Open...','open'],['Save','save'],['Save As...','save'],['Import Properties...',null],'-',['Export Line Results...','lines',!ui.res||ui.res!=='diag'||!RES?.ok],['Export Screen to Clipboard','clip'],'-',['Totals...','totals'],['Limits...','limits']];
+  if(name==='file') return [['About FOpenTool','about'],['Sign Convention...','sign'],'-',['New','new'],['Open...','open'],['Save','save'],['Save As...','save'],['Import Properties...',null],'-',['Export Line Results...','lines',!ui.res||ui.res!=='diag'||!RES?.ok],['Export Screen to Clipboard','clip'],'-',['Totals...','totals'],['Limits...','limits']];
   if(name==='options') return [{sub:'Analysis Type'},['Linear-Elastic','noop','',true,'rad'],'-',
     {sub:'Support Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:sup:'+s,'',false,o.sup===s?'rad':'']),
     {sub:'Hinge Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:hinge:'+s,'',false,o.hinge===s?'rad':'']),
@@ -1097,7 +1097,7 @@ $('#menu').addEventListener('click',e=>{ const b=e.target.closest('[data-mact]')
 function dlg(title,body,onMount){ $('#dlgT').textContent=title; $('#dlgB').innerHTML=body; $('#ov').hidden=false; if(onMount) onMount($('#dlgB')); const f=$('#dlgB').querySelector('input,select,textarea,button'); if(f) f.focus(); }
 function closeDlg(){ $('#ov').hidden=true; }
 $('#ov').addEventListener('click',e=>{ if(e.target===$('#ov')||e.target.closest('[data-close]')) closeDlg(); });
-function dlgAbout(){ dlg('About Barra',`<p style="margin:0;max-width:420px">Barra is an open-source, browser-based program for linear-elastic analysis of two-dimensional frames and trusses. Its interface and workflow follow the Ftool program from PUC-Rio, so Ftool users can work without relearning.</p><p style="margin:0;max-width:420px;color:var(--muted)">Barra is an independent project and is not affiliated with Ftool, Tecgraf, PUC-Rio or Marlin.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
+function dlgAbout(){ dlg('About FOpenTool',`<p style="margin:0;max-width:420px">FOpenTool is an open-source, browser-based program for linear-elastic analysis of two-dimensional frames and trusses. Its interface and workflow follow the Ftool program from PUC-Rio, so Ftool users can work without relearning.</p><p style="margin:0;max-width:420px;color:var(--muted)">FOpenTool is an independent project and is not affiliated with Ftool, Tecgraf, PUC-Rio or Marlin.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
 function dlgTotals(){ dlg('Totals',`<table><tr><td>Nodes:</td><td style="text-align:right">${M.nodes.length}</td></tr><tr><td>Members:</td><td style="text-align:right">${M.members.length}</td></tr><tr><td>Dimension lines:</td><td style="text-align:right">${M.dims.length}</td></tr></table><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
 function dlgLimits(){ const b=bbox(); dlg('Limits',b?`<table><tr><td>X min:</td><td>${fqu('len',b.x0)}</td></tr><tr><td>X max:</td><td>${fqu('len',b.x1)}</td></tr><tr><td>Y min:</td><td>${fqu('len',b.y0)}</td></tr><tr><td>Y max:</td><td>${fqu('len',b.y1)}</td></tr></table><div class="btnrow"><button class="pb def" data-close>OK</button></div>`:'<p>The model is empty.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>'); }
 function dlgSign(){ dlg('Sign Convention',`<svg viewBox="0 0 300 120" width="300" height="120" aria-hidden="true" style="background:#fff;border:1px solid #ccc;max-width:100%">
@@ -1115,11 +1115,11 @@ function dlgUnits(){ const rows=Object.entries(UC).filter(([k])=>k!=='nu').map((
     b.querySelector('#uSI').onclick=()=>fill(defUnits('SI')); b.querySelector('#uKNM').onclick=()=>fill(defUnits('kNm'));
     b.querySelector('#uOk').onclick=()=>{ b.querySelectorAll('[data-uk]').forEach(s=>{ const k=s.dataset.uk; M.units[k]={u:s.value,f:b.querySelector(`[data-uf="${k}"]`).value,d:Math.max(0,Math.min(8,+b.querySelector(`[data-ud="${k}"]`).value||0))}; }); ui.scaleVal={}; save(); closeDlg(); renderAll(); }; }); }
 function fileNew(){ pushUndo(); const keep={units:M.units,disp:M.disp,opt:M.opt,grid:M.grid}; M=newModel(); Object.assign(M,JSON.parse(JSON.stringify(keep))); exitResults(); clearSel(); ui.panel='mat'; ui.tool='select'; changed(); fit(); ui.msg='New model. Undo restores the previous one.'; renderTop(); }
-function fileOpen(){ dlg('Open',`<p style="margin:0">Open a model saved by Barra (.json), or paste its text below. Ftool .ftl files cannot be read yet.</p><textarea id="opTxt" spellcheck="false" aria-label="Model text"></textarea>
+function fileOpen(){ dlg('Open',`<p style="margin:0">Open a model saved by FOpenTool (.json), or paste its text below. Ftool .ftl files cannot be read yet.</p><textarea id="opTxt" spellcheck="false" aria-label="Model text"></textarea>
   <div class="btnrow"><button class="pb" id="opFile">Choose file...</button><button class="pb def" id="opLoad">Open</button><button class="pb" data-close>Cancel</button></div><p id="opMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#opFile').onclick=()=>$('#fOpen').click(); b.querySelector('#opLoad').onclick=()=>loadText(b.querySelector('#opTxt').value); }); }
 $('#fOpen').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>loadText(r.result); r.readAsText(f); e.target.value=''; };
 function loadText(t){ try{ const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; pushUndo(); M=o; exitResults(); clearSel(); closeDlg(); changed(); fit(); }
-  catch(e){ const m=$('#opMsg'); if(m) m.textContent='That is not a Barra model file.'; } }
+  catch(e){ const m=$('#opMsg'); if(m) m.textContent='That is not a FOpenTool model file.'; } }
 function fileSave(){ const t=JSON.stringify(M); dlg('Save',`<p style="margin:0;max-width:460px">The model is kept in this browser automatically. To keep a file or share it, copy the text below and save it as a .json file. Open it later with File &gt; Open.</p><textarea readonly id="svTxt" aria-label="Model text">${esc(t)}</textarea>
   <div class="btnrow"><button class="pb def" id="svCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#svTxt'); b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }
 function copyText(t,btn,ta){ const ok=()=>{ btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }; const fb=()=>{ if(ta){ ta.focus(); ta.select(); } btn.textContent='Press Ctrl+C'; };
@@ -1135,9 +1135,9 @@ function exportLines(){ if(!RES?.ok) return; const ms=selMembers(); const list=m
 /* ================= Boot ================= */
 (function boot(){
   paintIcons();
-  try{ const o=JSON.parse(localStorage.getItem(LS)||'null'); if(o&&o.v===2&&Array.isArray(o.nodes)) M=o; }catch(e){}
+  try{ const o=JSON.parse(localStorage.getItem(LS)||localStorage.getItem(LS_OLD)||'null'); if(o&&o.v===2&&Array.isArray(o.nodes)) M=o; }catch(e){}
   if(!M) exampleModel();
   new ResizeObserver(resize).observe($('#stage')); resize(); renderAll();
 })();
-window.__barra={analyze,buildSystem,influence,secCalc,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
+window.__fopentool={analyze,buildSystem,influence,secCalc,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
 </script>
