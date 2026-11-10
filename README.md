@@ -45,7 +45,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Neutral line: its position in the section, y₀ = N·I/(M·A), drawn on the section and along the member
 - Truss analysis: a truss mode with pin-jointed, axial-only members and a table of member forces marked tension or compression (for now, trusses can be modeled by releasing rotations at the nodes)
 
-See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the topics of Mechanics of Solids 1 and 2.
+See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the content of Mechanics of Solids 1 and 2 at UnB (FGA0154 and FGA0179).
 
 ## Verification
 

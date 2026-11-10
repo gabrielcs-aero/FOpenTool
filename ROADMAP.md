@@ -1,6 +1,6 @@
 # Roadmap
 
-FOpenTool grows in three stages. First it matches Ftool. Then it adds what a student needs for Mechanics of Solids 1 and 2 (Mecânica dos Sólidos 1 e 2), so the same model that gives the diagrams also gives the stresses, deflections and checks taught in those courses.
+FOpenTool grows in three stages. First it matches Ftool. Then it covers the content of Mechanics of Solids 1 and 2 as taught at UnB (Faculdade UnB Gama), so the same model that gives the diagrams also gives the equilibrium, stresses, deformations and checks taught in those courses.
 
 Every new result should be traceable: show the formula used and the values that went into it, so the tool can be used to check homework, not only to get a number.
 
@@ -17,75 +17,73 @@ Still to do:
 - [ ] Animated deformed shape
 - [ ] Reading Ftool `.ftl` files and exporting DXF
 
-## Stage 2: Mechanics of Solids 1
+## Stage 2: Mechanics of Solids 1 (FGA0154)
 
-**Section properties**
-- [ ] Centroid, area, moments of inertia and product of inertia for any section, with the parallel-axis steps shown
-- [ ] Composite sections built from rectangles, circles and other shapes, including holes
-- [ ] Section modulus and radius of gyration
+Follows the course content in order: rigid-body equilibrium, structural analysis, stresses and strains, axial deformation, and geometry of masses.
 
-**Axial loading**
-- [ ] Normal stress and strain in each member, σ = N/A and ε = σ/E
-- [ ] Elongation of each member, δ = NL/(EA), including thermal elongation
-- [ ] Statically indeterminate axial problems (already solved by the stiffness method; show the compatibility equations)
+**1. Equilibrium of rigid bodies**
+- [ ] Free-body diagram of the whole structure or of any member, with loads and reactions drawn as vectors
+- [ ] Equilibrium equations written out (ΣFx = 0, ΣFy = 0, ΣM = 0) with the numbers substituted
+- [ ] Supports and static determinacy: count reactions and releases, and classify the structure as hypostatic (unstable), isostatic (determinate) or hyperstatic (indeterminate), with its degree
 
-**Truss analysis**
-- [ ] Truss mode: pin-jointed, axial-only members with nodal loads only
-- [ ] Member force table marked tension or compression, and zero-force members highlighted
-- [ ] Method of joints and method of sections shown step by step for a chosen joint or cut
+**2. Structural analysis**
+- [x] External forces (loads and reactions) and internal-force diagrams N, V, M
+- [ ] Internal forces at a chosen cut, shown as a free-body diagram of each side
+- [ ] Equations of N(x), V(x) and M(x) for each member, and the relations dV/dx = −q and dM/dx = V
+- [ ] Truss analysis: a truss mode with pin-jointed, axial-only members, a member-force table marked tension or compression, zero-force members highlighted, and the method of joints and method of sections shown step by step
 
-**Torsion**
-- [ ] Circular shafts: τ = T·r/J, angle of twist φ = TL/(GJ), stepped shafts
-- [ ] Thin-walled closed sections: shear flow q = T/(2A_m)
+**3. Stresses and strains**
+- [ ] Concept of stress: normal and shear stress on a cut, σ = N/A and average τ = V/A
+- [ ] General state of stress and strain at a point
+- [ ] Plane stress and plane strain: transformation to any angle
+- [ ] Mohr's circle, with principal stresses, maximum shear stress and their directions
 
-This needs torque as a load, which a 2D frame does not have, so it would be a separate shaft module.
+**4. Deformation under axial load**
+- [ ] Normal stress, strain and elongation of each member, δ = NL/(EA)
+- [ ] Statically determinate axial structures
+- [ ] Statically indeterminate axial structures, with the compatibility equation shown (the stiffness method already solves them)
+- [ ] Temperature effects: free thermal elongation and the stresses it causes when restrained (thermal loads already exist; show the stresses)
 
-**Bending and shear stresses**
-- [ ] Normal stress at any point of a section, σ = N/A ± M·c/I, chosen by clicking a member
+**5. Geometry of masses**
+- [ ] Centroid of any section, including composite sections built from rectangles, circles and other shapes, with holes
+- [ ] Moments of inertia with the parallel-axis theorem steps shown
+- [ ] Product of inertia
+
+## Stage 3: Mechanics of Solids 2 (FGA0179)
+
+Follows the course content in order: stress analysis, theory of elasticity, failure criteria and beam deflection.
+
+**1. Stress analysis**
+- [ ] Torsion: circular shafts, τ = T·r/J and angle of twist φ = TL/(GJ), stepped shafts, and thin-walled closed sections with shear flow q = T/(2A_m). A plane frame has no torque, so this is a separate shaft calculator inside the app.
+- [ ] Pure bending: normal stress at any point of a section, σ = M·y/I, chosen by clicking a member
 - [ ] Normal stress diagram over the cross-section, with maximum tension and compression
 - [ ] Neutral line position, y₀ = N·I/(M·A), drawn on the section and along the member
-- [ ] Shear stress distribution, τ = V·Q/(I·b), and shear flow in built-up sections
-- [ ] Stress envelopes along each member (maximum σ and τ)
+- [ ] Transverse loading: shear stress distribution τ = V·Q/(I·b), and shear flow in built-up sections
+- [ ] Combined loading: axial force plus bending (σ = N/A ± M·c/I), with the core (kern) of the section; stress envelopes along each member
 
-**Combined loading**
-- [ ] Axial force plus bending in eccentrically loaded members, with the core (kern) of the section
+**2. Theory of elasticity**
+- [ ] Stress vector on a plane with normal n, t = σ·n, split into normal and shear parts
+- [ ] Cauchy stress tensor: enter a 3×3 tensor or take it from a point of the model
+- [ ] Invariants I₁, I₂, I₃
+- [ ] Principal stresses and directions as the eigenvalue/eigenvector problem, with the characteristic equation shown
+- [ ] Differential equilibrium equations: check whether a given stress field satisfies ∂σᵢⱼ/∂xⱼ + bᵢ = 0
 
-## Stage 3: Mechanics of Solids 2
+**3. Failure criteria**
+- [ ] von Mises and Tresca checks, with a utilization ratio per member and per point
+- [ ] Mohr-Coulomb criterion, drawn on Mohr's circle
 
-**Stress and strain transformation**
-- [ ] State of stress at a point of a section (σ and τ from the diagrams)
-- [ ] Principal stresses, maximum shear stress and their directions
-- [ ] Mohr's circle for stress, and for strain
+**4. Deflection of beams**
+- [ ] Deflection and slope diagrams with values (already computed; show them)
+- [ ] Double integration of EI·v'' = M(x), with the boundary conditions shown, and singularity functions for simple cases
+- [ ] Superposition
+
+## Beyond the courses
+
+Useful topics that are not in these two syllabi, for later:
+- [ ] Buckling: Euler critical load per member, P_cr = π²EI/(KL)², slenderness, and linear buckling of the whole frame
+- [ ] Unsymmetrical (oblique) bending: principal axes, Mohr's circle for inertia and the inclined neutral line
+- [ ] Energy methods: strain energy, Castigliano's theorem and the unit-load method
+- [ ] Force method for indeterminate structures, compared with the stiffness solution
 - [ ] Strain gauges and rosettes
-
-**Failure criteria**
-- [ ] Tresca, von Mises and Rankine checks, with a utilization ratio per member
-
-**Unsymmetrical (oblique) bending**
-- [ ] Principal axes of the section and Mohr's circle for inertia
-- [ ] Stresses under bending about both axes, and the inclined neutral line
-
-**Deflection of beams**
-- [ ] Deflection and slope at any point (already computed; show them as diagrams with values)
-- [ ] Double integration and singularity functions, shown for simple cases
-- [ ] Superposition tables
-
-**Statically indeterminate beams and frames**
-- [ ] Force method: choose redundants, show the compatibility equations and solve
-- [ ] Compare with the stiffness solution
-
-**Energy methods**
-- [ ] Strain energy of each member (axial, bending, shear)
-- [ ] Castigliano's theorem and the unit-load (virtual work) method for a displacement at a chosen point
-
-**Buckling**
-- [ ] Euler critical load per member, P_cr = π²EI/(KL)², with effective length factors
-- [ ] Buckling check for compressed members and slenderness ratio
-- [ ] Eigenvalue (linear) buckling analysis of the whole frame, with the buckled shape
-
-**Other topics**
 - [ ] Shear center of open thin-walled sections
-- [ ] Thin-walled pressure vessels (cylindrical and spherical)
-- [ ] Curved beams
-
-Torsion and pressure vessels do not fit a plane-frame model, so they would be small separate calculators inside the app.
+- [ ] Thin-walled pressure vessels and curved beams
