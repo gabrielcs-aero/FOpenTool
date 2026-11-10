@@ -1,0 +1,1143 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barra Structural Analysis</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a classic Windows engineering window. Menu bar, three control rulers, edit toolbar on the left, drawing canvas, attribute panel on the right, coordinate bar at the bottom. Single light look on purpose (the Display menu switches the canvas background). */
+:root{
+  --chrome:#F0F0F0; --chrome-line:#D4D4D4; --chrome-dark:#A0A0A0; --text:#000000; --muted:#6D6D6D; --disabled:#A8A8A8;
+  --field:#FFFFFF; --field-line:#7A7A7A; --hot:#E5F1FB; --hot-line:#0078D7; --on:#CCE4F7; --on-line:#3D8EE0;
+  --icon:#1414E6; --icon-red:#D00000; --msg:#D00000; --canvas-line:#666666;
+  --ui:"Segoe UI",Tahoma,"Helvetica Neue",Arial,sans-serif; --num:"Segoe UI",Tahoma,Arial,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--chrome);color:var(--text);font:12px/1.35 var(--ui)}
+*{box-sizing:border-box}
+button,input,select{font:inherit;color:inherit}
+.win{height:100%;display:grid;grid-template-rows:auto auto auto auto minmax(0,1fr) auto;
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+.menubar{display:flex;gap:0;background:#FFFFFF;border-bottom:1px solid var(--chrome-line);padding:0 4px}
+.menubar>button{background:none;border:1px solid transparent;padding:2px 7px;font-size:13px;cursor:default}
+.menubar>button:hover,.menubar>button[aria-expanded="true"]{background:var(--hot);border-color:var(--hot-line)}
+.tb{display:flex;align-items:center;gap:2px;padding:2px 6px;border-bottom:1px solid var(--chrome-line);flex-wrap:wrap;min-height:30px}
+.sep{width:1px;align-self:stretch;background:var(--chrome-line);margin:2px 8px}
+.spacer{flex:1}
+.ib{width:26px;height:26px;display:inline-grid;place-items:center;border:1px solid transparent;border-radius:2px;background:none;padding:0;cursor:default;color:var(--icon)}
+.ib svg{width:20px;height:20px;display:block}
+.ib:hover:not(:disabled){background:var(--hot);border-color:var(--hot-line)}
+.ib[aria-pressed="true"]{background:var(--on);border-color:var(--on-line)}
+.ib:disabled{color:var(--disabled);opacity:.55}
+.tl{font-size:10px;line-height:1.05;text-align:center;color:var(--disabled);padding:0 3px;border:1px solid transparent;background:none}
+.tl.act{color:var(--icon)} .tl.act:hover{background:var(--hot);border-color:var(--hot-line)}
+.lbl{font-weight:600;margin-left:6px;white-space:nowrap}
+.box{background:var(--field);border:1px solid #E1E1E1;padding:1px 8px;min-width:90px;color:var(--muted);white-space:nowrap}
+.tb select{height:22px;border:1px solid var(--chrome-line);background:var(--field)}
+.tb select:disabled{color:var(--disabled)}
+.num{height:21px;border:1px solid var(--chrome-line);background:var(--field);text-align:right;padding:0 4px;font-family:var(--num);width:64px}
+.num:focus{outline:1px solid var(--hot-line)}
+#pot{width:96px;accent-color:#0078D7}
+#msg{color:var(--msg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.main{display:grid;grid-template-columns:34px minmax(0,1fr) 222px;min-height:0}
+.ltb{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;border-right:1px solid var(--chrome-line)}
+.ltb .gap{flex:1;min-height:8px}
+.dial{width:22px;height:84px;border:1px solid var(--chrome-dark);cursor:ns-resize;touch-action:none;
+  background:repeating-linear-gradient(180deg,#6B6B6B 0 2px,#B9B9B9 2px 4px,#E8E8E8 4px 6px,#B9B9B9 6px 8px)}
+.cvwrap{position:relative;border:1px solid var(--canvas-line);margin:4px;min-height:0;background:#FFFFFF}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.side{border-left:1px solid var(--chrome-line);padding:8px 8px 12px;overflow:auto;min-height:0}
+.side.off{opacity:.55;pointer-events:none}
+.pt{font-weight:700;text-align:center;margin:0 0 6px;font-size:12.5px}
+.side select.lst{width:100%;height:24px;border:1px solid var(--chrome-line);background:var(--field)}
+.grp{border:1px solid var(--chrome-dark);border-radius:2px;padding:4px;margin:6px auto;display:flex;flex-direction:column;align-items:center;gap:2px;width:fit-content}
+.grp .row{display:flex;gap:2px;justify-content:center}
+.fl{display:grid;grid-template-columns:44px 84px auto;align-items:center;gap:3px 4px;justify-content:center;margin:2px 0}
+.fl label{text-align:right}
+.fl input{height:21px;border:1px solid var(--chrome-line);background:var(--field);text-align:right;padding:0 4px;width:84px}
+.fl input[readonly]{background:#F7F7F7;color:#333}
+.fl .u{color:#000;white-space:nowrap}
+.fs{border:1px solid var(--chrome-line);border-radius:2px;padding:4px 6px;margin:6px 0;display:flex;flex-direction:column;gap:3px}
+.fs legend{padding:0 3px}
+.ck{display:flex;align-items:center;gap:4px}
+.ck input{margin:0}
+.dirs{display:grid;grid-template-columns:auto auto;gap:4px 10px;justify-content:center}
+.shape{display:block;margin:4px auto}
+.sh{font-weight:700;text-align:center;margin-top:6px}
+.newf{display:flex;flex-direction:column;gap:4px;margin:6px 0;padding:6px;border:1px solid var(--chrome-line);background:#FAFAFA}
+.newf input,.newf select{height:22px;border:1px solid var(--chrome-line);background:var(--field);width:100%}
+.btnrow{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.pb{min-width:64px;height:24px;border:1px solid #ADADAD;background:#E1E1E1;border-radius:2px;padding:0 10px;cursor:default}
+.pb:hover{background:var(--hot);border-color:var(--hot-line)}
+.pb.def{border-color:var(--hot-line)}
+.info{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px}
+.info dt{color:var(--muted)} .info dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.tabs{display:flex;border-bottom:1px solid var(--chrome-line);margin-bottom:6px}
+.tabs button{flex:1;border:1px solid transparent;border-bottom:0;background:none;padding:3px 0;cursor:default}
+.tabs button[aria-selected="true"]{background:var(--field);border-color:var(--chrome-line);margin-bottom:-1px}
+.status{display:flex;align-items:center;gap:6px;padding:3px 6px;border-top:1px solid var(--chrome-line);flex-wrap:wrap}
+.status .num{width:58px}
+.status .ro{background:#F7F7F7;border:1px solid var(--chrome-line);height:21px;min-width:80px;padding:1px 4px;font-variant-numeric:tabular-nums}
+.menu{position:fixed;z-index:30;background:#F2F2F2;border:1px solid #CCCCCC;box-shadow:2px 3px 6px rgba(0,0,0,.25);padding:2px;min-width:230px}
+.menu button{display:grid;grid-template-columns:22px 1fr auto;align-items:center;width:100%;text-align:left;background:none;border:1px solid transparent;padding:3px 6px 3px 2px;cursor:default}
+.menu button:hover:not(:disabled){background:var(--hot);border-color:var(--hot-line)}
+.menu button:disabled{color:var(--disabled)}
+.menu hr{border:0;border-top:1px solid #D7D7D7;margin:3px 2px 3px 26px}
+.menu .chk::before{content:"✓";font-weight:700;padding-left:5px}
+.menu .rad::before{content:"•";font-weight:700;padding-left:7px;font-size:15px;line-height:1}
+.menu .sub{color:var(--muted);padding:3px 6px 1px 26px;font-size:11px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.18);display:grid;place-items:center;z-index:40;padding:16px}
+.dlg{background:var(--chrome);border:1px solid #888;box-shadow:0 8px 24px rgba(0,0,0,.3);min-width:min(340px,100%);max-width:min(620px,100%);max-height:calc(100% - 8px);overflow:auto}
+.dlg .tt{background:#FFFFFF;padding:6px 10px;border-bottom:1px solid var(--chrome-line);display:flex;justify-content:space-between;align-items:center}
+.dlg .tt b{font-weight:400}
+.dlg .bd{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.dlg .x{border:0;background:none;font-size:16px;width:28px;cursor:default}
+.dlg .x:hover{background:#E81123;color:#fff}
+.dlg table{border-collapse:collapse}
+.dlg td{padding:2px 6px}
+.dlg textarea{width:100%;height:220px;font:12px Consolas,monospace;border:1px solid var(--chrome-line)}
+.kd{position:absolute;left:8px;top:8px;background:var(--chrome);border:1px solid #888;box-shadow:0 4px 12px rgba(0,0,0,.25);padding:8px;z-index:5;display:flex;flex-direction:column;gap:6px}
+.kd .ttl{font-weight:700}
+.kd .g{display:grid;grid-template-columns:auto 76px auto auto 76px;gap:3px 4px;align-items:center}
+.kd input{height:21px;border:1px solid var(--chrome-line);text-align:right;padding:0 4px;width:76px}
+:focus-visible{outline:1px dotted #000;outline-offset:1px}
+@media (max-width:820px){
+  html,body{height:auto}
+  .win{height:auto}
+  .main{grid-template-columns:34px minmax(0,1fr)}
+  .cvwrap{height:62vh;height:62svh;min-height:320px}
+  .side{grid-column:1 / -1;border-left:0;border-top:1px solid var(--chrome-line)}
+  .ltb .gap{display:none}
+}
+</style>
+
+<div class="win">
+  <div class="menubar" role="menubar">
+    <button data-menu="file" aria-haspopup="true" aria-expanded="false">File</button>
+    <button data-menu="options" aria-haspopup="true" aria-expanded="false">Options</button>
+    <button data-menu="display" aria-haspopup="true" aria-expanded="false">Display</button>
+  </div>
+  <div class="tb">
+    <button class="ib" id="bNew" title="New"></button>
+    <button class="ib" id="bOpen" title="Open"></button>
+    <button class="ib" id="bSave" title="Save"></button>
+    <button class="ib" id="bPrint" title="Print" disabled></button>
+    <button class="ib" id="bClip" title="Export screen to clipboard (Ctrl+C)"></button>
+    <span class="sep"></span>
+    <button class="ib" id="bUndo" title="Undo (Ctrl+Z)"></button>
+    <button class="ib" id="bRedo" title="Redo (Ctrl+Y)"></button>
+    <span class="spacer"></span>
+    <span class="lbl">Load Case:</span><select disabled aria-label="Load case"><option>Single Case</option></select>
+    <span class="sep"></span>
+    <span class="lbl">Load Train:</span><select disabled aria-label="Load train"><option>NONE</option></select>
+  </div>
+  <div class="tb">
+    <button class="ib" data-panel="mat" title="Material Parameters"></button>
+    <button class="ib" data-panel="sec" title="Section Properties"></button>
+    <button class="ib" data-panel="sup" title="Support Conditions"></button>
+    <button class="ib" data-panel="hinge" title="Rotation Release"></button>
+    <button class="ib" data-panel="dc" title="Deformation Constraints"></button>
+    <span class="sep"></span>
+    <button class="ib" data-panel="nodal" title="Nodal Loading"></button>
+    <button class="ib" data-panel="endm" title="Member End Moments"></button>
+    <button class="ib" data-panel="unif" title="Uniform Loading"></button>
+    <button class="ib" data-panel="lin" title="Linear Loading"></button>
+    <button class="ib" data-panel="therm" title="Thermal Loading"></button>
+    <span class="sep"></span>
+    <button class="tl" disabled title="Load cases (advanced edition)">Load<br>Case</button>
+    <button class="tl" disabled title="Load combinations (advanced edition)">Load<br>Cmb</button>
+    <button class="tl" disabled title="Load trains are not in this version yet">Load<br>Train</button>
+    <span id="modeBox" style="display:flex;align-items:center;gap:4px"></span>
+    <span class="spacer"></span>
+    <input type="range" id="pot" min="-100" max="100" value="0" title="Result scale" aria-label="Result scale">
+    <span class="sep"></span>
+    <button class="ib" data-rmode="diag" title="Diagram results"></button>
+    <button class="ib" data-rmode="il" title="Influence Line results"></button>
+    <button class="ib" data-rmode="env" title="Load-train envelopes are not in this version yet" disabled></button>
+    <span class="sep"></span>
+    <button class="ib" data-q="N" title="Axial Force"></button>
+    <button class="ib" data-q="V" title="Shear Force"></button>
+    <button class="ib" data-q="M" title="Bending Moment"></button>
+    <button class="ib" data-q="D" title="Deformed Configuration"></button>
+    <select id="defComp" title="Deformed configuration component shown with values" aria-label="Deformed component" style="width:44px;height:22px;border:1px solid var(--chrome-line);background:#fff"><option value="Dy">DY</option><option value="Dx">DX</option><option value="Rz">RZ</option><option value="none">—</option></select>
+    <button class="ib" id="bIlPick" title="Select a section for the influence line" hidden></button>
+  </div>
+  <div class="tb">
+    <span id="msg" role="status"></span>
+    <span class="lbl">Step:</span><input class="num" id="step" value="0.00" aria-label="Step"><span id="stepU">m</span>
+    <button class="ib" id="bStepL" title="Step Lines"></button>
+    <button class="ib" id="bStepV" title="Step Values"></button>
+  </div>
+  <div class="main">
+    <div class="ltb">
+      <button class="ib" data-tool="select" title="Select members or nodes (ESC)"></button>
+      <button class="ib" data-tool="member" title="Insert member (M)"></button>
+      <button class="ib" data-tool="node" title="Insert node (N)"></button>
+      <button class="ib" data-tool="dim" title="Insert dimension line (D)"></button>
+      <button class="ib" id="bKbd" title="Keyboard mode (K)"></button>
+      <button class="ib" id="bDel" title="Delete selected objects (DEL)"></button>
+      <span style="height:6px"></span>
+      <button class="ib" id="bTrf" title="Transform selected objects (T)"></button>
+      <span class="gap"></span>
+      <button class="ib" id="bRedraw" title="Redraw (R)"></button>
+      <button class="ib" id="bFit" title="Fit model to screen (F)"></button>
+      <button class="ib" data-tool="zoom" title="Zoom window (Z)"></button>
+      <button class="ib" id="bZin" title="Zoom in (+)"></button>
+      <button class="ib" id="bZout" title="Zoom out (−)"></button>
+      <div class="dial" id="dial" title="Zoom wheel: drag up or down"></div>
+    </div>
+    <div class="cvwrap" id="stage"><canvas id="cv"></canvas><div class="kd" id="kd" hidden></div></div>
+    <aside class="side" id="side"></aside>
+  </div>
+  <div class="status">
+    <span>H:</span><input class="num" id="vH" aria-label="View width"><span class="uL">m</span>
+    <span>V:</span><input class="num" id="vV" aria-label="View height"><span class="uL">m</span>
+    <span class="ro" id="cX">X:</span><span class="ro" id="cY">Y:</span>
+    <span class="spacer"></span>
+    <label class="ck"><input type="checkbox" id="gOn"> Grid</label>
+    <span>X:</span><input class="num" id="gX" aria-label="Grid spacing X"><span class="uL">m</span>
+    <span>Y:</span><input class="num" id="gY" aria-label="Grid spacing Y"><span class="uL">m</span>
+    <label class="ck"><input type="checkbox" id="gSnap"> Snap</label>
+  </div>
+</div>
+<div class="menu" id="menu" hidden role="menu"></div>
+<div class="ov" id="ov" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT"><div class="tt"><b id="dlgT"></b><button class="x" data-close aria-label="Close">✕</button></div><div class="bd" id="dlgB"></div></div></div>
+<input type="file" id="fOpen" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const LS='barra.ftool.v2';
+
+/* ================= Icons (drawn for this app) ================= */
+const IC={
+ new:'<path d="M5 2.5h7l3.5 3.5v11.5H5z M12 2.5V6h3.5" fill="#fff" stroke="#222" stroke-width="1.1"/>',
+ open:'<path d="M2 6.5h5.5l1.5 1.5h7v8.5H2z" fill="#F6CF57" stroke="#8C6B00"/><path d="M4 10h14l-2.5 6.5H2z" fill="#FBE29A" stroke="#8C6B00"/>',
+ save:'<path d="M3 3h12l2 2v12H3z" fill="#2B2B2B"/><path d="M6 3h7v5H6z" fill="#fff"/><path d="M5.5 11h9v6h-9z" fill="#E8E8E8"/>',
+ print:'<path d="M6 3h8v4H6z" fill="#fff" stroke="#333"/><path d="M3 7h14v7H3z" fill="#9A9A9A" stroke="#333"/><path d="M6 12h8v5H6z" fill="#fff" stroke="#333"/>',
+ copy:'<path d="M4 3h7v10H4z" fill="#fff" stroke="#333"/><path d="M8 7h8v11H8z" fill="#DDE8FF" stroke="#333"/>',
+ undo:'<path d="M5 8h7a4 4 0 0 1 0 8H8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 4.5v7l-3-3.5z" fill="currentColor" transform="translate(3 0)"/>',
+ redo:'<path d="M15 8H8a4 4 0 0 0 0 8h4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4.5v7l3-3.5z" fill="currentColor"/>',
+ mat:'<path d="M3 15l4-9h6l4 9z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="9" r="3.3" fill="#fff" stroke="currentColor" stroke-width="1.4"/><path d="M10.4 11.4l3 3" stroke="currentColor" stroke-width="2"/>',
+ sec:'<path d="M4 3.5h12v2.6h-4.5v7.8H16v2.6H4v-2.6h4.5V6.1H4z" fill="currentColor"/>',
+ sup:'<path d="M10 4l6 10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 16.5h15" stroke="currentColor" stroke-width="1.6"/>',
+ hinge:'<path d="M2 16L8.2 11.4 M11.8 8.6L18 4" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="2.6" fill="#fff" stroke="currentColor" stroke-width="1.5"/>',
+ dc:'<path d="M4 17V5h12v12" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 5h12v3H4z" fill="currentColor" opacity=".55"/>',
+ nodal:'<circle cx="10" cy="11" r="2" fill="currentColor"/><path d="M10 2v6M7.5 5.5L10 8.5l2.5-3M2 11h5M4.5 8.5L7.5 11l-3 2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 7a5 5 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+ endm:'<path d="M3 11h14" stroke="currentColor" stroke-width="1.6"/><path d="M6 6.5a4 4 0 1 0 0 9" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M14 6.5a4 4 0 1 1 0 9" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5l2.5 1.5L5 8.5z M15 5l-2.5 1.5L15 8.5z" fill="currentColor"/>',
+ unif:'<path d="M3 4h14M4 4v10M8 4v10M12 4v10M16 4v10M2.5 16.5h15" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.6 12l1.4 2.4L5.4 12M6.6 12L8 14.4 9.4 12M10.6 12l1.4 2.4 1.4-2.4M14.6 12l1.4 2.4 1.4-2.4" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+ lin:'<path d="M3 11L17 4M4 10.5V15M8 8.5V15M12 6.5V15M16 4.5V15M2.5 16.5h15" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+ therm:'<path d="M8.5 3.5a1.5 1.5 0 0 1 3 0v8.3a3.2 3.2 0 1 1-3 0z" fill="#fff" stroke="currentColor" stroke-width="1.3"/><circle cx="10" cy="14.6" r="2" fill="currentColor"/><path d="M10 8v6" stroke="currentColor" stroke-width="1.6"/>',
+ diag:'<path d="M2 15L6 5l4 10 4-10 4 10" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+ il:'<path d="M2 6h16" stroke="currentColor" stroke-width="1.2"/><path d="M2 6l6 9 10-9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 2v4" stroke="currentColor" stroke-width="1.6"/>',
+ env:'<path d="M3 5h14v10H3z" fill="#fff" stroke="currentColor" stroke-width="1.3"/><path d="M3 5l7 6 7-6" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+ N:'<path d="M9 5v10M11 5v10" stroke="currentColor" stroke-width="1.6"/><path d="M8 10H2M12 10h6" stroke="currentColor" stroke-width="1.4"/><path d="M8 10L5 8v4zM12 10l3-2v4z" fill="currentColor"/>',
+ V:'<path d="M7 3v12M13 5v12" stroke="currentColor" stroke-width="1.6"/><path d="M7 2l-2.5 3.5h5zM13 18l-2.5-3.5h5z" fill="currentColor"/><path d="M3 10h14" stroke="currentColor" stroke-width="1"/>',
+ M:'<path d="M3 10h14" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 5a5 5 0 1 0 0 10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.5 5a5 5 0 1 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 3.2l3 1.8-3 1.8zM14 3.2l-3 1.8 3 1.8z" fill="currentColor"/>',
+ D:'<path d="M2 8h16" stroke="currentColor" stroke-width="1" opacity=".5"/><path d="M2 8c4 0 4 6 8 6s5-5 8-6" fill="none" stroke="currentColor" stroke-width="1.7"/>',
+ pick:'<path d="M3 15L15 3" stroke="currentColor" stroke-width="1.4"/><path d="M6 6l8 8" stroke="#D00000" stroke-width="2"/><path d="M4 17h12" stroke="currentColor" stroke-width="1"/>',
+ stepL:'<rect x="2" y="6" width="16" height="8" fill="#fff" stroke="currentColor"/><path d="M5 6v8M8 6v8M11 6v8M14 6v8" stroke="currentColor"/>',
+ stepV:'<path d="M2 10h16" stroke="currentColor"/><path d="M4 7v6M7 7v6M10 7v6M13 7v6M16 7v6" stroke="currentColor"/>',
+ select:'<path d="M5 2v14l3.5-3.5 2.6 5.5 2-1-2.6-5.4H15z" fill="#fff" stroke="#111" stroke-width="1.1"/>',
+ member:'<path d="M3 17L17 3" stroke="currentColor" stroke-width="1.7"/>',
+ node:'<circle cx="10" cy="10" r="2.6" fill="currentColor"/>',
+ dim:'<path d="M3 5v11M17 5v11M3 13h14" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 13l3-2v4zM17 13l-3-2v4z" fill="currentColor"/>',
+ kbd:'<rect x="2" y="6" width="16" height="9" rx="1" fill="#fff" stroke="#333"/><path d="M4 8.5h1M6.5 8.5h1M9 8.5h1M11.5 8.5h1M14 8.5h2M4 11h1M6.5 11h1M9 11h1M11.5 11h1M14 11h2M6 13.2h8" stroke="#333" stroke-width="1.2"/>',
+ del:'<path d="M4 4l12 12M16 4L4 16" stroke="#333" stroke-width="1.8"/>',
+ trf:'<circle cx="5" cy="5" r="1.6" fill="#777"/><circle cx="10" cy="4" r="1.6" fill="#777"/><circle cx="12.5" cy="12.5" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.5 10.2v4.6M10.2 12.5h4.6" stroke="currentColor" stroke-width="1.4"/>',
+ redraw:'<rect x="2.5" y="3" width="15" height="10" fill="#9CC9F5" stroke="#333"/><path d="M7 16.5h6M10 13v3.5" stroke="#333" stroke-width="1.4"/><path d="M6 8h8" stroke="#D00000" stroke-width="1.4"/>',
+ fit:'<circle cx="10" cy="10" r="7.5" fill="#2E7BD6"/><path d="M4 7c2 1 3-1 5 0s1 3 3 3 2-2 4-1M5 13c2-1 3 1 5 1" fill="none" stroke="#5BC236" stroke-width="2.2"/>',
+ zoom:'<circle cx="8.5" cy="8.5" r="5" fill="#fff" stroke="#222" stroke-width="1.5"/><path d="M12.3 12.3L17 17" stroke="#222" stroke-width="2.2"/>',
+ zin:'<circle cx="8.5" cy="8.5" r="5" fill="#fff" stroke="#222" stroke-width="1.5"/><path d="M12.3 12.3L17 17" stroke="#222" stroke-width="2.2"/><path d="M6 8.5h5M8.5 6v5" stroke="#222" stroke-width="1.4"/>',
+ zout:'<circle cx="8.5" cy="8.5" r="5" fill="#fff" stroke="#222" stroke-width="1.5"/><path d="M12.3 12.3L17 17" stroke="#222" stroke-width="2.2"/><path d="M6 8.5h5" stroke="#222" stroke-width="1.4"/>',
+ lnew:'<path d="M5 2.5h7l3.5 3.5v11.5H5z" fill="#fff" stroke="currentColor"/><path d="M7 8h6M7 10.5h6M7 13h6" stroke="currentColor"/>',
+ limp:'<path d="M7 2.5h7l3 3v10H7z" fill="#fff" stroke="currentColor"/><path d="M2 9h7v8H2z" fill="#222"/><path d="M3.5 9h4v3h-4z" fill="#fff"/>',
+ lren:'<path d="M5 2.5h7l3.5 3.5v11.5H5z" fill="#fff" stroke="currentColor"/><path d="M8 15l1-3 6-6 2 2-6 6z" fill="#fff" stroke="#222"/>',
+ ldel:'<path d="M5 2.5h7l3.5 3.5v11.5H5z" fill="#fff" stroke="currentColor"/><path d="M4 5l12 11M16 5L4 16" stroke="#D00000" stroke-width="2"/>',
+ lcon:'<path d="M3 5h7v9H3z" fill="#fff" stroke="currentColor"/><path d="M9 8h8v10H9z" fill="#fff" stroke="currentColor"/><path d="M11 13h4M13 11v4" stroke="#D00000" stroke-width="1.4"/>',
+ asel:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M4 3l5 5-2 .5 2 3-1.2.8-2-3L4 10z" fill="#fff" stroke="#111"/><path d="M11 3h5v6h-5z" fill="#fff" stroke="currentColor"/>',
+ aall:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/><text x="3" y="13" font-size="7" font-weight="700" fill="currentColor" font-family="Arial">all</text>',
+ aun:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M5 4c0 4 2 6 5 7" fill="none" stroke="#D00000" stroke-width="1.6"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/><path d="M11.5 2.5l4 5M15.5 2.5l-4 5" stroke="#D00000" stroke-width="1.3"/>',
+ aapp:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M5 4c0 4 2 6 5 7" fill="none" stroke="#D00000" stroke-width="1.6"/><path d="M8.5 9.5L10.5 11.3 8 12.5z" fill="#D00000"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/>',
+ sfree:'<path d="M2 12h16" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="12" r="2.4" fill="currentColor"/><path d="M10 3v5" stroke="#D00000" stroke-width="1.4"/>',
+};
+const svg=n=>`<svg viewBox="0 0 20 20" aria-hidden="true">${IC[n]}</svg>`;
+function paintIcons(){
+  const map={bNew:'new',bOpen:'open',bSave:'save',bPrint:'print',bClip:'copy',bUndo:'undo',bRedo:'redo',bKbd:'kbd',bDel:'del',bTrf:'trf',bRedraw:'redraw',bFit:'fit',bZin:'zin',bZout:'zout',bStepL:'stepL',bStepV:'stepV',bIlPick:'pick'};
+  for(const [id,n] of Object.entries(map)) $('#'+id).innerHTML=svg(n);
+  $$('[data-panel]').forEach(b=>b.innerHTML=svg(b.dataset.panel));
+  $$('[data-rmode]').forEach(b=>b.innerHTML=svg(b.dataset.rmode));
+  $$('[data-q]').forEach(b=>b.innerHTML=svg(b.dataset.q));
+  $$('[data-tool]').forEach(b=>b.innerHTML=svg(b.dataset.tool));
+}
+
+/* ================= Units & number formatting (internal: kN, m) ================= */
+const UC={
+  len:['Length',{m:1,cm:.01,mm:.001},'m',['f',2]],
+  sec:['Section dimensions',{mm:.001,cm:.01,m:1},'mm',['f',0]],
+  area:['Area',{'mm²':1e-6,'cm²':1e-4,'m²':1},'mm²',['e',4]],
+  inertia:['Moment of inertia',{'mm⁴':1e-12,'cm⁴':1e-8,'m⁴':1},'mm⁴',['e',4]],
+  force:['Force',{kN:1,N:.001,tf:9.81},'kN',['f',1]],
+  moment:['Moment',{kNm:1,Nm:.001,tfm:9.81,kNcm:.01,Nmm:1e-6},'kNm',['f',1]],
+  dist:['Distributed load',{'kN/m':1,'N/m':.001,'tf/m':9.81,'kN/cm':100,'N/mm':1},'kN/m',['f',2]],
+  E:['Elastic modulus',{MPa:1000,GPa:1e6,'kN/m²':1,'kN/cm²':1e4},'MPa',['f',0]],
+  disp:['Displacement',{mm:.001,cm:.01,m:1},'mm',['e',3]],
+  rot:['Rotation',{rad:1,deg:Math.PI/180},'rad',['e',3]],
+  temp:['Temperature',{'°C':1},'°C',['f',1]],
+  alpha:['Thermal expansion',{'/°C':1},'/°C',['f',6]],
+  spring:['Spring stiffness',{'kN/m':1,'kN/mm':1000,'N/mm':1},'kN/m',['f',1]],
+  rspring:['Rotational spring',{'kNm/rad':1,'kNm/deg':180/Math.PI},'kNm/rad',['f',1]],
+  nu:['Poisson ratio',{'':1},'',['f',2]],
+};
+function defUnits(preset){ const u={}; for(const [k,v] of Object.entries(UC)) u[k]={u:v[2],f:v[3][0],d:v[3][1]};
+  if(preset==='kNm'){ Object.assign(u.sec,{u:'m',f:'f',d:3}); Object.assign(u.area,{u:'m²'}); Object.assign(u.inertia,{u:'m⁴'}); Object.assign(u.E,{u:'kN/m²',f:'e',d:3}); Object.assign(u.disp,{u:'m'}); }
+  return u; }
+const fac=c=>UC[c][1][M.units[c].u]??1;
+const U=c=>M.units[c].u;
+const toD=(c,v)=>v/fac(c), fromD=(c,v)=>v*fac(c);
+function fmtNum(v,f,d){ if(v==null||!isFinite(v)) return '';
+  if(f==='e'){ let s=v.toExponential(d); s=s.replace(/e([+-])(\d)$/,'e$10$2'); return s; }
+  let s=v.toFixed(d); if(/^-0\.?0*$/.test(s)) s=s.slice(1); return s; }
+const fq=(c,v)=>fmtNum(toD(c,v),M.units[c].f,M.units[c].d);
+const fqu=(c,v)=>`${fq(c,v)} ${U(c)}`.trim();
+const pnum=s=>{ const v=parseFloat(String(s).trim().replace(',','.')); return isFinite(v)?v:null; };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ================= Model ================= */
+let M=null;
+function defDisplay(){ return {bg:'white',dims:true,orient:false,sups:true,loadEdit:true,loadRes:false,loadVal:true,resVal:true,stepLines:false,stepVal:false,transv:false,mSign:false,reac:false,reacVal:false,nodeNum:false,memNum:false}; }
+function newModel(){ return {v:2,units:defUnits('SI'),disp:defDisplay(),opt:{sup:'M',hinge:'M',load:'M',text:'M',mPos:'tension',ilPos:'lower'},
+  grid:{on:true,snap:true,dx:.5,dy:.5},nodes:[],members:[],dims:[],lists:{mat:[],sec:[],nodal:[],endm:[],unif:[],lin:[],therm:[]},
+  cur:{mat:null,sec:null,nodal:null,endm:null,unif:null,lin:null,therm:null,sup:{x:1,y:1,r:0,ang:0,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0},hinge:'both',dc:{flex:true,axial:true,shear:false}},
+  next:{n:1,m:1,d:1,i:1},step:0}; }
+const MAT_TYPES={generic:['Generic Isotropic',1e8,.3,1e-5],steel:['Steel Isotropic',2.05e8,.3,1.2e-5],concrete:['Concrete Isotropic',2.5e7,.2,1e-5],aluminium:['Aluminium Isotropic',7e7,.33,2.3e-5]};
+const SEC_TYPES={
+  integral:{label:'Integral Properties',p:[]},
+  rect:{label:'Rectangle',p:['b','h'],def:{b:.12,h:.4}},
+  I:{label:'I-shape',p:['d','b','tw','tf'],def:{d:.2,b:.1,tw:.006,tf:.01}},
+  T:{label:'T-shape',p:['d','b','tw','tf'],def:{d:.4,b:.3,tw:.1,tf:.1}},
+  C:{label:'C-shape',p:['d','b','tw','tf'],def:{d:.2,b:.075,tw:.006,tf:.01}},
+  circle:{label:'Circle',p:['D'],def:{D:.1}},
+  ring:{label:'Ring',p:['D','t'],def:{D:.1,t:.005}},
+  box:{label:'Box',p:['d','b','t'],def:{d:.2,b:.1,t:.006}},
+};
+function secCalc(s){
+  const P=s.p||{}; let A,As,I,d,yb;
+  switch(s.type){
+    case 'integral': ({A,As,I,d,yb}=P); break;
+    case 'rect': A=P.b*P.h; As=A*5/6; I=P.b*P.h**3/12; d=P.h; yb=d/2; break;
+    case 'I': case 'C': { const h=P.d-2*P.tf; A=2*P.b*P.tf+P.tw*h; As=P.tw*P.d; I=(P.b*P.d**3-(P.b-P.tw)*h**3)/12; d=P.d; yb=d/2; break; }
+    case 'T': { const hw=P.d-P.tf, Aw=P.tw*hw, Af=P.b*P.tf; A=Aw+Af; yb=(Aw*hw/2+Af*(P.d-P.tf/2))/A; I=P.tw*hw**3/12+Aw*(yb-hw/2)**2+P.b*P.tf**3/12+Af*(P.d-P.tf/2-yb)**2; As=P.tw*P.d; d=P.d; break; }
+    case 'circle': A=Math.PI*P.D**2/4; As=.9*A; I=Math.PI*P.D**4/64; d=P.D; yb=d/2; break;
+    case 'ring': { const Di=P.D-2*P.t; A=Math.PI*(P.D**2-Di**2)/4; As=A/2; I=Math.PI*(P.D**4-Di**4)/64; d=P.D; yb=d/2; break; }
+    case 'box': { const bi=P.b-2*P.t, hi=P.d-2*P.t; A=P.b*P.d-bi*hi; As=2*P.t*P.d; I=(P.b*P.d**3-bi*hi**3)/12; d=P.d; yb=d/2; break; }
+  }
+  return {A,As,I,d,yb,ok:isFinite(I)&&I>0&&isFinite(A)&&A>=0};
+}
+const L_=k=>M.lists[k];
+const item=(k,id)=>id==null?null:L_(k).find(x=>x.id===id)||null;
+const nodeById=id=>M.nodes.find(n=>n.id===id), memById=id=>M.members.find(m=>m.id===id);
+function addNode(x,y){ const n={id:M.next.n++,x,y,sup:null,hinge:false,load:null}; M.nodes.push(n); return n; }
+function addMember(i,j,base){ const m={id:M.next.m++,i,j,mat:M.cur.mat,sec:M.cur.sec,hi:false,hj:false,rigid:false,axial:true,shear:false,ld:{u:null,l:null,t:null,e:null}};
+  if(base) Object.assign(m,JSON.parse(JSON.stringify({mat:base.mat,sec:base.sec,rigid:base.rigid,axial:base.axial,shear:base.shear,ld:{u:base.ld.u,l:null,t:base.ld.t,e:null}})));
+  m.id=m.id; M.members.push(m); return m; }
+function newItem(k,o){ const it={id:'i'+(M.next.i++),...o}; L_(k).push(it); return it; }
+function exampleModel(){
+  M=newModel();
+  const st=newItem('mat',{name:'Steel',type:'steel',E:2.05e8,nu:.3,alpha:1.2e-5});
+  const sc=newItem('sec',{name:'barra-I',type:'I',p:{d:.2,b:.1,tw:.006,tf:.01}});
+  const q=newItem('unif',{name:'q',dir:'global',qx:0,qy:-2.5});
+  const P=newItem('nodal',{name:'P',fx:0,fy:-.8,mz:0});
+  M.cur.mat=st.id; M.cur.sec=sc.id; M.cur.unif=q.id; M.cur.nodal=P.id;
+  const xs=[0,1,3,4.5,5], ns=xs.map(x=>addNode(x,0));
+  ns[0].sup={x:1,y:1,r:1,ang:0,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0}; ns[3].load=P.id;
+  for(let k=0;k<4;k++) addMember(ns[k].id,ns[k+1].id);
+  M.members[1].ld.u=q.id;
+  M.dims.push({id:M.next.d++,ax:0,ay:0,bx:1,by:0,off:-1},{id:M.next.d++,ax:1,ay:0,bx:3,by:0,off:-1.5},{id:M.next.d++,ax:3,ay:0,bx:4.5,by:0,off:-1},{id:M.next.d++,ax:4.5,ay:0,bx:5,by:0,off:-1.5});
+  return M;
+}
+
+/* ================= Solver: direct stiffness method ================= */
+function kLoc(EA,EI,L,phi){ const a=EA/L,f=1/(1+phi),b=12*EI/L**3*f,c=6*EI/L**2*f,d=(4+phi)*EI/L*f,e=(2-phi)*EI/L*f;
+  return [[a,0,0,-a,0,0],[0,b,c,0,-b,c],[0,c,d,0,-c,e],[-a,0,0,a,0,0],[0,-b,-c,0,b,-c],[0,c,e,0,-c,d]]; }
+function inv12(a){ if(a.length===1) return [[1/a[0][0]]]; const [[p,q],[r,s]]=a, d=p*s-q*r; return [[s/d,-q/d],[-r/d,p/d]]; }
+function tMat(c,s){ const T=[...Array(6)].map(()=>new Array(6).fill(0)); for(const o of [0,3]){ T[o][o]=c;T[o][o+1]=s;T[o+1][o]=-s;T[o+1][o+1]=c;T[o+2][o+2]=1; } return T; }
+function condense(k,C,Ci,qf){ const qfc=qf.slice(); if(!C.length) return qfc;
+  for(let r=0;r<6;r++){ let sf=0; for(let x=0;x<C.length;x++) for(let y=0;y<C.length;y++) sf+=k[r][C[x]]*Ci[x][y]*qf[C[y]]; qfc[r]=qf[r]-sf; } return qfc; }
+function fiber(c,s){ const low=Math.abs(c)<1e-9?[1,0]:(c>0?[s,-c]:[-s,c]); const up=[-low[0],-low[1]]; const sg=(-s*up[0]+c*up[1])>=0?1:-1; return {low,up,sg}; }
+
+function buildSystem(Md){
+  const S={error:null,warn:[]}, nodes=Md.nodes, idx=new Map(nodes.map((n,k)=>[n.id,k])); S.idx=idx; S.nodes=nodes;
+  const nd=3*nodes.length; S.nd=nd;
+  if(!Md.members.length){ S.error='There are no members in the model.'; return S; }
+  const K=[...Array(nd)].map(()=>new Float64Array(nd)), F=new Float64Array(nd), used=new Uint8Array(nodes.length);
+  const it=(k,id)=>id==null?null:Md.lists[k].find(x=>x.id===id)||null;
+  const nh=new Set(nodes.filter(n=>n.hinge).map(n=>n.id)); const recs=[];
+  for(const m of Md.members){
+    const a=idx.get(m.i),b=idx.get(m.j); if(a==null||b==null) continue;
+    const ni=nodes[a],nj=nodes[b],dx=nj.x-ni.x,dy=nj.y-ni.y,L=Math.hypot(dx,dy); if(L<1e-12) continue;
+    const mat=it('mat',m.mat), sec=it('sec',m.sec);
+    if(!mat){ S.error=`Member ${m.id} has no material. Assign one with Material Parameters.`; S.bad=m.id; return S; }
+    if(!sec){ S.error=`Member ${m.id} has no cross-section. Assign one with Section Properties.`; S.bad=m.id; return S; }
+    const P=secCalc(sec); if(!P.ok){ S.error=`Section "${sec.name}" has invalid properties. I must be non-zero.`; S.bad=m.id; return S; }
+    const c=dx/L,s=dy/L,E=mat.E,G=E/(2*(1+(mat.nu||0)));
+    let EA=E*P.A, EI=E*P.I, phi=0;
+    if(m.rigid){ EA=Math.max(EA,EI/(L*L))*1e6; EI*=1e6; }
+    else { if(!m.axial||!(EA>0)) EA=Math.max(EA,EI/(L*L))*1e5;
+      if(m.shear){ if(!(P.As>0)){ S.error=`Section "${sec.name}" needs a non-zero As for shear deformation.`; S.bad=m.id; return S; } phi=12*EI/(G*P.As*L*L); } }
+    const k=kLoc(EA,EI,L,phi);
+    const lu=it('unif',m.ld.u), ll=it('lin',m.ld.l), lt=it('therm',m.ld.t), le=it('endm',m.ld.e);
+    const loc=(gx,gy,g)=>g?[gx*c+gy*s,-gx*s+gy*c]:[gx,gy];
+    let pi=0,pj=0,wi=0,wj=0;
+    if(lu){ const [p,w]=loc(lu.qx||0,lu.qy||0,lu.dir!=='local'); pi+=p;pj+=p;wi+=w;wj+=w; }
+    if(ll){ const g=ll.dir!=='local', [p1,w1]=loc(ll.pxi||0,ll.pyi||0,g), [p2,w2]=loc(ll.pxj||0,ll.pyj||0,g); pi+=p1;pj+=p2;wi+=w1;wj+=w2; }
+    const qf=[-L*(2*pi+pj)/6,-L*(7*wi+3*wj)/20,-L*L*(3*wi+2*wj)/60,-L*(pi+2*pj)/6,-L*(3*wi+7*wj)/20,L*L*(2*wi+3*wj)/60];
+    if(lt){ if(!(P.d>0)){ S.error=`Section "${sec.name}" needs a height d for thermal loads.`; S.bad=m.id; return S; }
+      const al=mat.alpha||0, tt=lt.tt||0, tb=lt.tb||0, Tcg=tb+(tt-tb)*(P.yb/P.d), thN=EA*al*Tcg, thM=EI*al*(tt-tb)/P.d;
+      qf[0]+=thN; qf[3]-=thN; qf[2]-=thM; qf[5]+=thM; }
+    const qfAll=qf.slice(); if(le){ qfAll[2]-=le.ma||0; qfAll[5]-=le.mb||0; }
+    const C=[]; if(m.hi||nh.has(m.i)) C.push(2); if(m.hj||nh.has(m.j)) C.push(5);
+    const kc=k.map(r=>r.slice()); let Ci=null;
+    if(C.length){ Ci=inv12(C.map(r=>C.map(q=>k[r][q])));
+      for(let r=0;r<6;r++) for(let q=0;q<6;q++){ let sm=0; for(let x=0;x<C.length;x++) for(let y=0;y<C.length;y++) sm+=k[r][C[x]]*Ci[x][y]*k[C[y]][q]; kc[r][q]=k[r][q]-sm; } }
+    const qfc=condense(k,C,Ci,qfAll), T=tMat(c,s), dofs=[3*a,3*a+1,3*a+2,3*b,3*b+1,3*b+2];
+    const kT=kc.map(row=>T[0].map((_,j)=>row.reduce((acc,v,t)=>acc+v*T[t][j],0)));
+    for(let r=0;r<6;r++){ for(let q=0;q<6;q++){ let v=0; for(let t=0;t<6;t++) v+=T[t][r]*kT[t][q]; K[dofs[r]][dofs[q]]+=v; }
+      let v=0; for(let t=0;t<6;t++) v+=T[t][r]*qfc[t]; F[dofs[r]]-=v; }
+    used[a]=used[b]=1;
+    recs.push({m,a,b,L,c,s,E,EA,EI,phi,P,mat,sec,k,qf,qfAll,C,Ci,T,dofs,pi,pj,wi,wj,...fiber(c,s)});
+  }
+  if(!recs.length){ S.error='Every member has zero length.'; return S; }
+  S.recs=recs;
+  const fixed=new Uint8Array(nd), pres=new Float64Array(nd), rot=[];
+  nodes.forEach((n,k)=>{
+    if(!used[k]){ fixed[3*k]=fixed[3*k+1]=fixed[3*k+2]=3; return; }
+    const ld=it('nodal',n.load); if(ld){ F[3*k]+=ld.fx||0; F[3*k+1]+=ld.fy||0; F[3*k+2]+=ld.mz||0; }
+  });
+  nodes.forEach((n,k)=>{ const sp=n.sup; if(!used[k]||!sp) return;
+    if(sp.ang){ const th=sp.ang*Math.PI/180, c=Math.cos(th), s=Math.sin(th), a=3*k, b=3*k+1; rot.push([k,c,s]);
+      for(let j=0;j<nd;j++){ const ka=K[a][j],kb=K[b][j]; K[a][j]=c*ka+s*kb; K[b][j]=-s*ka+c*kb; }
+      for(let i=0;i<nd;i++){ const ka=K[i][a],kb=K[i][b]; K[i][a]=c*ka+s*kb; K[i][b]=-s*ka+c*kb; }
+      const fa=F[a],fb=F[b]; F[a]=c*fa+s*fb; F[b]=-s*fa+c*fb; }
+    const st=[sp.x,sp.y,sp.r], kk=[sp.kx,sp.ky,sp.kz], pv=[sp.dx,sp.dy,sp.rz];
+    for(let d=0;d<3;d++){ if(st[d]===2) K[3*k+d][3*k+d]+=(kk[d]||0); if(st[d]===1){ fixed[3*k+d]=1; if(sp.pr) pres[3*k+d]=pv[d]||0; } }
+  });
+  let maxD=0; for(let i=0;i<nd;i++) maxD=Math.max(maxD,Math.abs(K[i][i]));
+  nodes.forEach((n,k)=>{ const i=3*k+2; if(used[k]&&!fixed[i]&&Math.abs(K[i][i])<=1e-12*maxD){ fixed[i]=2; const ld=it('nodal',n.load); if(ld&&ld.mz) S.warn.push(`The moment at node ${n.id} is ignored because all members there are hinged.`); } });
+  const free=[]; for(let i=0;i<nd;i++) if(!fixed[i]) free.push(i);
+  const nf=free.length, sc=new Float64Array(nf);
+  for(let i=0;i<nf;i++){ const d=K[free[i]][free[i]]; if(!(d>0)){ const n=nodes[Math.floor(free[i]/3)]; S.error=`Unstable structure: node ${n.id} is free to move. Check supports and hinges.`; S.badNode=n.id; return S; } sc[i]=1/Math.sqrt(d); }
+  const A=[]; for(let i=0;i<nf;i++){ const row=new Float64Array(nf); for(let j=0;j<nf;j++) row[j]=K[free[i]][free[j]]*sc[i]*sc[j]; A.push(row); }
+  const perm=new Int32Array(nf); for(let i=0;i<nf;i++) perm[i]=i;
+  for(let col=0;col<nf;col++){
+    let p=col,best=Math.abs(A[col][col]); for(let r=col+1;r<nf;r++){ const v=Math.abs(A[r][col]); if(v>best){best=v;p=r;} }
+    if(best<1e-11){ const n=nodes[Math.floor(free[col]/3)]; S.error=`Unstable structure (mechanism). Check the supports and hinges near node ${n.id}.`; S.badNode=n.id; return S; }
+    if(p!==col){ [A[p],A[col]]=[A[col],A[p]]; [perm[p],perm[col]]=[perm[col],perm[p]]; }
+    const pr=A[col], pv=pr[col];
+    for(let r=col+1;r<nf;r++){ const rr=A[r], f=rr[col]/pv; rr[col]=f; if(f===0) continue; for(let c2=col+1;c2<nf;c2++) rr[c2]-=f*pr[c2]; }
+  }
+  Object.assign(S,{K,F,fixed,pres,free,sc,LU:A,perm,rot,used});
+  return S;
+}
+function luSolve(S,b){ // b: rhs on free dofs (unscaled) -> x (unscaled)
+  const nf=S.free.length, A=S.LU, y=new Float64Array(nf);
+  for(let i=0;i<nf;i++) y[i]=b[S.perm[i]]*S.sc[S.perm[i]];
+  for(let i=0;i<nf;i++){ let s=y[i]; const r=A[i]; for(let j=0;j<i;j++) s-=r[j]*y[j]; y[i]=s; }
+  for(let i=nf-1;i>=0;i--){ let s=y[i]; const r=A[i]; for(let j=i+1;j<nf;j++) s-=r[j]*y[j]; y[i]=s/r[i]; }
+  for(let i=0;i<nf;i++) y[i]*=S.sc[i]; return y; }
+function solveFor(S,F){ // F in rotated (support) coordinates; returns D' (rotated) and D global
+  const nd=S.nd, Dp=new Float64Array(nd);
+  for(let i=0;i<nd;i++) if(S.fixed[i]===1) Dp[i]=S.pres[i];
+  const rhs=S.free.map(f=>{ let v=F[f]; for(let i=0;i<nd;i++) if(S.fixed[i]===1&&Dp[i]) v-=S.K[f][i]*Dp[i]; return v; });
+  const x=luSolve(S,rhs); S.free.forEach((g,i)=>Dp[g]=x[i]);
+  const D=Float64Array.from(Dp); for(const [k,c,s] of S.rot){ const a=Dp[3*k],b=Dp[3*k+1]; D[3*k]=c*a-s*b; D[3*k+1]=s*a+c*b; }
+  return {Dp,D};
+}
+function memberEnd(r,D,qfAll,qfSpan){ const ue=r.dofs.map(d=>D[d]), ul=r.T.map(row=>row.reduce((a,v,t)=>a+v*ue[t],0));
+  if(r.C.length){ const rhs=r.C.map(ci=>{ let s=qfAll[ci]; for(let q=0;q<6;q++) if(!r.C.includes(q)) s+=r.k[ci][q]*ul[q]; return s; });
+    r.C.forEach((ci,x)=>{ let v=0; for(let y=0;y<r.C.length;y++) v-=r.Ci[x][y]*rhs[y]; ul[ci]=v; }); }
+  const q=r.k.map((row,i)=>row.reduce((a,v,t)=>a+v*ul[t],0)+qfSpan[i]); return {ul,q}; }
+function analyze(Md){
+  const S=buildSystem(Md); if(S.error) return S;
+  const {Dp,D}=solveFor(S,S.F); const nd=S.nd, R=new Float64Array(nd);
+  for(let i=0;i<nd;i++) if(S.fixed[i]===1){ let s=-S.F[i]; for(let j=0;j<nd;j++) s+=S.K[i][j]*Dp[j]; R[i]=s; }
+  S.D=D; S.R=R; S.rm=new Map();
+  for(const r of S.recs){ const {ul,q}=memberEnd(r,D,r.qfAll,r.qf); r.ul=ul; r.q=q; const L=r.L;
+    r.N=x=>-q[0]-(r.pi*x+(r.pj-r.pi)*x*x/(2*L));
+    r.V=x=>q[1]+r.wi*x+(r.wj-r.wi)*x*x/(2*L);
+    r.Mf=x=>-q[2]+q[1]*x+r.wi*x*x/2+(r.wj-r.wi)*x**3/(6*L);
+    r.defl=x=>{ const xi=x/L, EA=r.EA, EI=r.EI;
+      const u=ul[0]*(1-xi)+ul[3]*xi+r.pi*x*(L-x)/(2*EA)+(r.pj-r.pi)*x*(L*L-x*x)/(6*L*EA);
+      const v=(1-3*xi*xi+2*xi**3)*ul[1]+L*(xi-2*xi*xi+xi**3)*ul[2]+(3*xi*xi-2*xi**3)*ul[4]+L*(-xi*xi+xi**3)*ul[5]
+        +r.wi*x*x*(L-x)**2/(24*EI)+(r.wj-r.wi)*x*x*(L-x)**2*(L+x)/(120*L*EI);
+      return [u*r.c-v*r.s,u*r.s+v*r.c]; };
+    r.rotAt=x=>{ const h=Math.max(L*1e-4,1e-7), a=Math.max(0,x-h), b=Math.min(L,x+h), da=r.defl(a), db=r.defl(b); const va=-da[0]*r.s+da[1]*r.c, vb=-db[0]*r.s+db[1]*r.c; return (vb-va)/(b-a); };
+    r.val=(qn,x)=>qn==='N'?r.N(x):qn==='V'?r.sg*r.V(x):r.sg*r.Mf(x);
+    S.rm.set(r.m.id,r); }
+  S.ok=true; return S;
+}
+function samplesX(r,step){ const xs=new Set(); const n=Math.max(16,Math.ceil(r.L/ (step>0?step:r.L/16)));
+  for(let i=0;i<=40;i++) xs.add(r.L*i/40); if(step>0) for(let x=0;x<=r.L+1e-9;x+=step) xs.add(Math.min(x,r.L));
+  const dw=r.wj-r.wi, a=dw/(2*r.L), b=r.wi, c=r.q[1];
+  if(Math.abs(a)>1e-14){ const D=b*b-4*a*c; if(D>=0){ for(const sgn of [1,-1]){ const x=(-b+sgn*Math.sqrt(D))/(2*a); if(x>0&&x<r.L) xs.add(x); } } }
+  else if(Math.abs(b)>1e-14){ const x=-c/b; if(x>0&&x<r.L) xs.add(x); }
+  return [...xs].sort((p,q)=>p-q); }
+
+/* Influence line: unit downward load travelling over all members */
+function influence(S,tid,xs,qn){
+  const T=S.rm.get(tid); if(!T) return null; const out=[]; const nd=S.nd; let ext=0;
+  const ilAt=(r,a)=>{
+    const L=r.L,b=L-a,Pa=-r.s,Pw=-r.c;
+    const qf=[-Pa*b/L,-Pw*b*b*(3*a+b)/L**3,-Pw*a*b*b/L**2,-Pa*a/L,-Pw*a*a*(a+3*b)/L**3,Pw*a*a*b/L**2];
+    const qfc=condense(r.k,r.C,r.Ci,qf), F=new Float64Array(nd);
+    for(let i=0;i<6;i++){ let v=0; for(let t=0;t<6;t++) v+=r.T[t][i]*qfc[t]; F[r.dofs[i]]-=v; }
+    for(const [k,c,s] of S.rot){ const fa=F[3*k],fb=F[3*k+1]; F[3*k]=c*fa+s*fb; F[3*k+1]=-s*fa+c*fb; }
+    const saved=S.pres; S.pres=new Float64Array(nd); const {D}=solveFor(S,F); S.pres=saved;
+    const own=r===T, z=[0,0,0,0,0,0], {q}=memberEnd(T,D,own?qf:z,own?qf:z), on=own&&a<xs;
+    if(qn==='N') return -q[0]-(on?Pa:0);
+    if(qn==='V') return T.sg*(q[1]+(on?Pw:0));
+    return T.sg*(-q[2]+q[1]*xs+(on?Pw*(xs-a):0));
+  };
+  for(const r of S.recs){ const n=Math.max(12,Math.round(24*r.L/Math.max(1e-9,maxLen(S)))); const as=new Set(); for(let i=0;i<=n;i++) as.add(r.L*i/n);
+    if(r===T){ as.add(Math.max(0,xs-1e-7*r.L)); as.add(Math.min(r.L,xs+1e-7*r.L)); }
+    const pts=[...as].sort((p,q)=>p-q).map(a=>({a,v:ilAt(r,a)})); pts.forEach(p=>ext=Math.max(ext,Math.abs(p.v))); out.push({r,pts}); }
+  return {lines:out,ext,tid,xs,qn};
+}
+const maxLen=S=>S.recs.reduce((m,r)=>Math.max(m,r.L),0);
+
+/* ================= UI state ================= */
+const ui={tool:'select',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],hover:null,info:null,msg:'',
+  scaleVal:{},pot:0,il:null,ilPick:true,undo:[],redo:[],creating:null,renaming:false,trf:{tab:'move',leave:false,desel:false,tol:.01,dx:0,dy:0,x:0,y:0,ang:0,f:1,x1:0,y1:0,x2:0,y2:1}};
+let RES=null;
+const cv=$('#cv'), ctx=cv.getContext('2d');
+let view={ox:0,oy:0,s:60},W=0,H=0,dpr=1;
+const toS=(x,y)=>[view.ox+x*view.s,view.oy-y*view.s], toW=(sx,sy)=>[(sx-view.ox)/view.s,(view.oy-sy)/view.s];
+const PAL={
+  white:{bg:'#FFFFFF',grid:'#6F6F6F',mem:'#808000',node:'#3C3C00',sel:'#FF0000',load:'#0000A0',sup:'#007A00',dim:'#000000',diag:'#0000FF',rmem:'#A000A0',val:'#E00000',react:'#008000',fence:'#FF0000',cross:'#00A000',hint:'#FF8000'},
+  gray:{bg:'#C8C8C8',grid:'#5A5A5A',mem:'#5A5A00',node:'#2A2A00',sel:'#D00000',load:'#00007A',sup:'#005A00',dim:'#000000',diag:'#0000C8',rmem:'#7A007A',val:'#B00000',react:'#005A00',fence:'#D00000',cross:'#007000',hint:'#B05000'},
+  black:{bg:'#000000',grid:'#8C8C8C',mem:'#FFFF00',node:'#FFFF9A',sel:'#FF5050',load:'#00FFFF',sup:'#00FF00',dim:'#FFFFFF',diag:'#8C8CFF',rmem:'#FF7CFF',val:'#FF6A6A',react:'#00FF00',fence:'#FF5050',cross:'#50FF50',hint:'#FFA040'},
+  mono:{bg:'#FFFFFF',grid:'#7A7A7A',mem:'#000000',node:'#000000',sel:'#FF0000',load:'#000000',sup:'#000000',dim:'#000000',diag:'#000000',rmem:'#000000',val:'#000000',react:'#000000',fence:'#FF0000',cross:'#00A000',hint:'#000000'}};
+const C=()=>PAL[M.disp.bg]||PAL.white;
+const SZ={S:.75,M:1,L:1.35}, sz=k=>SZ[M.opt[k]]||1;
+const FONT=()=>`${Math.round(11*sz('text'))}px Arial, Helvetica, sans-serif`;
+
+function save(){ try{ localStorage.setItem(LS,JSON.stringify(M)); }catch(e){} }
+function pushUndo(){ ui.undo.push(JSON.stringify(M)); if(ui.undo.length>100) ui.undo.shift(); ui.redo=[]; }
+function changed(){ save(); if(ui.res) recompute(); renderAll(); }
+function commit(fn){ pushUndo(); fn(); changed(); }
+function undo(){ if(!ui.undo.length) return; ui.redo.push(JSON.stringify(M)); M=JSON.parse(ui.undo.pop()); clearSel(); changed(); }
+function redo(){ if(!ui.redo.length) return; ui.undo.push(JSON.stringify(M)); M=JSON.parse(ui.redo.pop()); clearSel(); changed(); }
+function clearSel(){ ui.sel={t:null,ids:new Set()}; }
+function selMembers(){ return ui.sel.t==='m'?[...ui.sel.ids].map(memById).filter(Boolean):[]; }
+function selNodes(){ return ui.sel.t==='n'?[...ui.sel.ids].map(nodeById).filter(Boolean):[]; }
+
+/* ================= Geometry & editing ================= */
+function bbox(){ const xs=[],ys=[]; M.nodes.forEach(n=>{xs.push(n.x);ys.push(n.y);}); if(M.disp.dims) M.dims.forEach(d=>{ const n=dimN(d); xs.push(d.ax+n[0]*d.off,d.bx+n[0]*d.off); ys.push(d.ay+n[1]*d.off,d.by+n[1]*d.off); });
+  if(!xs.length) return null; return {x0:Math.min(...xs),y0:Math.min(...ys),x1:Math.max(...xs),y1:Math.max(...ys)}; }
+function extent(){ const b=bbox(); return b?Math.max(b.x1-b.x0,b.y1-b.y0,1e-3):10; }
+const tolG=()=>1e-6*Math.max(1,extent());
+function fit(){ if(!W) return; const b=bbox(); if(!b){ view.s=Math.min(W,H)/12; view.ox=W/2; view.oy=H/2; draw(); return; }
+  const w=Math.max(b.x1-b.x0,extent()*.25), h=Math.max(b.y1-b.y0,extent()*.25), m=.12;
+  view.s=Math.min(W*(1-2*m)/w,H*(1-2*m)/h); view.ox=W/2-(b.x0+b.x1)/2*view.s; view.oy=H/2+(b.y0+b.y1)/2*view.s; draw(); }
+function zoomAt(sx,sy,f){ view.ox=sx-(sx-view.ox)*f; view.oy=sy-(sy-view.oy)*f; view.s*=f; draw(); }
+function segDist(px,py,x1,y1,x2,y2){ const dx=x2-x1,dy=y2-y1,L2=dx*dx+dy*dy; let t=L2?((px-x1)*dx+(py-y1)*dy)/L2:0; t=Math.max(0,Math.min(1,t)); return [Math.hypot(px-(x1+t*dx),py-(y1+t*dy)),t]; }
+function hitNode(sx,sy,r=8){ let best=null,bd=r; for(const n of M.nodes){ const [x,y]=toS(n.x,n.y),d=Math.hypot(x-sx,y-sy); if(d<bd){bd=d;best=n;} } return best; }
+function hitMember(sx,sy,r=6){ let best=null,bd=r; for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j); const [x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y),[d,t]=segDist(sx,sy,x1,y1,x2,y2); if(d<bd){bd=d;best={m,t};} } return best; }
+function dimN(d){ const L=Math.hypot(d.bx-d.ax,d.by-d.ay)||1; return [-(d.by-d.ay)/L,(d.bx-d.ax)/L]; }
+function hitDim(sx,sy){ if(!M.disp.dims) return null; for(const d of M.dims){ const n=dimN(d); const [x1,y1]=toS(d.ax+n[0]*d.off,d.ay+n[1]*d.off),[x2,y2]=toS(d.bx+n[0]*d.off,d.by+n[1]*d.off); if(segDist(sx,sy,x1,y1,x2,y2)[0]<6) return d; } return null; }
+function snapPt(sx,sy){
+  const hn=hitNode(sx,sy,9); if(hn) return {x:hn.x,y:hn.y,k:'node'};
+  const hm=hitMember(sx,sy,6); if(hm){ const a=nodeById(hm.m.i),b=nodeById(hm.m.j); return {x:a.x+(b.x-a.x)*hm.t,y:a.y+(b.y-a.y)*hm.t,k:'member'}; }
+  let [x,y]=toW(sx,sy); if(M.grid.snap&&M.grid.dx>0&&M.grid.dy>0){ x=Math.round(x/M.grid.dx)*M.grid.dx; y=Math.round(y/M.grid.dy)*M.grid.dy; return {x,y,k:'grid'}; }
+  return {x,y,k:'free'};
+}
+function splitMember(m,t){ const a=nodeById(m.i),b=nodeById(m.j); const n=addNode(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);
+  const oldJ=m.j, oldHj=m.hj, hadL=m.ld.l||m.ld.e; m.j=n.id; m.hj=false;
+  const m2=addMember(n.id,oldJ,m); m2.hj=oldHj; if(hadL){ m.ld.l=null; m.ld.e=null; ui.msg='Linear loads and end moments were removed from the divided member.'; } return n.id; }
+function resolvePoint(p){ const tol=tolG()*10;
+  for(const n of M.nodes) if(Math.hypot(n.x-p.x,n.y-p.y)<tol) return n.id;
+  for(const m of [...M.members]){ const a=nodeById(m.i),b=nodeById(m.j),[d,t]=segDist(p.x,p.y,a.x,a.y,b.x,b.y); if(d<tol&&t>1e-6&&t<1-1e-6) return splitMember(m,t); }
+  return addNode(p.x,p.y).id; }
+function segInter(p1,p2,p3,p4){ const d=(p2.x-p1.x)*(p4.y-p3.y)-(p2.y-p1.y)*(p4.x-p3.x); if(Math.abs(d)<1e-14) return null;
+  const t=((p3.x-p1.x)*(p4.y-p3.y)-(p3.y-p1.y)*(p4.x-p3.x))/d, u=((p3.x-p1.x)*(p2.y-p1.y)-(p3.y-p1.y)*(p2.x-p1.x))/d; return {t,u}; }
+function insertMember(A,B){
+  if(Math.hypot(A.x-B.x,A.y-B.y)<tolG()*10) return;
+  pushUndo(); const eps=1e-9;
+  for(const m of [...M.members]){ const a=nodeById(m.i),b=nodeById(m.j), r=segInter(A,B,a,b); if(r&&r.t>eps&&r.t<1-eps&&r.u>eps&&r.u<1-eps) splitMember(m,r.u); }
+  const ia=resolvePoint(A), ib=resolvePoint(B), na=nodeById(ia), nb=nodeById(ib);
+  const ts=[{t:0,id:ia},{t:1,id:ib}], L2=(nb.x-na.x)**2+(nb.y-na.y)**2;
+  for(const n of M.nodes){ if(n.id===ia||n.id===ib) continue; const [d,t]=segDist(n.x,n.y,na.x,na.y,nb.x,nb.y); if(d<tolG()*10&&t>eps&&t<1-eps) ts.push({t,id:n.id}); }
+  ts.sort((p,q)=>p.t-q.t);
+  for(let k=0;k<ts.length-1;k++){ const i=ts[k].id,j=ts[k+1].id; if(i===j||M.members.some(m=>(m.i===i&&m.j===j)||(m.i===j&&m.j===i))) continue; addMember(i,j); }
+  changed();
+}
+function insertNode(p){ pushUndo(); resolvePoint(p); changed(); }
+function insertDim(a,b,c){ const d={id:M.next.d++,ax:a.x,ay:a.y,bx:b.x,by:b.y,off:0}; const n=dimN(d); d.off=(c.x-a.x)*n[0]+(c.y-a.y)*n[1]; if(Math.hypot(b.x-a.x,b.y-a.y)<1e-9) return; pushUndo(); M.dims.push(d); changed(); }
+function deleteSel(){ if(!ui.sel.t) return; commit(()=>{
+  if(ui.sel.t==='m') M.members=M.members.filter(m=>!ui.sel.ids.has(m.id));
+  if(ui.sel.t==='n') M.members=M.members.filter(m=>!ui.sel.ids.has(m.i)&&!ui.sel.ids.has(m.j));
+  if(ui.sel.t==='d') M.dims=M.dims.filter(d=>!ui.sel.ids.has(d.id));
+  const used=new Set(); M.members.forEach(m=>{used.add(m.i);used.add(m.j);});
+  M.nodes=M.nodes.filter(n=>!(ui.sel.t==='n'&&ui.sel.ids.has(n.id))&&(used.has(n.id)||n.sup||n.load));
+  clearSel(); }); }
+
+/* ================= Drawing ================= */
+function resize(){ const r=$('#stage').getBoundingClientRect(); dpr=window.devicePixelRatio||1; const first=!W; W=r.width; H=r.height; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); if(first) fit(); else draw(); }
+function line(x1,y1,x2,y2){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+function head(x,y,dx,dy,s=6){ const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-s*dx+s*.38*dy,y-s*dy-s*.38*dx); ctx.lineTo(x-s*dx-s*.38*dy,y-s*dy+s*.38*dx); ctx.closePath(); ctx.fill(); }
+function arrowTo(x1,y1,x2,y2,col,s){ ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2; line(x1,y1,x2,y2); head(x2,y2,x2-x1,y2-y1,s||6*sz('load')); }
+function text(t,x,y,col,ang=0,al='center',bl='middle',bg){ ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.font=FONT(); ctx.textAlign=al; ctx.textBaseline=bl;
+  if(bg){ const w=ctx.measureText(t).width, h=parseInt(FONT()); const x0=al==='center'?-w/2:al==='left'?0:-w; ctx.fillStyle=bg; ctx.fillRect(x0-2,-h/2-1,w+4,h+2); }
+  ctx.fillStyle=col; ctx.fillText(t,0,0); ctx.restore(); }
+function readAng(dx,dy){ let a=Math.atan2(dy,dx); if(a>Math.PI/2) a-=Math.PI; if(a<=-Math.PI/2) a+=Math.PI; return a; }
+function arc(x,y,r,val,col){ ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2; const a=.25*Math.PI,b=1.75*Math.PI; ctx.beginPath();
+  if(val<0){ ctx.arc(x,y,r,a,b,false); ctx.stroke(); head(x+r*Math.cos(b),y+r*Math.sin(b),-Math.sin(b),Math.cos(b)); }
+  else { ctx.arc(x,y,r,b,a,true); ctx.stroke(); head(x+r*Math.cos(a),y+r*Math.sin(a),Math.sin(a),-Math.cos(a)); } }
+
+function drawGrid(){ if(!M.grid.on||!(M.grid.dx>0)||!(M.grid.dy>0)) return; const P=C(); let kx=1,ky=1; while(M.grid.dx*kx*view.s<7) kx*=2; while(M.grid.dy*ky*view.s<7) ky*=2;
+  const sx=M.grid.dx*kx, sy=M.grid.dy*ky, [wx0,wy1]=toW(0,0),[wx1,wy0]=toW(W,H); if((wx1-wx0)/sx*(wy1-wy0)/sy>60000) return;
+  ctx.fillStyle=P.grid; for(let i=Math.floor(wx0/sx);i<=Math.ceil(wx1/sx);i++) for(let j=Math.floor(wy0/sy);j<=Math.ceil(wy1/sy);j++){ const [x,y]=toS(i*sx,j*sy); ctx.fillRect(Math.round(x),Math.round(y),1,1); } }
+function drawDims(){ if(!M.disp.dims) return; const P=C();
+  for(const d of M.dims){ const sel=ui.sel.t==='d'&&ui.sel.ids.has(d.id), col=sel?P.sel:P.dim, n=dimN(d), o=d.off;
+    const [ax,ay]=toS(d.ax,d.ay),[bx,by]=toS(d.bx,d.by),[cx,cy]=toS(d.ax+n[0]*o,d.ay+n[1]*o),[ex,ey]=toS(d.bx+n[0]*o,d.by+n[1]*o);
+    const nsx=n[0]*Math.sign(o||1), nsy=-n[1]*Math.sign(o||1); ctx.strokeStyle=col; ctx.lineWidth=1;
+    line(ax+nsx*3,ay+nsy*3,cx+nsx*5,cy+nsy*5); line(bx+nsx*3,by+nsy*3,ex+nsx*5,ey+nsy*5);
+    const L=Math.hypot(d.bx-d.ax,d.by-d.ay), t=fqu('len',L); ctx.font=FONT(); const tw=ctx.measureText(t).width+8, len=Math.hypot(ex-cx,ey-cy), ux=(ex-cx)/len, uy=(ey-cy)/len;
+    const mx=(cx+ex)/2, my=(cy+ey)/2;
+    if(len>tw+16){ line(cx,cy,mx-ux*tw/2,my-uy*tw/2); line(mx+ux*tw/2,my+uy*tw/2,ex,ey); } else line(cx,cy,ex,ey);
+    ctx.fillStyle=col; head(cx,cy,-ux,-uy,6); head(ex,ey,ux,uy,6); text(t,mx,my,col,readAng(ux,uy)); } }
+function drawSupport(n){ const P=C(), sp=n.sup; if(!sp||!M.disp.sups) return; const [x,y]=toS(n.x,n.y), k=12*sz('sup'), col=P.sup;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(-(sp.ang||0)*Math.PI/180); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2;
+  const hat=(x1,y1,x2,y2,dx,dy)=>{ line(x1,y1,x2,y2); for(let i=0;i<=5;i++){ const t=i/5,px=x1+(x2-x1)*t,py=y1+(y2-y1)*t; line(px,py,px+dx,py+dy); } };
+  const spring=(dx,dy)=>{ ctx.beginPath(); ctx.moveTo(0,0); const L=k*1.6; for(let i=1;i<=6;i++){ const t=i/7*L, o=(i%2?1:-1)*k*.3; ctx.lineTo(dx*t-dy*o,dy*t+dx*o); } ctx.lineTo(dx*L,dy*L); ctx.stroke(); };
+  const s=[sp.x,sp.y,sp.r];
+  if(s[0]===1&&s[1]===1&&s[2]===1){ const m=M.members.find(m=>m.i===n.id||m.j===n.id); let ang=Math.PI/2;
+    if(m){ const o=nodeById(m.i===n.id?m.j:m.i); ang=Math.atan2(-(o.y-n.y),o.x-n.x)+(sp.ang||0)*Math.PI/180; }
+    ctx.rotate(ang); ctx.lineWidth=1.6; line(0,-k,0,k); ctx.lineWidth=1; for(let i=0;i<=5;i++){ const yy=-k+2*k*i/5; line(0,yy,-k*.55,yy+k*.4); } }
+  else if(s[0]===1&&s[1]===1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); hat(-k,k*1.1,k,k*1.1,-k*.4,k*.45); }
+  else if(s[1]===1&&s[0]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); line(-k,k*1.45,k,k*1.45); hat(-k,k*1.75,k,k*1.75,-k*.4,k*.45); }
+  else if(s[0]===1&&s[1]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*1.1,-k*.7); ctx.lineTo(-k*1.1,k*.7); ctx.closePath(); ctx.stroke(); line(-k*1.45,-k,-k*1.45,k); hat(-k*1.75,-k,-k*1.75,k,-k*.45,k*.4); }
+  if(s[2]===1&&!(s[0]===1&&s[1]===1)){ ctx.strokeRect(-k*.4,-k*.4,k*.8,k*.8); }
+  if(s[0]===2) spring(-1,0); if(s[1]===2) spring(0,1); if(s[2]===2){ ctx.beginPath(); for(let i=0;i<=40;i++){ const a=i/40*Math.PI*3, r=3+i/40*k*.7; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.stroke(); }
+  ctx.restore(); }
+function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loadVal;
+  for(const n of M.nodes){ const ld=item('nodal',n.load); if(!ld) continue; const [x,y]=toS(n.x,n.y);
+    if(ld.fy){ const d=Math.sign(ld.fy); arrowTo(x,y+d*Lz,x,y+d*2,col); if(vals) text(fqu('force',Math.abs(ld.fy)),x-4,y+d*(Lz*.55),col,-Math.PI/2,'center','bottom'); }
+    if(ld.fx){ const d=Math.sign(ld.fx); arrowTo(x-d*Lz,y,x-d*2,y,col); if(vals) text(fqu('force',Math.abs(ld.fx)),x-d*Lz*.55,y-4,col,0,'center','bottom'); }
+    if(ld.mz){ arc(x,y,14*sz('load'),ld.mz,col); if(vals) text(fqu('moment',Math.abs(ld.mz)),x+16*sz('load'),y-16*sz('load'),col,0,'left','bottom'); } }
+  for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y),L=Math.hypot(x2-x1,y2-y1); if(L<2) continue;
+    const ux=(x2-x1)/L, uy=(y2-y1)/L, nl=[-uy,ux]; // screen normal (points to local -y)
+    const dl=(gx,gy,dir)=>{ if(dir==='local'){ const sx=gx*ux+gy*(-nl[0]), sy=gx*uy+gy*(-nl[1]); return [sx,sy]; } return [gx,-gy]; };
+    const lu=item('unif',m.ld.u), ll=item('lin',m.ld.l), lt=item('therm',m.ld.t), le=item('endm',m.ld.e);
+    const drawDist=(f1,f2,dir,label1,label2)=>{ // f: [x,y] load vector at ends in model units (global or local)
+      const v1=dl(f1[0],f1[1],dir), v2=dl(f2[0],f2[1],dir), m1=Math.hypot(...v1), m2=Math.hypot(...v2), mx=Math.max(m1,m2); if(mx<1e-12) return;
+      const dref=m1>=m2?v1:v2, dx=dref[0]/mx, dy=dref[1]/mx, n=Math.max(2,Math.round(L/9)); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+      const tails=[];
+      for(let i=0;i<=n;i++){ const t=i/n, mag=(m1+(m2-m1)*t)/mx*Lz*.75, px=x1+(x2-x1)*t, py=y1+(y2-y1)*t, tx=px-dx*mag, ty=py-dy*mag; tails.push([tx,ty]); if(mag>3){ line(tx,ty,px-dx*2,py-dy*2); head(px-dx*1,py-dy*1,dx,dy,5*sz('load')); } }
+      ctx.beginPath(); tails.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p)); ctx.stroke();
+      if(vals){ const ang=readAng(ux,uy), off=-6;
+        if(label2==null){ const mid=tails[Math.floor(tails.length/2)]; text(label1,mid[0]-dx*6,mid[1]-dy*6,col,ang,'center','bottom'); }
+        else { text(label1,tails[0][0]-dx*6,tails[0][1]-dy*6,col,ang,'left','bottom'); text(label2,tails[tails.length-1][0]-dx*6,tails[tails.length-1][1]-dy*6,col,ang,'right','bottom'); } } };
+    if(lu) drawDist([lu.qx||0,lu.qy||0],[lu.qx||0,lu.qy||0],lu.dir,fqu('dist',Math.hypot(lu.qx||0,lu.qy||0)));
+    if(ll) drawDist([ll.pxi||0,ll.pyi||0],[ll.pxj||0,ll.pyj||0],ll.dir,fqu('dist',Math.hypot(ll.pxi||0,ll.pyi||0)),fqu('dist',Math.hypot(ll.pxj||0,ll.pyj||0)));
+    if(lt&&vals){ const mx=(x1+x2)/2,my=(y1+y2)/2, ang=readAng(ux,uy); text(`Ty+ ${fqu('temp',lt.tt||0)}`,mx-nl[0]*8,my-nl[1]*8,col,ang,'center','bottom'); text(`Ty− ${fqu('temp',lt.tb||0)}`,mx+nl[0]*8,my+nl[1]*8,col,ang,'center','top'); }
+    if(le){ const r=12*sz('load'); if(le.ma){ arc(x1+ux*r*1.4,y1+uy*r*1.4,r,le.ma,col); if(vals) text(fqu('moment',Math.abs(le.ma)),x1+ux*r*1.4,y1+uy*r*1.4-r-4,col,0,'center','bottom'); }
+      if(le.mb){ arc(x2-ux*r*1.4,y2-uy*r*1.4,r,le.mb,col); if(vals) text(fqu('moment',Math.abs(le.mb)),x2-ux*r*1.4,y2-uy*r*1.4-r-4,col,0,'center','bottom'); } }
+  } }
+function drawModel(resMode){ const P=C();
+  const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=3.6*sz('hinge');
+  for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
+    const bad=RES&&RES.bad===m.id&&!RES.ok; ctx.strokeStyle=sel||bad?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
+    const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
+    ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
+    if(m.hi&&!nh.has(m.i)){ ctx.beginPath(); ctx.arc(x1+ux*hr*1.6,y1+uy*hr*1.6,hr,0,7); ctx.fill(); ctx.stroke(); }
+    if(m.hj&&!nh.has(m.j)){ ctx.beginPath(); ctx.arc(x2-ux*hr*1.6,y2-uy*hr*1.6,hr,0,7); ctx.fill(); ctx.stroke(); }
+    if(M.disp.orient){ const mx=(x1+x2)/2,my=(y1+y2)/2; ctx.fillStyle=ctx.strokeStyle; head(mx+ux*5,my+uy*5,ux,uy,8); }
+    if(M.disp.memNum){ text(String(m.id),(x1+x2)/2+uy*9,(y1+y2)/2-ux*9,P.dim,0,'center','middle',P.bg); }
+    if(m.rigid&&!resMode){ ctx.strokeStyle=ctx.strokeStyle; ctx.lineWidth=3.5; ctx.globalAlpha=.35; line(x1,y1,x2,y2); ctx.globalAlpha=1; } }
+  for(const n of M.nodes){ const [x,y]=toS(n.x,n.y), sel=ui.sel.t==='n'&&ui.sel.ids.has(n.id), bad=RES&&!RES.ok&&RES.badNode===n.id;
+    if(n.hinge){ ctx.strokeStyle=sel?P.sel:P.mem; ctx.fillStyle=P.bg; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,hr*1.2,0,7); ctx.fill(); ctx.stroke(); }
+    else { ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
+    if(M.disp.nodeNum) text(String(n.id),x+6,y-6,P.dim,0,'left','bottom'); }
+  M.nodes.forEach(drawSupport);
+}
+/* ---- results drawing ---- */
+const QN={N:['Axial Force','force'],V:['Shear Force','force'],M:['Bending Moment','moment'],D:['Deformed Factor',null]};
+function baseScale(){ if(!RES||!RES.ok) return 1; const ext=extent();
+  if(ui.res==='il'){ return ui.il&&ui.il.ext>0?0.18*ext/ui.il.ext:1; }
+  if(ui.q==='D'){ let dm=0; for(const r of RES.recs) for(let i=0;i<=8;i++){ const d=r.defl(r.L*i/8); dm=Math.max(dm,Math.hypot(d[0],d[1])); } return dm>0?0.1*ext/dm:1; }
+  let mx=0; for(const r of RES.recs) for(const x of samplesX(r,0)) mx=Math.max(mx,Math.abs(r.val(ui.q,x)));
+  const cat=QN[ui.q][1]; if(!(mx>0)) return 1; const v=toD(cat,mx)/(toD('len',0.12*ext)); return +v.toPrecision(3); }
+function curScale(){ const k=ui.res==='il'?'IL'+ui.q:ui.q; if(ui.scaleVal[k]==null) ui.scaleVal[k]=baseScale(); const f=10**(ui.pot/50); return ui.q==='D'||ui.res==='il'?ui.scaleVal[k]*f:ui.scaleVal[k]/f; }
+function offWorld(v){ // value in internal units -> drawn offset in metres
+  if(ui.res==='il') return v*curScale();
+  const cat=QN[ui.q][1]; return fromD('len',toD(cat,v)/curScale()); }
+function drawDiagram(){ const P=C(), q=ui.q, step=M.step, mpos=M.opt.mPos==='tension'?1:-1;
+  for(const r of RES.recs){ const a=nodeById(r.m.i), xs=samplesX(r,step);
+    const side=q==='M'?r.low.map(v=>v*mpos):r.up; // positive drawn toward this side
+    const pts=xs.map(x=>{ const v=r.val(q,x), o=offWorld(v); const bx=a.x+r.c*x, by=a.y+r.s*x; return {x,v,b:toS(bx,by),o:toS(bx+side[0]*o,by+side[1]*o)}; });
+    ctx.strokeStyle=P.diag; ctx.lineWidth=1.1; ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(...p.o):ctx.moveTo(...p.o)); ctx.stroke();
+    line(...pts[0].b,...pts[0].o); line(...pts[pts.length-1].b,...pts[pts.length-1].o);
+    const vmax=pts.reduce((m,p)=>Math.max(m,Math.abs(p.v)),0), tol=1e-9*Math.max(1,vmax), cat=QN[q][1];
+    const lbl=v=>{ const s=q==='M'&&!M.disp.mSign?Math.abs(v):v; return fq(cat,s); };
+    const ang=M.disp.transv?readAng(r.s,r.c)+Math.PI/2:readAng(r.c,-r.s);
+    const put=(p,off)=>{ if(Math.abs(p.v)<=tol&&!M.disp.stepVal) return; const dx=p.o[0]-p.b[0], dy=p.o[1]-p.b[1], d=Math.hypot(dx,dy)||1; text(lbl(p.v),p.o[0]+dx/d*(off||8),p.o[1]+dy/d*(off||8),P.val,ang); };
+    if(M.disp.stepLines||step>0&&M.disp.stepLines){ ctx.strokeStyle=P.diag; ctx.lineWidth=.8; pts.filter(p=>step>0?Math.abs(p.x/step-Math.round(p.x/step))<1e-6:true).forEach(p=>line(...p.b,...p.o)); }
+    if(M.disp.resVal){
+      if(M.disp.stepVal&&step>0){ pts.filter(p=>Math.abs(p.x/step-Math.round(p.x/step))<1e-6||p.x===r.L).forEach(p=>put(p)); }
+      else { const p0=pts[0], pL=pts[pts.length-1]; let ex=null;
+        for(let i=1;i<pts.length-1;i++){ const p=pts[i]; if(Math.abs(p.v)>Math.abs(pts[i-1].v)&&Math.abs(p.v)>=Math.abs(pts[i+1].v)&&Math.abs(p.v)>Math.max(Math.abs(p0.v),Math.abs(pL.v))*1.001+tol) ex=p; }
+        if(Math.abs(p0.v-pL.v)<=tol*10&&!ex){ const mid=pts[Math.floor(pts.length/2)]; put(mid); }
+        else { put(pts[1]?{...p0,o:p0.o}:p0); put(pL); if(ex){ put(ex); ctx.strokeStyle=P.diag; ctx.lineWidth=.8; line(...ex.b,...ex.o); } } } }
+  } }
+function drawDeformed(){ const P=C(), f=curScale();
+  ctx.strokeStyle=P.diag; ctx.lineWidth=1.4;
+  for(const r of RES.recs){ const a=nodeById(r.m.i); ctx.beginPath(); for(let i=0;i<=30;i++){ const x=r.L*i/30, d=r.defl(x), [sx,sy]=toS(a.x+r.c*x+f*d[0],a.y+r.s*x+f*d[1]); i?ctx.lineTo(sx,sy):ctx.moveTo(sx,sy); } ctx.stroke(); }
+  if(M.disp.resVal&&ui.defComp!=='none') M.nodes.forEach((n,k)=>{ const i=RES.idx.get(n.id); if(!RES.used[i]) return; const D=RES.D; const [sx,sy]=toS(n.x+f*D[3*i],n.y+f*D[3*i+1]);
+    let v; if(ui.defComp==='Dx') v=fqu('disp',D[3*i]); else if(ui.defComp==='Dy') v=fqu('disp',D[3*i+1]); else { const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=RES.fixed[3*i+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*i+2]; v=fqu('rot',rz); }
+    text(v,sx+6,sy-6,P.val,0,'left','bottom'); }); }
+function drawIL(){ const P=C(), il=ui.il; if(!il) return; const f=curScale(), dirSign=M.opt.ilPos==='lower'?1:-1, q=ui.q;
+  for(const {r,pts} of il.lines){ const a=nodeById(r.m.i);
+    const side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up);
+    const ps=pts.map(p=>{ const bx=a.x+r.c*p.a, by=a.y+r.s*p.a, o=p.v*f; return {v:p.v,b:toS(bx,by),o:toS(bx+side[0]*o,by+side[1]*o)}; });
+    ctx.strokeStyle=P.diag; ctx.lineWidth=1.2; ctx.beginPath(); ps.forEach((p,i)=>i?ctx.lineTo(...p.o):ctx.moveTo(...p.o)); ctx.stroke();
+    if(M.disp.resVal){ let ex=ps[0]; ps.forEach(p=>{ if(Math.abs(p.v)>Math.abs(ex.v)) ex=p; }); if(Math.abs(ex.v)>il.ext*.05){ const dx=ex.o[0]-ex.b[0],dy=ex.o[1]-ex.b[1],d=Math.hypot(dx,dy)||1; ctx.strokeStyle=P.diag; ctx.lineWidth=.8; line(...ex.b,...ex.o);
+      text(fmtNum(q==='M'?toD('len',ex.v):ex.v,'f',3),ex.o[0]+dx/d*8,ex.o[1]+dy/d*8,P.val,readAng(r.c,-r.s)); } } }
+  const T=RES.rm.get(il.tid); if(T){ const a=nodeById(T.m.i), [sx,sy]=toS(a.x+T.c*il.xs,a.y+T.s*il.xs), nx=-T.s, ny=-T.c; ctx.strokeStyle=P.sel; ctx.lineWidth=2; line(sx+nx*10,sy+ny*10,sx-nx*10,sy-ny*10); } }
+function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=34*sz('load'); let mx=0; for(let i=0;i<RES.nd;i++) if(RES.fixed[i]===1) mx=Math.max(mx,Math.abs(RES.R[i])); const tol=1e-9*Math.max(mx,1e-9);
+  M.nodes.forEach(n=>{ const k=RES.idx.get(n.id); if(!n.sup) return; const [x,y]=toS(n.x,n.y), th=(n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, off=18*sz('sup');
+    const dir=(lx,ly)=>[lx*c-ly*s,-(lx*s+ly*c)];
+    if(RES.fixed[3*k]===1&&Math.abs(R[3*k])>tol){ const d=Math.sign(R[3*k]), [dx,dy]=dir(d,0); arrowTo(x-dx*(off+Lz),y-dy*(off+Lz)+off,x-dx*off,y-dy*off+off,col); if(M.disp.reacVal) text(fqu('force',Math.abs(R[3*k])),x-dx*(off+Lz),y-dy*(off+Lz)+off-4,col,0,'center','bottom'); }
+    if(RES.fixed[3*k+1]===1&&Math.abs(R[3*k+1])>tol){ const d=Math.sign(R[3*k+1]), [dx,dy]=dir(0,d); arrowTo(x-dx*(off+Lz)+off*.0,y-dy*(off+Lz),x-dx*off,y-dy*off,col); if(M.disp.reacVal) text(fqu('force',Math.abs(R[3*k+1])),x-dx*(off+Lz)+4,y-dy*(off+Lz),col,0,'left','middle'); }
+    if(RES.fixed[3*k+2]===1&&Math.abs(R[3*k+2])>tol){ arc(x,y,off+4,R[3*k+2],col); if(M.disp.reacVal) text(fqu('moment',Math.abs(R[3*k+2])),x-off-6,y-off-6,col,0,'right','bottom'); }
+  }); }
+function drawTool(){ const P=C(), h=ui.hover; if(!h) return;
+  if(['member','node','dim'].includes(ui.tool)&&h.snap){ const [sx,sy]=toS(h.snap.x,h.snap.y); ctx.strokeStyle=P.hint; ctx.lineWidth=1;
+    if(h.snap.k==='node'||h.snap.k==='member') ctx.strokeRect(sx-5,sy-5,10,10); else { line(sx-6,sy,sx+6,sy); line(sx,sy-6,sx,sy+6); }
+    if(ui.pts.length){ const p0=ui.pts[0], [x0,y0]=toS(p0.x,p0.y); ctx.strokeStyle=ui.tool==='member'?P.mem:P.dim; ctx.setLineDash(ui.tool==='member'?[]:[4,3]);
+      if(ui.tool==='dim'&&ui.pts.length===2){ const d={ax:p0.x,ay:p0.y,bx:ui.pts[1].x,by:ui.pts[1].y,off:0}, n=dimN(d); d.off=(h.snap.x-p0.x)*n[0]+(h.snap.y-p0.y)*n[1];
+        const [a2,b2]=toS(d.ax+n[0]*d.off,d.ay+n[1]*d.off),[c2,e2]=toS(d.bx+n[0]*d.off,d.by+n[1]*d.off); line(a2,b2,c2,e2); }
+      else line(x0,y0,sx,sy); ctx.setLineDash([]); } }
+  if(ui.fence){ const f=ui.fence, lr=f.ex>=f.sx; ctx.strokeStyle=lr?P.fence:P.cross; ctx.setLineDash(lr?[]:[5,3]); ctx.lineWidth=1; ctx.strokeRect(f.sx,f.sy,f.ex-f.sx,f.ey-f.sy); ctx.setLineDash([]); }
+  if(ui.zoomBox){ const z=ui.zoomBox; ctx.strokeStyle=P.dim; ctx.setLineDash([3,3]); ctx.strokeRect(z.sx,z.sy,z.ex-z.sx,z.ey-z.sy); ctx.setLineDash([]); } }
+function draw(){ if(!W) return; ctx.setTransform(dpr,0,0,dpr,0,0); const P=C(); ctx.fillStyle=P.bg; ctx.fillRect(0,0,W,H);
+  $('#stage').style.background=P.bg; drawGrid(); drawDims();
+  const res=ui.res&&RES&&RES.ok;
+  drawModel(res);
+  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else drawDiagram(); } else if(ui.res==='il') drawIL(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
+  else if(M.disp.loadEdit) drawLoads();
+  drawTool(); updateStatus(); }
+
+/* ================= Results control ================= */
+function recompute(){ RES=analyze(M); if(!RES.ok){ ui.msg=RES.error; return; } if(ui.res==='il'&&ui.il){ const T=RES.rm.get(ui.il.tid); ui.il=T?influence(RES,ui.il.tid,Math.min(ui.il.xs,T.L),ui.q):null; } }
+function enterResults(mode,q){ if(q) ui.q=q; ui.res=mode; if(mode==='il'&&ui.q==='D') ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
+  if(mode==='il'&&!ui.il){ ui.ilPick=true; } renderAll(); }
+function exitResults(){ ui.res=null; ui.il=null; RES=null; ui.info=null; }
+function resMsg(){ if(!RES||!RES.ok) return RES?RES.error:''; const nm={N:'axial force',V:'shear force',M:'bending moment',D:'deformed configuration'}[ui.q];
+  if(ui.res==='il') return ui.ilPick?`Select a section on a member to draw the ${nm} influence line.`:`Select a point on a member to get the ${nm} influence line value.`;
+  return `Select a point on a member to get ${nm} result.`; }
+
+/* ================= Chrome rendering ================= */
+const MODE_NAMES={select:'Selection',member:'Insert Member',node:'Insert Node',dim:'Insert Dimension Line',zoom:'Zoom Window',trf:'Transform'};
+function renderTop(){
+  $$('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',!ui.res&&b.dataset.tool===ui.tool));
+  $$('[data-panel]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.panel===ui.panel));
+  $$('[data-rmode]').forEach(b=>b.setAttribute('aria-pressed',ui.res===b.dataset.rmode));
+  $$('[data-q]').forEach(b=>{ b.setAttribute('aria-pressed',!!ui.res&&ui.q===b.dataset.q); b.disabled=ui.res==='il'&&b.dataset.q==='D'; });
+  $('#bIlPick').hidden=ui.res!=='il'; $('#bIlPick').setAttribute('aria-pressed',ui.ilPick);
+  $('#bKbd').setAttribute('aria-pressed',ui.kbd); $('#bTrf').setAttribute('aria-pressed',ui.panel==='trf');
+  $('#bUndo').disabled=!ui.undo.length||!!ui.res; $('#bRedo').disabled=!ui.redo.length||!!ui.res;
+  $('#bDel').disabled=!ui.sel.t||!!ui.res; $('#pot').disabled=!ui.res; $('#defComp').value=ui.defComp;
+  $('#bStepL').setAttribute('aria-pressed',M.disp.stepLines); $('#bStepV').setAttribute('aria-pressed',M.disp.stepVal);
+  const mb=$('#modeBox');
+  if(ui.res&&RES&&RES.ok){ const [lab,cat]=ui.res==='il'?[`IL ${ {N:'Axial Force',V:'Shear Force',M:'Bending Moment'}[ui.q]} Factor`,null]:QN[ui.q];
+    const unit=cat?`${U(cat)}/1 ${U('len')}`:'';
+    mb.innerHTML=`<span class="lbl">${lab}:</span><input class="num" id="scaleIn" value="${fmtNum(curScale(),'f',ui.q==='D'||ui.res==='il'?1:1)}" aria-label="Scale"><span>${unit}</span>`; }
+  else mb.innerHTML=`<span class="lbl">Editing Mode:</span><span class="box">${ui.res?'Results':(MODE_NAMES[ui.tool]||'Selection')}</span>`;
+  $('#msg').textContent=ui.msg||(ui.res?resMsg():'');
+  $('#step').value=fq('len',M.step); $('#stepU').textContent=U('len');
+  $$('.uL').forEach(e=>e.textContent=U('len'));
+  $('#gOn').checked=M.grid.on; $('#gSnap').checked=M.grid.snap;
+  if(document.activeElement!==$('#gX')) $('#gX').value=fq('len',M.grid.dx); if(document.activeElement!==$('#gY')) $('#gY').value=fq('len',M.grid.dy);
+  $('#cv').style.cursor=ui.res?'default':ui.tool==='select'?'default':'crosshair';
+}
+function updateStatus(){ if(document.activeElement!==$('#vH')) $('#vH').value=fq('len',W/view.s); if(document.activeElement!==$('#vV')) $('#vV').value=fq('len',H/view.s); }
+function renderAll(){ renderTop(); renderSide(); renderKbd(); draw(); }
+
+/* ================= Side panel ================= */
+const side=$('#side');
+const PANEL_T={mat:'Material Parameters',sec:'Section Properties',sup:'Support Conditions',hinge:'Rotation Release',dc:'Deformation Constraints',nodal:'Nodal Loading',endm:'Member End Moments',unif:'Uniform Loading',lin:'Linear Loading',therm:'Thermal Loading',trf:'Transform'};
+const LIST_PANELS=['mat','sec','nodal','endm','unif','lin','therm'];
+const ib=(act,ic,title,dis)=>`<button class="ib" data-act="${act}" title="${title}" ${dis?'disabled':''}>${svg(ic)}</button>`;
+function fld(lab,key,cat,val,ro){ return `<div class="fl"><label for="f_${key}">${lab}:</label><input id="f_${key}" data-k="${key}" data-cat="${cat}" value="${val==null?'':fq(cat,val)}" ${ro?'readonly tabindex="-1"':''}><span class="u">${U(cat)}</span></div>`; }
+function listHead(k){ const cur=item(k,M.cur[k]), lst=L_(k), isLoad=!['mat','sec'].includes(k);
+  let h=`<div class="pt">${PANEL_T[k]}</div>`;
+  if(ui.creating===k) return h+createForm(k);
+  if(ui.renaming===k&&cur) h+=`<div class="newf"><label>New Label:<input id="renIn" value="${esc(cur.name)}"></label><div class="btnrow"><button class="pb def" data-act="ren-ok">OK</button><button class="pb" data-act="cancel">Cancel</button></div></div>`;
+  else h+=`<select class="lst" data-k="cur" aria-label="${PANEL_T[k]} list">${isLoad?`<option value="">NONE</option>`:(lst.length?'':'<option value="">—</option>')}${lst.map(x=>`<option value="${x.id}" ${x.id===M.cur[k]?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`;
+  const nodeL=k==='nodal';
+  h+=`<div class="grp"><div class="row">${ib('l-new','lnew','Create new')}${ib('l-imp','limp','Import list from file (not available)',true)}${ib('l-ren','lren','Rename current',!cur)}${ib('l-del','ldel','Delete current',!cur)}${ib('l-con','lcon','Condense list (remove unused)')}</div>
+    <div class="row">${ib('a-sel','asel',`Select ${nodeL?'nodes':'members'} with current`)}${['mat','sec'].includes(k)?ib('a-all','aall','Apply current to all members',!cur):''}${ib('a-un','aun',`Unapply from selected ${nodeL?'nodes':'members'}`)}${ib('a-app','aapp',`Apply current to selected ${nodeL?'nodes':'members'}`)}</div></div>`;
+  return h; }
+function createForm(k){ let sel='';
+  if(k==='mat') sel=`<label>Material type:<select id="newType">${Object.entries(MAT_TYPES).map(([t,v])=>`<option value="${t}" ${t==='steel'?'selected':''}>${v[0]}</option>`).join('')}</select></label>`;
+  if(k==='sec') sel=`<label>Section type:<select id="newType">${Object.entries(SEC_TYPES).map(([t,v])=>`<option value="${t}" ${t==='rect'?'selected':''}>${v.label}</option>`).join('')}</select></label>`;
+  const def={mat:'Material',sec:'Section',nodal:'Nodal Load',endm:'End Moments',unif:'Uniform Load',lin:'Linear Load',therm:'Thermal Load'}[k]+' '+(L_(k).length+1);
+  return `<div class="newf"><label>New Label:<input id="newName" value="${esc(def)}"></label>${sel}<div class="btnrow"><button class="pb def" data-act="new-ok">OK</button><button class="pb" data-act="cancel">Cancel</button></div></div>`; }
+function shapeSVG(t){ const s='stroke="#1414E6" stroke-width="1.6" fill="#E6ECFF"';
+  const lbl=(x,y,t)=>`<text x="${x}" y="${y}" font-size="11" font-family="Arial" fill="#000" text-anchor="middle">${t}</text>`;
+  const body={
+    rect:`<rect x="30" y="12" width="40" height="70" ${s}/>${lbl(50,96,'b')}${lbl(84,50,'h')}`,
+    I:`<path d="M28 12h44v10H55v50h17v10H28V72h17V22H28z" ${s}/>${lbl(50,96,'b')}${lbl(86,50,'d')}${lbl(50,9,'tw')}${lbl(18,20,'tf')}`,
+    T:`<path d="M24 12h52v14H57v56H43V26H24z" ${s}/>${lbl(50,9,'b')}${lbl(88,50,'d')}${lbl(50,96,'tw')}${lbl(14,22,'tf')}`,
+    C:`<path d="M32 12h40v10H45v50h27v10H32z" ${s}/>${lbl(52,96,'b')}${lbl(86,50,'d')}${lbl(22,50,'tw')}${lbl(80,20,'tf')}`,
+    circle:`<circle cx="50" cy="47" r="34" ${s}/>${lbl(50,96,'D')}`,
+    ring:`<circle cx="50" cy="47" r="34" ${s}/><circle cx="50" cy="47" r="26" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'D')}${lbl(88,50,'t')}`,
+    box:`<path d="M28 12h44v70H28z" ${s}/><path d="M35 19h30v56H35z" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'b')}${lbl(84,50,'d')}${lbl(31,9,'t')}`,
+    integral:`<path d="M30 14h40v66H30z" ${s} stroke-dasharray="4 3"/><path d="M22 65h56" stroke="#D00000" stroke-dasharray="3 2"/>${lbl(50,96,'A, As, I')}${lbl(86,74,'ȳ')}${lbl(86,48,'d')}`}[t];
+  return `<svg class="shape" width="104" height="102" viewBox="0 0 100 100" aria-hidden="true">${body||''}</svg>`; }
+function panelBody(k){ const cur=item(k,M.cur[k]); if(!cur) return k==='mat'||k==='sec'?`<p class="note" style="text-align:center;color:var(--muted)">Create a ${k==='mat'?'material':'section'} with the first button.</p>`:'';
+  switch(k){
+    case 'mat': return `<p class="sh">${MAT_TYPES[cur.type]?.[0]||''}</p>${fld('E','E','E',cur.E)}${fld('ν','nu','nu',cur.nu)}${fld('α','alpha','alpha',cur.alpha)}`;
+    case 'sec': { const P=secCalc(cur), T=SEC_TYPES[cur.type], ro=cur.type!=='integral';
+      let h=`<p class="sh">${T.label}</p>${shapeSVG(cur.type)}`;
+      h+=T.p.map(p=>fld(p,'p.'+p,'sec',cur.p[p])).join('');
+      if(cur.type==='I'||cur.type==='C') h+=fld('h','calc.h','sec',cur.p.d-2*cur.p.tf,true);
+      if(ro) h+=fld('ȳ','calc.yb','sec',P.yb,true)+fld('A','calc.A','area',P.A,true)+fld('As','calc.As','area',P.As,true)+fld('I','calc.I','inertia',P.I,true);
+      else h+=fld('A','p.A','area',cur.p.A)+fld('As','p.As','area',cur.p.As)+fld('I','p.I','inertia',cur.p.I)+fld('d','p.d','sec',cur.p.d)+fld('ȳ','p.yb','sec',cur.p.yb);
+      return h; }
+    case 'nodal': return fld('Fx','fx','force',cur.fx)+fld('Fy','fy','force',cur.fy)+fld('Mz','mz','moment',cur.mz);
+    case 'endm': return `<svg class="shape" width="120" height="34" viewBox="0 0 120 34" aria-hidden="true"><path d="M14 22h92" stroke="#1414E6" stroke-width="2"/><path d="M14 8a10 10 0 1 0 0 28" fill="none" stroke="#1414E6"/><path d="M106 8a10 10 0 1 1 0 28" fill="none" stroke="#1414E6"/><text x="30" y="14" font-size="11" font-family="Arial">Ma</text><text x="78" y="14" font-size="11" font-family="Arial">Mb</text></svg>`+fld('Ma','ma','moment',cur.ma)+fld('Mb','mb','moment',cur.mb);
+    case 'unif': return dirBox(cur)+fld('Qx','qx','dist',cur.qx)+fld('Qy','qy','dist',cur.qy);
+    case 'lin': return dirBox(cur)+fld('Pxi','pxi','dist',cur.pxi)+fld('Pyi','pyi','dist',cur.pyi)+fld('Pxj','pxj','dist',cur.pxj)+fld('Pyj','pyj','dist',cur.pyj);
+    case 'therm': return fld('Ty+','tt','temp',cur.tt)+fld('Ty−','tb','temp',cur.tb);
+  } return ''; }
+function dirBox(cur){ return `<fieldset class="fs" style="width:fit-content;margin:6px auto"><legend>Direction</legend><label class="ck"><input type="checkbox" data-k="dir" value="global" ${cur.dir!=='local'?'checked':''}> Global</label><label class="ck"><input type="checkbox" data-k="dir" value="local" ${cur.dir==='local'?'checked':''}> Local</label></fieldset>`; }
+function panelSup(){ const s=M.cur.sup, d=(lab,key,sk)=>`<fieldset class="fs"><legend>${lab}</legend><div style="display:flex;gap:10px;align-items:center">
+  <label class="ck"><input type="checkbox" data-k="sup.${key}" value="0" ${s[key]===0?'checked':''}> Free</label><label class="ck"><input type="checkbox" data-k="sup.${key}" value="1" ${s[key]===1?'checked':''}> Fix</label>
+  <span style="border-left:1px solid #ccc;height:16px"></span><label class="ck"><input type="checkbox" data-k="sup.${key}" value="2" ${s[key]===2?'checked':''}> ${sk}</label></div></fieldset>`;
+  const th=s.ang*Math.PI/180;
+  return `<div class="pt">Support Conditions</div><div class="grp"><div class="row">${ib('s-free','sfree','Free node supports (remove)')}${ib('a-sel','asel','Select nodes with current support conditions')}${ib('a-un','aun','Unapply from selected nodes')}${ib('a-app','aapp','Apply current support conditions to selected nodes')}</div></div>
+   ${d('Displac. X','x','Kx')}${d('Displac. Y','y','Ky')}${d('Rotation Z','r','Kz')}
+   <div class="fl"><label>Angle:</label><input data-k="sup.ang" data-cat="none" value="${fmtNum(s.ang,'f',2)}"><span class="u">deg</span></div>
+   <div class="fl"><label>H:</label><input data-k="sup.H" data-cat="none" value="${fmtNum(Math.cos(th),'f',2)}"><span class="u"></span></div>
+   <div class="fl"><label>V:</label><input data-k="sup.V" data-cat="none" value="${fmtNum(Math.sin(th),'f',2)}"><span class="u"></span></div>
+   <fieldset class="fs"><legend><label class="ck"><input type="checkbox" data-k="sup.pr" ${s.pr?'checked':''}> Prescribed Displ./Rot.</label></legend>
+    ${fld('Dx','sup.dx','disp',s.dx)}${fld('Dy','sup.dy','disp',s.dy)}${fld('Rz','sup.rz','rot',s.rz)}</fieldset>
+   <fieldset class="fs"><legend>Spring Stiffness Values</legend>${fld('Kx','sup.kx','spring',s.kx)}${fld('Ky','sup.ky','spring',s.ky)}${fld('Kz','sup.kz','rspring',s.kz)}</fieldset>`; }
+function panelHinge(){ const h=M.cur.hinge, o=(v,lbl,icon)=>`<button class="ib" data-act="hinge:${v}" aria-pressed="${h===v}" title="${lbl}" style="width:46px">${icon}</button>`;
+  const bar=(a,b)=>`<svg viewBox="0 0 40 14" width="38" height="14" aria-hidden="true"><path d="M${a?7:2} 7H${b?33:38}" stroke="#1414E6" stroke-width="1.6"/>${a?'<circle cx="4.5" cy="7" r="2.6" fill="#fff" stroke="#1414E6" stroke-width="1.3"/>':'<path d="M2 3v8" stroke="#1414E6" stroke-width="1.6"/>'}${b?'<circle cx="35.5" cy="7" r="2.6" fill="#fff" stroke="#1414E6" stroke-width="1.3"/>':'<path d="M38 3v8" stroke="#1414E6" stroke-width="1.6"/>'}</svg>`;
+  return `<div class="pt">Rotation Release</div><div class="grp"><div class="row">${ib('a-sel','asel','Select elements with current hinge')}${ib('a-un','aun','Unapply hinges from selected')}${ib('a-app','aapp','Apply current hinge to selected')}</div></div>
+   <div class="grp"><div class="row">${o('node','Node with hinge',svg('hinge'))}${o('nonode','Node without hinge','<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 16L18 4" stroke="#1414E6" stroke-width="1.6"/><circle cx="10" cy="10" r="1.8" fill="#1414E6"/></svg>')}</div>
+   <div class="row">${o('both','Member with hinges at both ends',bar(1,1))}</div><div class="row">${o('start','Member with hinge at start',bar(1,0))}</div><div class="row">${o('end','Member with hinge at end',bar(0,1))}</div><div class="row">${o('none','Member without hinges',bar(0,0))}</div></div>
+   <p style="color:var(--muted);text-align:center;margin:4px 0">Node options apply to selected nodes. Member options apply to selected members.</p>`; }
+function panelDC(){ const d=M.cur.dc; return `<div class="pt">Deformation Constraints</div><div class="grp"><div class="row">${ib('a-sel','asel','Select members with current constraints')}${ib('a-app','aapp','Apply current constraints to selected members')}</div></div>
+  <fieldset class="fs"><label class="ck"><input type="checkbox" data-k="dc.flex" ${d.flex?'checked':''}> Flexible Member</label>
+   <label class="ck" style="padding-left:16px"><input type="checkbox" data-k="dc.axial" ${d.axial?'checked':''} ${d.flex?'':'disabled'}> Axial Deformation</label>
+   <label class="ck" style="padding-left:16px"><input type="checkbox" data-k="dc.shear" ${d.shear?'checked':''} ${d.flex?'':'disabled'}> Shear Deformation</label></fieldset>
+  <fieldset class="fs"><label class="ck"><input type="checkbox" data-k="dc.rigid" ${!d.flex?'checked':''}> Rigid Member</label></fieldset>`; }
+function panelTrf(){ const t=ui.trf, has=!!ui.sel.t&&ui.sel.t!=='d'||ui.sel.t==='d';
+  const tab=(k,l)=>`<button role="tab" aria-selected="${t.tab===k}" data-act="ttab:${k}">${l}</button>`, f=(l,k,u)=>`<div class="fl"><label>${l}:</label><input data-k="t.${k}" data-cat="none" value="${t[k]}"><span class="u">${u}</span></div>`;
+  let body={move:f('DX','dx',U('len'))+f('DY','dy',U('len')),rotate:f('X','x',U('len'))+f('Y','y',U('len'))+f('Angle','ang','deg'),scale:f('X','x',U('len'))+f('Y','y',U('len'))+f('Factor','f',''),mirror:f('X1','x1',U('len'))+f('Y1','y1',U('len'))+f('X2','x2',U('len'))+f('Y2','y2',U('len'))}[t.tab];
+  return `<div class="pt">Transform</div><fieldset class="fs" ${has?'':'disabled'}><div class="tabs" role="tablist">${tab('move','Move')}${tab('rotate','Rotate')}${tab('scale','Scale')}${tab('mirror','Mirror')}</div>${body}
+   ${f('Tolerance','tol',U('len'))}<label class="ck"><input type="checkbox" data-k="t.leave" ${t.leave?'checked':''}> Leave Original</label><label class="ck"><input type="checkbox" disabled> Maintain Topology</label><label class="ck"><input type="checkbox" data-k="t.desel" ${t.desel?'checked':''}> Deselect after transform</label>
+   <div class="btnrow"><button class="pb" data-act="t-back">Back</button><button class="pb def" data-act="t-fwd">Forwards</button></div></fieldset>
+   <div class="btnrow" style="margin-top:6px"><button class="pb" data-act="t-inv" ${ui.sel.t==='m'?'':'disabled'}>Invert member orientation</button></div>
+   ${has?'':'<p style="color:var(--muted);text-align:center">Select members or nodes to transform.</p>'}`; }
+function panelInfo(){ const i=ui.info; if(!i) return ''; let h='';
+  if(i.t==='n'){ const n=nodeById(i.id); if(!n) return ''; h+=`<div class="pt">Node ${n.id}</div><dl class="info"><dt>X</dt><dd>${fqu('len',n.x)}</dd><dt>Y</dt><dd>${fqu('len',n.y)}</dd>
+    <dt>Support</dt><dd>${n.sup?['x','y','r'].map(k=>({0:'free',1:'fix',2:'spring'})[n.sup[k]]).join(' / '):'none'}</dd><dt>Hinge</dt><dd>${n.hinge?'yes':'no'}</dd><dt>Nodal load</dt><dd>${esc(item('nodal',n.load)?.name||'NONE')}</dd></dl>`;
+    if(RES&&RES.ok){ const k=RES.idx.get(n.id), D=RES.D, R=RES.R, fx=RES.fixed; const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=fx[3*k+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*k+2];
+      h+=`<div class="pt" style="margin-top:8px">Results</div><dl class="info"><dt>Dx</dt><dd>${fqu('disp',D[3*k])}</dd><dt>Dy</dt><dd>${fqu('disp',D[3*k+1])}</dd><dt>Rz</dt><dd>${fqu('rot',rz)}</dd>
+      ${fx[3*k]===1?`<dt>Fx${n.sup?.ang?' (local)':''}</dt><dd>${fqu('force',R[3*k])}</dd>`:''}${fx[3*k+1]===1?`<dt>Fy${n.sup?.ang?' (local)':''}</dt><dd>${fqu('force',R[3*k+1])}</dd>`:''}${fx[3*k+2]===1?`<dt>Mz</dt><dd>${fqu('moment',R[3*k+2])}</dd>`:''}</dl>`; } }
+  if(i.t==='m'){ const m=memById(i.id); if(!m) return ''; const a=nodeById(m.i),b=nodeById(m.j), L=Math.hypot(b.x-a.x,b.y-a.y);
+    h+=`<div class="pt">Member ${m.id}</div><dl class="info"><dt>Nodes</dt><dd>${m.i} → ${m.j}</dd><dt>Length</dt><dd>${fqu('len',L)}</dd><dt>Material</dt><dd>${esc(item('mat',m.mat)?.name||'—')}</dd><dt>Section</dt><dd>${esc(item('sec',m.sec)?.name||'—')}</dd>
+    <dt>Hinges</dt><dd>${m.hi&&m.hj?'both ends':m.hi?'start':m.hj?'end':'none'}</dd><dt>Type</dt><dd>${m.rigid?'rigid':'flexible'+(m.axial?'':', no axial def.')+(m.shear?', shear def.':'')}</dd>
+    <dt>Uniform</dt><dd>${esc(item('unif',m.ld.u)?.name||'NONE')}</dd><dt>Linear</dt><dd>${esc(item('lin',m.ld.l)?.name||'NONE')}</dd><dt>Thermal</dt><dd>${esc(item('therm',m.ld.t)?.name||'NONE')}</dd><dt>End moments</dt><dd>${esc(item('endm',m.ld.e)?.name||'NONE')}</dd></dl>`;
+    if(RES&&RES.ok){ const r=RES.rm.get(m.id); if(r){ const xs=samplesX(r,M.step); let mx=xs[0]; xs.forEach(x=>{ if(Math.abs(r.val('M',x))>Math.abs(r.val('M',mx))) mx=x; });
+      h+=`<div class="pt" style="margin-top:8px">Results</div><dl class="info"><dt>N start / end</dt><dd>${fq('force',r.N(0))} / ${fq('force',r.N(r.L))}</dd><dt>V start / end</dt><dd>${fq('force',r.val('V',0))} / ${fq('force',r.val('V',r.L))}</dd>
+      <dt>M start / end</dt><dd>${fq('moment',r.val('M',0))} / ${fq('moment',r.val('M',r.L))}</dd><dt>M extreme</dt><dd>${fqu('moment',r.val('M',mx))} at ${fqu('len',mx)}</dd></dl>`;
+      if(M.step>0&&ui.res==='diag'&&ui.q!=='D'){ h+=`<table class="info" style="width:100%;margin-top:6px"><tr><th style="text-align:left">x</th><th style="text-align:right">${QN[ui.q][0]}</th></tr>${xs.filter(x=>Math.abs(x/M.step-Math.round(x/M.step))<1e-6||x===r.L).map(x=>`<tr><td>${fq('len',x)}</td><td style="text-align:right">${fq(QN[ui.q][1],r.val(ui.q,x))}</td></tr>`).join('')}</table>`; } } } }
+  return h+`<div class="btnrow" style="margin-top:8px"><button class="pb" data-act="info-close">Close</button></div>`; }
+function renderSide(){ const fk=document.activeElement&&side.contains(document.activeElement)?document.activeElement.dataset.k:null;
+  let h=''; if(ui.info) h=panelInfo(); else if(ui.panel==='sup') h=panelSup(); else if(ui.panel==='hinge') h=panelHinge(); else if(ui.panel==='dc') h=panelDC(); else if(ui.panel==='trf') h=panelTrf();
+  else { h=listHead(ui.panel); if(ui.creating!==ui.panel&&ui.renaming!==ui.panel) h+=panelBody(ui.panel); }
+  side.innerHTML=h; side.classList.toggle('off',!!ui.res&&!ui.info&&ui.panel!=='trf');
+  if(fk){ const el=side.querySelector(`[data-k="${fk}"]`); if(el&&el.tagName==='INPUT'&&el.type!=='checkbox') el.focus(); }
+  const ni=$('#newName')||$('#renIn'); if(ni){ ni.focus(); ni.select(); } }
+
+side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) return; const P=ui.panel;
+  if(k==='cur'){ M.cur[P]=el.value||null; save(); renderSide(); return; }
+  if(k.startsWith('sup.')){ const f=k.slice(4), s=M.cur.sup;
+    if(['x','y','r'].includes(f)) s[f]=+el.value; else if(f==='pr') s.pr=el.checked;
+    else if(f==='ang'){ const v=pnum(el.value); if(v!=null) s.ang=v; } else if(f==='H'||f==='V'){ const th=s.ang*Math.PI/180; let H=Math.cos(th),V=Math.sin(th); const v=pnum(el.value); if(v==null) return; if(f==='H') H=v; else V=v; s.ang=Math.atan2(V,H)*180/Math.PI; }
+    else { const v=pnum(el.value); if(v!=null) s[f]=fromD(el.dataset.cat,v); }
+    save(); renderSide(); return; }
+  if(k.startsWith('dc.')){ const d=M.cur.dc, f=k.slice(3); if(f==='rigid') d.flex=!el.checked; else if(f==='flex') d.flex=el.checked; else d[f]=el.checked; save(); renderSide(); return; }
+  if(k.startsWith('t.')){ const f=k.slice(2); if(el.type==='checkbox') ui.trf[f]=el.checked; else { const v=pnum(el.value); if(v!=null) ui.trf[f]=v; } return; }
+  const cur=item(P,M.cur[P]); if(!cur) return;
+  if(k==='dir'){ commit(()=>{ cur.dir=el.value; }); return; }
+  const v=pnum(el.value); if(v==null){ renderSide(); return; }
+  commit(()=>{ const val=fromD(el.dataset.cat,v); if(k.startsWith('p.')) cur.p[k.slice(2)]=val; else cur[k]=val; });
+});
+side.addEventListener('keydown',e=>{ if(e.key==='Enter'){ if($('#newName')) { e.preventDefault(); act('new-ok'); } else if($('#renIn')){ e.preventDefault(); act('ren-ok'); } else if(e.target.dataset.k&&e.target.dataset.k.startsWith('t.')){ e.target.dispatchEvent(new Event('change',{bubbles:true})); act(e.ctrlKey?'t-back':'t-fwd'); } } if(e.key==='Escape'&&($('#newName')||$('#renIn'))) act('cancel'); });
+side.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b||b.disabled) return; act(b.dataset.act); });
+function needSel(t){ if(ui.sel.t!==t||!ui.sel.ids.size){ ui.msg=t==='m'?'Select one or more members first.':'Select one or more nodes first.'; renderTop(); return false; } return true; }
+const MEMBER_LOAD={unif:'u',lin:'l',therm:'t',endm:'e'};
+function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
+  if(cmd==='cancel'){ ui.creating=null; ui.renaming=null; renderSide(); return; }
+  if(cmd==='info-close'){ ui.info=null; renderSide(); return; }
+  if(cmd==='l-new'){ ui.creating=P; ui.renaming=null; renderSide(); return; }
+  if(cmd==='new-ok'){ const name=$('#newName').value.trim(); if(!name||L_(P).some(x=>x.name===name)){ ui.msg='Use a name different from the existing ones.'; renderTop(); return; } const type=$('#newType')?.value;
+    commit(()=>{ let o={name};
+      if(P==='mat'){ const t=MAT_TYPES[type]; o={...o,type,E:t[1],nu:t[2],alpha:t[3]}; }
+      if(P==='sec') o={...o,type,p:type==='integral'?{A:.01,As:.0083,I:1e-4,d:.3,yb:.15}:{...SEC_TYPES[type].def}};
+      if(P==='nodal') o={...o,fx:0,fy:0,mz:0}; if(P==='endm') o={...o,ma:0,mb:0}; if(P==='unif') o={...o,dir:'global',qx:0,qy:0};
+      if(P==='lin') o={...o,dir:'global',pxi:0,pyi:0,pxj:0,pyj:0}; if(P==='therm') o={...o,tt:0,tb:0};
+      M.cur[P]=newItem(P,o).id; ui.creating=null; }); return; }
+  if(cmd==='l-ren'){ ui.renaming=P; renderSide(); return; }
+  if(cmd==='ren-ok'){ const name=$('#renIn').value.trim(), cur=item(P,M.cur[P]); if(!name||L_(P).some(x=>x.name===name&&x!==cur)){ ui.msg='Use a name different from the existing ones.'; renderTop(); return; } commit(()=>{ cur.name=name; ui.renaming=null; }); return; }
+  if(cmd==='l-del'){ const id=M.cur[P]; commit(()=>{ M.lists[P]=L_(P).filter(x=>x.id!==id); unassign(P,id); M.cur[P]=L_(P)[0]?.id??null; }); return; }
+  if(cmd==='l-con'){ commit(()=>{ const used=usedIds(P); M.lists[P]=L_(P).filter(x=>used.has(x.id)||x.id===M.cur[P]); }); return; }
+  if(cmd==='hinge'){ M.cur.hinge=arg; save(); renderSide(); return; }
+  if(cmd==='ttab'){ ui.trf.tab=arg; renderSide(); return; }
+  if(cmd==='t-fwd'||cmd==='t-back'){ transform(cmd==='t-back'); return; }
+  if(cmd==='t-inv'){ if(!needSel('m')) return; commit(()=>selMembers().forEach(m=>{ [m.i,m.j]=[m.j,m.i]; [m.hi,m.hj]=[m.hj,m.hi]; })); return; }
+  if(cmd==='s-free'){ if(!needSel('n')) return; commit(()=>selNodes().forEach(n=>n.sup=null)); return; }
+  if(cmd==='a-sel'){ selectWithCurrent(P); return; }
+  if(cmd==='a-all'){ commit(()=>M.members.forEach(m=>m[P]=M.cur[P])); return; }
+  if(cmd==='a-app'||cmd==='a-un'){ applyCurrent(P,cmd==='a-un'); return; }
+}
+function usedIds(P){ const s=new Set(); if(P==='mat'||P==='sec') M.members.forEach(m=>s.add(m[P])); else if(P==='nodal') M.nodes.forEach(n=>s.add(n.load)); else M.members.forEach(m=>s.add(m.ld[MEMBER_LOAD[P]])); return s; }
+function unassign(P,id){ if(P==='mat'||P==='sec') M.members.forEach(m=>{ if(m[P]===id) m[P]=null; }); else if(P==='nodal') M.nodes.forEach(n=>{ if(n.load===id) n.load=null; }); else M.members.forEach(m=>{ if(m.ld[MEMBER_LOAD[P]]===id) m.ld[MEMBER_LOAD[P]]=null; }); }
+function applyCurrent(P,un){
+  if(P==='sup'){ if(!needSel('n')) return; commit(()=>selNodes().forEach(n=>n.sup=un?null:JSON.parse(JSON.stringify(M.cur.sup)))); return; }
+  if(P==='hinge'){ const h=M.cur.hinge;
+    if(h==='node'||h==='nonode'){ if(!needSel('n')) return; commit(()=>selNodes().forEach(n=>n.hinge=un?false:h==='node')); return; }
+    if(!needSel('m')) return; commit(()=>selMembers().forEach(m=>{ if(un){ m.hi=m.hj=false; } else { m.hi=h==='both'||h==='start'; m.hj=h==='both'||h==='end'; } })); return; }
+  if(P==='dc'){ if(!needSel('m')) return; const d=M.cur.dc; commit(()=>selMembers().forEach(m=>{ m.rigid=!d.flex; m.axial=d.axial; m.shear=d.shear; })); return; }
+  if(P==='nodal'){ if(!needSel('n')) return; commit(()=>selNodes().forEach(n=>n.load=un?null:M.cur.nodal)); return; }
+  if(!needSel('m')) return;
+  commit(()=>selMembers().forEach(m=>{ if(P==='mat'||P==='sec') m[P]=un?null:M.cur[P]; else m.ld[MEMBER_LOAD[P]]=un?null:M.cur[P]; }));
+}
+function selectWithCurrent(P){ let t='m', ids=[];
+  if(P==='sup'){ t='n'; const s=JSON.stringify(M.cur.sup); ids=M.nodes.filter(n=>n.sup&&JSON.stringify(n.sup)===s).map(n=>n.id); }
+  else if(P==='nodal'){ t='n'; ids=M.nodes.filter(n=>n.load&&n.load===M.cur.nodal).map(n=>n.id); }
+  else if(P==='hinge'){ const h=M.cur.hinge; if(h==='node'||h==='nonode'){ t='n'; ids=M.nodes.filter(n=>!!n.hinge===(h==='node')).map(n=>n.id); } else ids=M.members.filter(m=>(m.hi===(h==='both'||h==='start'))&&(m.hj===(h==='both'||h==='end'))).map(m=>m.id); }
+  else if(P==='dc'){ const d=M.cur.dc; ids=M.members.filter(m=>m.rigid===!d.flex&&(m.rigid||m.axial===d.axial&&m.shear===d.shear)).map(m=>m.id); }
+  else if(P==='mat'||P==='sec') ids=M.members.filter(m=>m[P]&&m[P]===M.cur[P]).map(m=>m.id);
+  else ids=M.members.filter(m=>m.ld[MEMBER_LOAD[P]]&&m.ld[MEMBER_LOAD[P]]===M.cur[P]).map(m=>m.id);
+  ui.sel={t:ids.length?t:null,ids:new Set(ids)}; renderAll(); }
+
+/* ================= Transformations ================= */
+function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to transform.'; renderTop(); return; }
+  const t=ui.trf, s=back?-1:1;
+  let fn;
+  if(t.tab==='move') fn=(x,y)=>[x+s*fromD('len',t.dx),y+s*fromD('len',t.dy)];
+  else if(t.tab==='rotate'){ const ox=fromD('len',t.x),oy=fromD('len',t.y),a=s*t.ang*Math.PI/180,c=Math.cos(a),sn=Math.sin(a); fn=(x,y)=>[ox+(x-ox)*c-(y-oy)*sn,oy+(x-ox)*sn+(y-oy)*c]; }
+  else if(t.tab==='scale'){ const ox=fromD('len',t.x),oy=fromD('len',t.y),f=back?1/t.f:t.f; if(!(f>0)) return; fn=(x,y)=>[ox+(x-ox)*f,oy+(y-oy)*f]; }
+  else { const x1=fromD('len',t.x1),y1=fromD('len',t.y1),x2=fromD('len',t.x2),y2=fromD('len',t.y2),dx=x2-x1,dy=y2-y1,L2=dx*dx+dy*dy; if(!L2) return; fn=(x,y)=>{ const k=((x-x1)*dx+(y-y1)*dy)/L2, px=x1+k*dx, py=y1+k*dy; return [2*px-x,2*py-y]; }; }
+  const tol=Math.max(fromD('len',t.tol||0),tolG());
+  commit(()=>{
+    if(ui.sel.t==='d'){ M.dims.filter(d=>ui.sel.ids.has(d.id)).forEach(d=>{ const tgt=t.leave?(()=>{ const c={...d,id:M.next.d++}; M.dims.push(c); return c; })():d; [tgt.ax,tgt.ay]=fn(d.ax,d.ay); [tgt.bx,tgt.by]=fn(d.bx,d.by); if(t.tab==='mirror') tgt.off=-d.off; }); }
+    else { const ms=ui.sel.t==='m'?selMembers():[], nodeIds=new Set(ui.sel.t==='n'?[...ui.sel.ids]:ms.flatMap(m=>[m.i,m.j]));
+      if(t.leave){ const map=new Map();
+        nodeIds.forEach(id=>{ const n=nodeById(id), [x,y]=fn(n.x,n.y); let e=M.nodes.find(o=>Math.hypot(o.x-x,o.y-y)<tol); if(!e){ e=addNode(x,y); e.sup=n.sup?JSON.parse(JSON.stringify(n.sup)):null; e.hinge=n.hinge; e.load=n.load; } map.set(id,e.id); });
+        const newIds=[]; ms.forEach(m=>{ const i=map.get(m.i), j=map.get(m.j); if(i===j||M.members.some(o=>(o.i===i&&o.j===j)||(o.i===j&&o.j===i))) return; const c=addMember(i,j,m); c.hi=m.hi; c.hj=m.hj; c.ld={...m.ld}; newIds.push(c.id); });
+        if(!t.desel) ui.sel={t:ui.sel.t,ids:new Set(ui.sel.t==='m'?newIds:[...map.values()])}; }
+      else { nodeIds.forEach(id=>{ const n=nodeById(id); [n.x,n.y]=fn(n.x,n.y); });
+        for(const id of nodeIds){ const n=nodeById(id), o=M.nodes.find(o=>o.id!==id&&!nodeIds.has(o.id)&&Math.hypot(o.x-n.x,o.y-n.y)<tol); if(o){ M.members.forEach(m=>{ if(m.i===id) m.i=o.id; if(m.j===id) m.j=o.id; }); M.nodes=M.nodes.filter(x=>x.id!==id); } }
+        M.members=M.members.filter((m,i,a)=>m.i!==m.j&&a.findIndex(o=>(o.i===m.i&&o.j===m.j)||(o.i===m.j&&o.j===m.i))===i); }
+    }
+    if(t.desel) clearSel();
+  }); }
+
+/* ================= Keyboard mode dialog ================= */
+function renderKbd(){ const kd=$('#kd'); const on=ui.kbd&&!ui.res&&['member','node','dim'].includes(ui.tool); kd.hidden=!on; if(!on) return;
+  const v=ui.kv||(ui.kv={x1:0,y1:0,x2:fromD('len',1)/1,y2:0,off:-.5,tol:.01});
+  const f=(l,k,u='')=>`<label>${l}</label><input data-kv="${k}" value="${fq('len',v[k])}">`;
+  let g;
+  if(ui.tool==='member') g=`<div class="g">${f('X1:','x1')}<span>${U('len')}</span>${f('Y1:','y1')}${f('X2:','x2')}<span>${U('len')}</span>${f('Y2:','y2')}</div>`;
+  else if(ui.tool==='node') g=`<div class="g">${f('X:','x1')}<span>${U('len')}</span>${f('Y:','y1')}</div>`;
+  else g=`<div class="g">${f('X1:','x1')}<span>${U('len')}</span>${f('Y1:','y1')}${f('X2:','x2')}<span>${U('len')}</span>${f('Y2:','y2')}${f('Offset:','off')}<span>${U('len')}</span></div>`;
+  kd.innerHTML=`<div class="ttl">${MODE_NAMES[ui.tool]}</div>${g}<div class="g"><label>Tolerance:</label><input data-kv="tol" value="${fq('len',v.tol)}"><span>${U('len')}</span></div><div class="btnrow"><button class="pb def" data-kact="ok">OK</button><button class="pb" data-kact="cancel">Cancel</button></div>`; }
+$('#kd').addEventListener('click',e=>{ const b=e.target.closest('[data-kact]'); if(!b) return; if(b.dataset.kact==='cancel'){ ui.kbd=false; renderAll(); return; } kbdOk(); });
+$('#kd').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); kbdOk(); } if(e.key==='Escape'){ ui.kbd=false; renderAll(); } });
+function kbdOk(){ const v=ui.kv; $$('#kd [data-kv]').forEach(i=>{ const n=pnum(i.value); if(n!=null) v[i.dataset.kv]=fromD('len',n); });
+  if(ui.tool==='member'){ insertMember({x:v.x1,y:v.y1},{x:v.x2,y:v.y2}); const dx=v.x2-v.x1,dy=v.y2-v.y1; v.x1=v.x2; v.y1=v.y2; v.x2+=dx; v.y2+=dy; }
+  else if(ui.tool==='node') insertNode({x:v.x1,y:v.y1});
+  else insertDim({x:v.x1,y:v.y1},{x:v.x2,y:v.y2},(()=>{ const d={ax:v.x1,ay:v.y1,bx:v.x2,by:v.y2}, n=dimN(d); return {x:v.x1+n[0]*v.off,y:v.y1+n[1]*v.off}; })());
+  renderKbd(); const first=$('#kd [data-kv]'); if(first){ first.focus(); first.select(); } }
+
+/* ================= Canvas interaction ================= */
+let drag=null, panMid=null;
+function sp(e){ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setPointerCapture(e.pointerId);
+  if(e.button===1){ panMid={sx,sy,ox:view.ox,oy:view.oy}; return; }
+  if(e.button===2){ // right button: cancel input, or show info
+    if(ui.pts.length){ ui.pts=[]; ui.msg=''; renderAll(); return; }
+    if(ui.zoomStart){ ui.zoomStart=null; ui.zoomBox=null; draw(); return; }
+    const hn=hitNode(sx,sy), hm=hn?null:hitMember(sx,sy); if(hn) ui.info={t:'n',id:hn.id}; else if(hm) ui.info={t:'m',id:hm.m.id}; else ui.info=null; renderSide(); return; }
+  if(ui.res){ resultClick(sx,sy); return; }
+  if(ui.tool==='zoom'){ if(!ui.zoomStart){ ui.zoomStart=[sx,sy]; ui.zoomBox={sx,sy,ex:sx,ey:sy}; } else { const [x0,y0]=ui.zoomStart; ui.zoomStart=null; ui.zoomBox=null;
+      if(Math.hypot(sx-x0,sy-y0)<4) zoomAt(sx,sy,1.6); else { const [wa,wb]=toW(Math.min(x0,sx),Math.min(y0,sy)), [wc,wd]=toW(Math.max(x0,sx),Math.max(y0,sy)); const s=Math.min(W/(wc-wa),H/(wb-wd)); view.s=s; view.ox=W/2-(wa+wc)/2*s; view.oy=H/2+(wb+wd)/2*s; draw(); } } return; }
+  if(ui.kbd&&['member','node','dim'].includes(ui.tool)) return;
+  if(['member','node','dim'].includes(ui.tool)){ const p=snapPt(sx,sy); ui.pts.push(p);
+    const need={member:2,node:1,dim:3}[ui.tool];
+    if(ui.pts.length>=need){ const pts=ui.pts; ui.pts=[]; if(ui.tool==='member') insertMember(pts[0],pts[1]); else if(ui.tool==='node') insertNode(pts[0]); else insertDim(pts[0],pts[1],pts[2]); }
+    draw(); return; }
+  // select mode
+  drag={sx,sy,shift:e.shiftKey,moved:false};
+});
+cv.addEventListener('pointermove',e=>{ const [sx,sy]=sp(e);
+  if(panMid){ view.ox=panMid.ox+sx-panMid.sx; view.oy=panMid.oy+sy-panMid.sy; draw(); return; }
+  const snap=['member','node','dim'].includes(ui.tool)&&!ui.res?snapPt(sx,sy):null; ui.hover={sx,sy,snap};
+  const [wx,wy]=snap?[snap.x,snap.y]:toW(sx,sy); $('#cX').textContent='X: '+fqu('len',wx); $('#cY').textContent='Y: '+fqu('len',wy);
+  if(ui.zoomStart){ ui.zoomBox={sx:ui.zoomStart[0],sy:ui.zoomStart[1],ex:sx,ey:sy}; }
+  if(ui.tool==='member'&&ui.pts.length&&snap){ const p=ui.pts[0], L=Math.hypot(snap.x-p.x,snap.y-p.y); ui.msg=`Member length: ${fqu('len',L)}`; $('#msg').textContent=ui.msg; }
+  if(drag){ if(!drag.moved&&Math.hypot(sx-drag.sx,sy-drag.sy)>4) drag.moved=true; if(drag.moved){ ui.fence={sx:drag.sx,sy:drag.sy,ex:sx,ey:sy}; } }
+  draw(); });
+cv.addEventListener('pointerup',e=>{ const [sx,sy]=sp(e); if(panMid){ panMid=null; return; } if(!drag) return; const d=drag; drag=null; const f=ui.fence; ui.fence=null;
+  if(!d.moved){ clickSelect(sx,sy,d.shift); return; }
+  const x0=Math.min(f.sx,f.ex),x1=Math.max(f.sx,f.ex),y0=Math.min(f.sy,f.ey),y1=Math.max(f.sy,f.ey), window_=f.ex>=f.sx;
+  const inside=(x,y)=>x>=x0&&x<=x1&&y>=y0&&y<=y1;
+  const crossesSeg=(ax,ay,bx,by)=>{ if(inside(ax,ay)||inside(bx,by)) return true; const E=[[x0,y0,x1,y0],[x1,y0,x1,y1],[x1,y1,x0,y1],[x0,y1,x0,y0]]; return E.some(([p,q,r,s])=>{ const t=segInter({x:ax,y:ay},{x:bx,y:by},{x:p,y:q},{x:r,y:s}); return t&&t.t>=0&&t.t<=1&&t.u>=0&&t.u<=1; }); };
+  const want=d.shift&&ui.sel.t?ui.sel.t:null;
+  let mids=[], nids=[];
+  if(!want||want==='m') mids=M.members.filter(m=>{ const a=nodeById(m.i),b=nodeById(m.j),[ax,ay]=toS(a.x,a.y),[bx,by]=toS(b.x,b.y); return window_?inside(ax,ay)&&inside(bx,by):crossesSeg(ax,ay,bx,by); }).map(m=>m.id);
+  if((!want&&!mids.length)||want==='n') nids=M.nodes.filter(n=>inside(...toS(n.x,n.y))).map(n=>n.id);
+  const t=mids.length?'m':nids.length?'n':want, ids=mids.length?mids:nids;
+  if(d.shift&&ui.sel.t===t) ids.forEach(i=>ui.sel.ids.add(i)); else ui.sel={t:ids.length?t:null,ids:new Set(ids)};
+  renderAll(); });
+function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy), hd=!hm&&!hn?hitDim(sx,sy):null;
+  const pick=hn?['n',hn.id]:hm?['m',hm.m.id]:hd?['d',hd.id]:null;
+  if(!pick){ if(!shift) clearSel(); renderAll(); return; }
+  const [t,id]=pick;
+  if(shift&&ui.sel.t===t){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; }
+  else ui.sel={t,ids:new Set([id])};
+  renderAll(); }
+function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8); if(!hm){ ui.msg=''; renderTop(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
+  if(ui.res==='il'){ if(ui.ilPick){ ui.il=influence(RES,r.m.id,x,ui.q); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
+    if(!ui.il) return; const line=ui.il.lines.find(l=>l.r===r); if(!line) return; let best=line.pts[0]; line.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
+    ui.msg=`Influence line value at member ${r.m.id}, x = ${fqu('len',best.a)}: ${fmtNum(ui.q==='M'?toD('len',best.v):best.v,'f',4)}${ui.q==='M'?' '+U('len'):''}`; renderTop(); return; }
+  if(ui.q==='D'){ const d=r.defl(x); ui.msg=`Member ${r.m.id}, x = ${fqu('len',x)}:  Dx = ${fqu('disp',d[0])}   Dy = ${fqu('disp',d[1])}   Rz = ${fqu('rot',r.rotAt(x))}`; }
+  else { const v=r.val(ui.q,x), nm={N:'Axial force',V:'Shear force',M:'Bending moment'}[ui.q]; ui.msg=`${nm} at member ${r.m.id}, x = ${fqu('len',x)}: ${fqu(QN[ui.q][1],v)}${ui.q==='N'?(v>1e-9?' (tension)':v<-1e-9?' (compression)':''):''}`; }
+  renderTop(); }
+cv.addEventListener('wheel',e=>{ e.preventDefault(); const [sx,sy]=sp(e); zoomAt(sx,sy,Math.exp(-e.deltaY*.0015)); },{passive:false});
+(()=>{ const d=$('#dial'); let y0=null; d.addEventListener('pointerdown',e=>{ y0=e.clientY; d.setPointerCapture(e.pointerId); });
+  d.addEventListener('pointermove',e=>{ if(y0==null) return; zoomAt(W/2,H/2,Math.exp((y0-e.clientY)*.01)); y0=e.clientY; }); d.addEventListener('pointerup',()=>y0=null); })();
+
+/* ================= Toolbar wiring ================= */
+function setTool(t){ if(ui.res) exitResults(); ui.tool=t; ui.pts=[]; ui.zoomStart=null; ui.zoomBox=null; ui.msg=''; renderAll(); }
+$$('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$$('[data-panel]').forEach(b=>b.onclick=()=>{ ui.panel=b.dataset.panel; ui.creating=null; ui.renaming=null; ui.info=null; renderAll(); });
+$$('[data-rmode]').forEach(b=>b.onclick=()=>enterResults(b.dataset.rmode,ui.res==='il'&&b.dataset.rmode==='diag'?ui.q:null));
+$$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; if(ui.res==='il'){ if(ui.il) ui.il=influence(RES,ui.il.tid,ui.il.xs,ui.q); } ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
+$('#defComp').onchange=e=>{ ui.defComp=e.target.value; draw(); };
+$('#bIlPick').onclick=()=>{ ui.ilPick=!ui.ilPick; ui.msg=''; renderTop(); };
+$('#pot').oninput=e=>{ ui.pot=+e.target.value; renderTop(); draw(); };
+$('#modeBox').addEventListener('change',e=>{ if(e.target.id!=='scaleIn') return; const v=pnum(e.target.value); if(v>0){ const k=ui.res==='il'?'IL'+ui.q:ui.q; ui.scaleVal[k]=v; ui.pot=0; $('#pot').value=0; draw(); renderTop(); } });
+$('#bKbd').onclick=()=>{ ui.kbd=!ui.kbd; if(ui.kbd&&!['member','node','dim'].includes(ui.tool)) ui.tool='member'; if(ui.res) exitResults(); renderAll(); if(ui.kbd){ const f=$('#kd [data-kv]'); if(f){ f.focus(); f.select(); } } };
+$('#bDel').onclick=deleteSel;
+$('#bTrf').onclick=()=>{ if(ui.res&&ui.res!=='diag') return; ui.panel=ui.panel==='trf'?'mat':'trf'; ui.info=null; if(ui.res) exitResults(); ui.tool='select'; renderAll(); };
+$('#bRedraw').onclick=()=>draw(); $('#bFit').onclick=fit; $('#bZin').onclick=()=>zoomAt(W/2,H/2,1.25); $('#bZout').onclick=()=>zoomAt(W/2,H/2,.8);
+$('#bUndo').onclick=undo; $('#bRedo').onclick=redo;
+$('#bNew').onclick=()=>fileNew(); $('#bOpen').onclick=()=>fileOpen(); $('#bSave').onclick=()=>fileSave(); $('#bClip').onclick=()=>exportClip();
+$('#bStepL').onclick=()=>{ M.disp.stepLines=!M.disp.stepLines; save(); renderTop(); draw(); };
+$('#bStepV').onclick=()=>{ M.disp.stepVal=!M.disp.stepVal; save(); renderTop(); draw(); };
+$('#step').onchange=e=>{ const v=pnum(e.target.value); if(v!=null&&v>=0){ M.step=fromD('len',v); save(); } renderTop(); draw(); if(ui.info) renderSide(); };
+$('#gOn').onchange=e=>{ M.grid.on=e.target.checked; save(); draw(); }; $('#gSnap').onchange=e=>{ M.grid.snap=e.target.checked; save(); };
+$('#gX').onchange=e=>{ const v=pnum(e.target.value); if(v>0) M.grid.dx=fromD('len',v); save(); renderTop(); draw(); };
+$('#gY').onchange=e=>{ const v=pnum(e.target.value); if(v>0) M.grid.dy=fromD('len',v); save(); renderTop(); draw(); };
+const setView=(w,h)=>{ const cx=(W/2-view.ox)/view.s, cy=(view.oy-H/2)/view.s; view.s=Math.min(W/w,H/h); view.ox=W/2-cx*view.s; view.oy=H/2+cy*view.s; draw(); };
+$('#vH').onchange=e=>{ const v=pnum(e.target.value); if(v>0) setView(fromD('len',v),1e30); };
+$('#vV').onchange=e=>{ const v=pnum(e.target.value); if(v>0) setView(1e30,fromD('len',v)); };
+
+window.addEventListener('keydown',e=>{
+  const t=e.target; if(t.matches&&t.matches('input,select,textarea')) return;
+  if(!$('#ov').hidden){ if(e.key==='Escape') closeDlg(); return; }
+  const k=e.key, mod=e.ctrlKey||e.metaKey;
+  if(mod&&k.toLowerCase()==='z'){ e.preventDefault(); undo(); return; } if(mod&&k.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
+  if(mod&&k.toLowerCase()==='c'){ e.preventDefault(); exportClip(); return; } if(mod) return;
+  if(k==='Escape'){ closeMenu(); if(ui.pts.length||ui.zoomStart){ ui.pts=[]; ui.zoomStart=null; ui.zoomBox=null; ui.msg=''; renderAll(); } else setTool('select'); return; }
+  const map={m:'member',n:'node',d:'dim',z:'zoom'}; const l=k.toLowerCase();
+  if(map[l]) setTool(map[l]); else if(l==='k') $('#bKbd').click(); else if(l==='t') $('#bTrf').click(); else if(l==='r') draw(); else if(l==='f') fit();
+  else if(k==='+'||k==='=') zoomAt(W/2,H/2,1.25); else if(k==='-') zoomAt(W/2,H/2,.8); else if(k==='Delete'||k==='Backspace'){ e.preventDefault(); deleteSel(); }
+});
+
+/* ================= Menus ================= */
+let openMenu=null;
+function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
+  if(name==='file') return [['About Barra','about'],['Sign Convention...','sign'],'-',['New','new'],['Open...','open'],['Save','save'],['Save As...','save'],['Import Properties...',null],'-',['Export Line Results...','lines',!ui.res||ui.res!=='diag'||!RES?.ok],['Export Screen to Clipboard','clip'],'-',['Totals...','totals'],['Limits...','limits']];
+  if(name==='options') return [{sub:'Analysis Type'},['Linear-Elastic','noop','',true,'rad'],'-',
+    {sub:'Support Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:sup:'+s,'',false,o.sup===s?'rad':'']),
+    {sub:'Hinge Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:hinge:'+s,'',false,o.hinge===s?'rad':'']),
+    {sub:'Load Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:load:'+s,'',false,o.load===s?'rad':'']),
+    {sub:'Text Size'},...['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],'size:text:'+s,'',false,o.text===s?'rad':'']),'-',
+    ['Superpose Static Loads on Load-Train Envelopes',null,'',true,'chk'],'-',['Units & Number Formatting...','units']];
+  return [['White Background','bg:white','',false,d.bg==='white'?'chk':''],['Gray Background','bg:gray','',false,d.bg==='gray'?'chk':''],['Black Background','bg:black','',false,d.bg==='black'?'chk':''],['Black Foreground','bg:mono','',false,d.bg==='mono'?'chk':''],'-',
+    ...[['Dimension Lines','dims'],['Member Orientation','orient'],['Supports','sups'],'-',['Loading while Editing','loadEdit'],['Loading with Results','loadRes'],['Load Values','loadVal'],'-',['Result Values','resVal'],'-',['Step Lines','stepLines'],['Step Values','stepVal'],'-',['Transversal Values','transv'],['Bending Moment Sign','mSign'],'-',['Reactions','reac'],['Reaction Values','reacVal'],'-',['Node Numbers','nodeNum'],['Member Numbers','memNum']]
+      .map(x=>x==='-'?'-':[x[0],'disp:'+x[1],'',false,ck(d[x[1]])])]; }
+function showMenu(btn){ const name=btn.dataset.menu, m=$('#menu');
+  m.innerHTML=menuItems(name).map(x=>{ if(x==='-') return '<hr>'; if(x.sub) return `<div class="sub">${x.sub}</div>`; const [l,a,kb,dis,cls]=x; return `<button role="menuitem" data-mact="${a||''}" ${!a||dis?'disabled':''}><span class="${cls||''}"></span><span>${l}</span><span>${kb||''}</span></button>`; }).join('');
+  const r=btn.getBoundingClientRect(); m.style.left=r.left+'px'; m.style.top=r.bottom+'px'; m.hidden=false; $$('.menubar>button').forEach(b=>b.setAttribute('aria-expanded',b===btn)); openMenu=name;
+  const mr=m.getBoundingClientRect(); if(mr.bottom>innerHeight) m.style.top=Math.max(0,innerHeight-mr.height)+'px'; if(mr.right>innerWidth) m.style.left=Math.max(0,innerWidth-mr.width)+'px'; }
+function closeMenu(){ $('#menu').hidden=true; openMenu=null; $$('.menubar>button').forEach(b=>b.setAttribute('aria-expanded','false')); }
+$$('.menubar>button').forEach(b=>{ b.onclick=e=>{ e.stopPropagation(); openMenu===b.dataset.menu?closeMenu():showMenu(b); }; b.onmouseenter=()=>{ if(openMenu&&openMenu!==b.dataset.menu) showMenu(b); }; });
+document.addEventListener('pointerdown',e=>{ if(!e.target.closest('#menu')&&!e.target.closest('.menubar')) closeMenu(); });
+$('#menu').addEventListener('click',e=>{ const b=e.target.closest('[data-mact]'); if(!b||b.disabled) return; const [a,p,q]=b.dataset.mact.split(':'); closeMenu();
+  if(a==='disp'){ M.disp[p]=!M.disp[p]; save(); renderTop(); draw(); }
+  else if(a==='bg'){ M.disp.bg=p; save(); draw(); }
+  else if(a==='size'){ M.opt[p]=q; save(); draw(); }
+  else if(a==='units') dlgUnits(); else if(a==='sign') dlgSign(); else if(a==='about') dlgAbout(); else if(a==='totals') dlgTotals(); else if(a==='limits') dlgLimits();
+  else if(a==='new') fileNew(); else if(a==='open') fileOpen(); else if(a==='save') fileSave(); else if(a==='clip') exportClip(); else if(a==='lines') exportLines(); });
+
+/* ================= Dialogs & files ================= */
+function dlg(title,body,onMount){ $('#dlgT').textContent=title; $('#dlgB').innerHTML=body; $('#ov').hidden=false; if(onMount) onMount($('#dlgB')); const f=$('#dlgB').querySelector('input,select,textarea,button'); if(f) f.focus(); }
+function closeDlg(){ $('#ov').hidden=true; }
+$('#ov').addEventListener('click',e=>{ if(e.target===$('#ov')||e.target.closest('[data-close]')) closeDlg(); });
+function dlgAbout(){ dlg('About Barra',`<p style="margin:0;max-width:420px">Barra is an open-source, browser-based program for linear-elastic analysis of two-dimensional frames and trusses. Its interface and workflow follow the Ftool program from PUC-Rio, so Ftool users can work without relearning.</p><p style="margin:0;max-width:420px;color:var(--muted)">Barra is an independent project and is not affiliated with Ftool, Tecgraf, PUC-Rio or Marlin.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
+function dlgTotals(){ dlg('Totals',`<table><tr><td>Nodes:</td><td style="text-align:right">${M.nodes.length}</td></tr><tr><td>Members:</td><td style="text-align:right">${M.members.length}</td></tr><tr><td>Dimension lines:</td><td style="text-align:right">${M.dims.length}</td></tr></table><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
+function dlgLimits(){ const b=bbox(); dlg('Limits',b?`<table><tr><td>X min:</td><td>${fqu('len',b.x0)}</td></tr><tr><td>X max:</td><td>${fqu('len',b.x1)}</td></tr><tr><td>Y min:</td><td>${fqu('len',b.y0)}</td></tr><tr><td>Y max:</td><td>${fqu('len',b.y1)}</td></tr></table><div class="btnrow"><button class="pb def" data-close>OK</button></div>`:'<p>The model is empty.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>'); }
+function dlgSign(){ dlg('Sign Convention',`<svg viewBox="0 0 300 120" width="300" height="120" aria-hidden="true" style="background:#fff;border:1px solid #ccc;max-width:100%">
+  <path d="M30 100V40L150 20 270 40V100" fill="none" stroke="#808000" stroke-width="2"/><path d="M36 100V44 M156 26 L264 44 M264 44V100 M36 44L150 26" fill="none" stroke="#D00000" stroke-width="1" stroke-dasharray="3 2" transform="translate(4 4)"/>
+  <text x="150" y="70" font-size="11" text-anchor="middle" font-family="Arial">dashed: lower fibers</text></svg>
+  <p style="margin:0;max-width:440px">Lower fibers are the bottom side of horizontal and inclined members and the right side of vertical members. Axial force is positive in tension. Shear force is positive when the resultant of the forces to the left of a section points up. Bending moment is positive when it puts the lower fibers in tension. Positive axial and shear values are drawn on the upper side.</p>
+  <fieldset class="fs"><legend>Bending moment diagram</legend><label class="ck"><input type="radio" name="mpos" value="tension" ${M.opt.mPos==='tension'?'checked':''}> Positive values drawn on the tension side</label><label class="ck"><input type="radio" name="mpos" value="compression" ${M.opt.mPos!=='tension'?'checked':''}> Positive values drawn on the compression side</label></fieldset>
+  <fieldset class="fs"><legend>Influence lines</legend><label class="ck"><input type="radio" name="ilpos" value="lower" ${M.opt.ilPos==='lower'?'checked':''}> Positive values drawn on the lower fibers</label><label class="ck"><input type="radio" name="ilpos" value="diagram" ${M.opt.ilPos!=='lower'?'checked':''}> Follow the diagram convention</label></fieldset>
+  <div class="btnrow"><button class="pb def" id="sgOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{ b.querySelector('#sgOk').onclick=()=>{ M.opt.mPos=b.querySelector('[name=mpos]:checked').value; M.opt.ilPos=b.querySelector('[name=ilpos]:checked').value; save(); closeDlg(); draw(); }; }); }
+function dlgUnits(){ const rows=Object.entries(UC).filter(([k])=>k!=='nu').map(([k,v])=>`<tr><td>${v[0]}</td><td><select data-uk="${k}">${Object.keys(v[1]).map(u=>`<option ${u===M.units[k].u?'selected':''}>${u}</option>`).join('')}</select></td>
+   <td><select data-uf="${k}"><option value="f" ${M.units[k].f==='f'?'selected':''}>Decimal</option><option value="e" ${M.units[k].f==='e'?'selected':''}>Exponential</option></select></td><td><input type="number" min="0" max="8" data-ud="${k}" value="${M.units[k].d}" style="width:48px"></td></tr>`).join('');
+  dlg('Units & Number Formatting',`<div class="btnrow" style="justify-content:flex-start"><button class="pb" id="uSI">SI Units</button><button class="pb" id="uKNM">kN &amp; m Units</button></div>
+   <div style="overflow-x:auto"><table><tr><th style="text-align:left">Quantity</th><th>Unit</th><th>Format</th><th>Digits</th></tr>${rows}</table></div><div class="btnrow"><button class="pb def" id="uOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{
+    const fill=u=>{ for(const k in u){ const s=b.querySelector(`[data-uk="${k}"]`); if(!s) continue; s.value=u[k].u; b.querySelector(`[data-uf="${k}"]`).value=u[k].f; b.querySelector(`[data-ud="${k}"]`).value=u[k].d; } };
+    b.querySelector('#uSI').onclick=()=>fill(defUnits('SI')); b.querySelector('#uKNM').onclick=()=>fill(defUnits('kNm'));
+    b.querySelector('#uOk').onclick=()=>{ b.querySelectorAll('[data-uk]').forEach(s=>{ const k=s.dataset.uk; M.units[k]={u:s.value,f:b.querySelector(`[data-uf="${k}"]`).value,d:Math.max(0,Math.min(8,+b.querySelector(`[data-ud="${k}"]`).value||0))}; }); ui.scaleVal={}; save(); closeDlg(); renderAll(); }; }); }
+function fileNew(){ pushUndo(); const keep={units:M.units,disp:M.disp,opt:M.opt,grid:M.grid}; M=newModel(); Object.assign(M,JSON.parse(JSON.stringify(keep))); exitResults(); clearSel(); ui.panel='mat'; ui.tool='select'; changed(); fit(); ui.msg='New model. Undo restores the previous one.'; renderTop(); }
+function fileOpen(){ dlg('Open',`<p style="margin:0">Open a model saved by Barra (.json), or paste its text below. Ftool .ftl files cannot be read yet.</p><textarea id="opTxt" spellcheck="false" aria-label="Model text"></textarea>
+  <div class="btnrow"><button class="pb" id="opFile">Choose file...</button><button class="pb def" id="opLoad">Open</button><button class="pb" data-close>Cancel</button></div><p id="opMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#opFile').onclick=()=>$('#fOpen').click(); b.querySelector('#opLoad').onclick=()=>loadText(b.querySelector('#opTxt').value); }); }
+$('#fOpen').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>loadText(r.result); r.readAsText(f); e.target.value=''; };
+function loadText(t){ try{ const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; pushUndo(); M=o; exitResults(); clearSel(); closeDlg(); changed(); fit(); }
+  catch(e){ const m=$('#opMsg'); if(m) m.textContent='That is not a Barra model file.'; } }
+function fileSave(){ const t=JSON.stringify(M); dlg('Save',`<p style="margin:0;max-width:460px">The model is kept in this browser automatically. To keep a file or share it, copy the text below and save it as a .json file. Open it later with File &gt; Open.</p><textarea readonly id="svTxt" aria-label="Model text">${esc(t)}</textarea>
+  <div class="btnrow"><button class="pb def" id="svCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#svTxt'); b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }
+function copyText(t,btn,ta){ const ok=()=>{ btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }; const fb=()=>{ if(ta){ ta.focus(); ta.select(); } btn.textContent='Press Ctrl+C'; };
+  try{ navigator.clipboard.writeText(t).then(ok,fb); }catch(e){ fb(); } }
+function exportClip(){ try{ cv.toBlob(b=>{ navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(()=>{ ui.msg='Screen image copied to the clipboard.'; renderTop(); },()=>{ ui.msg='The browser did not allow copying the image.'; renderTop(); }); }); }catch(e){ ui.msg='The browser did not allow copying the image.'; renderTop(); } }
+function exportLines(){ if(!RES?.ok) return; const ms=selMembers(); const list=ms.length?ms:M.members; const q=ui.q==='D'?'D':ui.q; const step=M.step>0?M.step:null;
+  const rows=[['member','x_'+U('len'),...(q==='D'?['Dx_'+U('disp'),'Dy_'+U('disp')]:[QN[q][0].replace(' ','_')+'_'+U(QN[q][1])])]];
+  list.forEach(m=>{ const r=RES.rm.get(m.id); if(!r) return; const xs=step?samplesX(r,step).filter(x=>Math.abs(x/step-Math.round(x/step))<1e-6||x===r.L):samplesX(r,0);
+    xs.forEach(x=>{ if(q==='D'){ const d=r.defl(x); rows.push([m.id,fq('len',x),toD('disp',d[0]).toPrecision(6),toD('disp',d[1]).toPrecision(6)]); } else rows.push([m.id,fq('len',x),toD(QN[q][1],r.val(q,x)).toPrecision(6)]); }); });
+  const t=rows.map(r=>r.join(',')).join('\n');
+  dlg('Export Line Results',`<p style="margin:0">${ms.length?'Selected members':'All members'}, ${q==='D'?'deformed configuration':QN[q][0].toLowerCase()}${step?', at the current step':''}. Copy the CSV text below.</p><textarea readonly id="elTxt">${esc(t)}</textarea><div class="btnrow"><button class="pb def" id="elCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#elTxt'); b.querySelector('#elCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }
+
+/* ================= Boot ================= */
+(function boot(){
+  paintIcons();
+  try{ const o=JSON.parse(localStorage.getItem(LS)||'null'); if(o&&o.v===2&&Array.isArray(o.nodes)) M=o; }catch(e){}
+  if(!M) exampleModel();
+  new ResizeObserver(resize).observe($('#stage')); resize(); renderAll();
+})();
+window.__barra={analyze,buildSystem,influence,secCalc,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
+</script>
