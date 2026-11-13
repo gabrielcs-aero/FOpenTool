@@ -988,7 +988,11 @@ function shapeSVG(t){ const s='stroke="#1414E6" stroke-width="1.6" fill="#E6ECFF
     box:`<path d="M28 12h44v70H28z" ${s}/><path d="M35 19h30v56H35z" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'b')}${lbl(84,50,'d')}${lbl(31,9,'t')}`,
     integral:`<path d="M30 14h40v66H30z" ${s} stroke-dasharray="4 3"/><path d="M22 65h56" stroke="#D00000" stroke-dasharray="3 2"/>${lbl(50,96,'A, As, I')}${lbl(86,74,'ȳ')}${lbl(86,48,'d')}`}[t];
   return `<svg class="shape" width="104" height="102" viewBox="0 0 100 100" aria-hidden="true">${body||''}</svg>`; }
-function panelBody(k){ const cur=item(k,M.cur[k]); if(!cur) return k==='mat'||k==='sec'?`<p class="note" style="text-align:center;color:var(--muted)">Create a ${k==='mat'?'material':'section'} with the first button.</p>`:'';
+function panelBody(k){ let cur=item(k,M.cur[k]); if(!cur){ if(k==='mat'||k==='sec') return `<p class="note" style="text-align:center;color:var(--muted)">Create a ${k==='mat'?'material':'section'} with the first button.</p>`;
+    // as in Ftool: with NONE selected the fields stay visible, empty and disabled
+    return panelBody._fields(k,{dir:'global'}).replace(/<input /g,'<input disabled '); }
+  return panelBody._fields(k,cur); }
+panelBody._fields=function(k,cur){
   switch(k){
     case 'mat': return `<p class="sh">${MAT_TYPES[cur.type]?.[0]||''}</p>${fld('E','E','E',cur.E)}${fld('ν','nu','nu',cur.nu)}${fld('α','alpha','alpha',cur.alpha)}`;
     case 'sec': { const P=secCalc(cur), T=SEC_TYPES[cur.type], ro=cur.type!=='integral';
@@ -1002,21 +1006,25 @@ function panelBody(k){ const cur=item(k,M.cur[k]); if(!cur) return k==='mat'||k=
     case 'endm': return `<svg class="shape" width="120" height="34" viewBox="0 0 120 34" aria-hidden="true"><path d="M14 22h92" stroke="#1414E6" stroke-width="2"/><path d="M14 8a10 10 0 1 0 0 28" fill="none" stroke="#1414E6"/><path d="M106 8a10 10 0 1 1 0 28" fill="none" stroke="#1414E6"/><text x="30" y="14" font-size="11" font-family="Arial">Ma</text><text x="78" y="14" font-size="11" font-family="Arial">Mb</text></svg>`+fld('Ma','ma','moment',cur.ma)+fld('Mb','mb','moment',cur.mb);
     case 'unif': return dirBox(cur)+fld('Qx','qx','dist',cur.qx)+fld('Qy','qy','dist',cur.qy);
     case 'lin': return dirBox(cur)+fld('Pxi','pxi','dist',cur.pxi)+fld('Pyi','pyi','dist',cur.pyi)+fld('Pxj','pxj','dist',cur.pxj)+fld('Pyj','pyj','dist',cur.pyj);
-    case 'therm': return fld('Ty+','tt','temp',cur.tt)+fld('Ty−','tb','temp',cur.tb);
-  } return ''; }
+    case 'therm': return fld('Ty+','tt','temp',cur.tt)+fld('Ty-','tb','temp',cur.tb);
+  } return ''; };
 function dirBox(cur){ return `<fieldset class="fs" style="width:fit-content;margin:6px auto"><legend>Direction</legend><label class="ck"><input type="checkbox" data-k="dir" value="global" ${cur.dir!=='local'?'checked':''}> Global</label><label class="ck"><input type="checkbox" data-k="dir" value="local" ${cur.dir==='local'?'checked':''}> Local</label></fieldset>`; }
-function panelSup(){ const s=M.cur.sup, d=(lab,key,sk)=>`<fieldset class="fs"><legend>${lab}</legend><div style="display:flex;gap:10px;align-items:center">
-  <label class="ck"><input type="checkbox" data-k="sup.${key}" value="0" ${s[key]===0?'checked':''}> Free</label><label class="ck"><input type="checkbox" data-k="sup.${key}" value="1" ${s[key]===1?'checked':''}> Fix</label>
-  <span style="border-left:1px solid #ccc;height:16px"></span><label class="ck"><input type="checkbox" data-k="sup.${key}" value="2" ${s[key]===2?'checked':''}> ${sk}</label></div></fieldset>`;
-  const th=s.ang*Math.PI/180;
+function panelSup(){ const s=M.cur.sup;
+  // as in Ftool: each direction has Free/Fix and, beside it, a Spring box; the stiffness box appears only when a spring is chosen
+  const d=(lab,key,sk)=>`<div style="display:flex;gap:4px"><fieldset class="fs" style="flex:1;min-width:0"><legend>${lab}</legend><div style="display:flex;gap:6px;align-items:center">
+  <label class="ck"><input type="checkbox" data-k="sup.${key}" value="0" ${s[key]===0?'checked':''}> Free</label><label class="ck"><input type="checkbox" data-k="sup.${key}" value="1" ${s[key]===1?'checked':''}> Fix</label></div></fieldset>
+  <fieldset class="fs"><legend>Spring</legend><label class="ck"><input type="checkbox" data-k="sup.${key}" value="2" ${s[key]===2?'checked':''}> ${sk}</label></fieldset></div>`;
+  const th=s.ang*Math.PI/180, anyFix=[s.x,s.y,s.r].includes(1), anySpr=[s.x,s.y,s.r].includes(2);
+  const pic=`<svg width="110" height="66" viewBox="0 0 110 66" aria-hidden="true" style="display:block;margin:2px auto"><g stroke="#000" fill="none" stroke-width="1"><path d="M30 52 L92 16"/><path d="M30 52 L18 26"/><path d="M30 52 H70 V30"/><path d="M84 16l8 0-4 7"/><path d="M15 32l3-6 4 5"/><path d="M52 40l8-5 1 7z"/></g>
+    <text x="96" y="18" font-size="11" font-family="Arial">x</text><text x="10" y="26" font-size="11" font-family="Arial">y</text><text x="74" y="44" font-size="11" font-family="Arial">V</text><text x="44" y="64" font-size="11" font-family="Arial">H</text><text x="6" y="64" font-size="11" font-family="Arial">Angle</text></svg>`;
   return `<div class="pt">Support Conditions</div><div class="grp"><div class="row">${ib('s-free','sfree','Free node supports (remove)')}${ib('a-sel','asel','Select nodes with current support conditions')}${ib('a-un','aun','Unapply from selected nodes')}${ib('a-app','aapp','Apply current support conditions to selected nodes')}</div></div>
    ${d('Displac. X','x','Kx')}${d('Displac. Y','y','Ky')}${d('Rotation Z','r','Kz')}
-   <div class="fl"><label>Angle:</label><input data-k="sup.ang" data-cat="none" value="${fmtNum(s.ang,'f',2)}"><span class="u">deg</span></div>
-   <div class="fl"><label>H:</label><input data-k="sup.H" data-cat="none" value="${fmtNum(Math.cos(th),'f',2)}"><span class="u"></span></div>
-   <div class="fl"><label>V:</label><input data-k="sup.V" data-cat="none" value="${fmtNum(Math.sin(th),'f',2)}"><span class="u"></span></div>
-   <fieldset class="fs"><legend><label class="ck"><input type="checkbox" data-k="sup.pr" ${s.pr?'checked':''}> Prescribed Displ./Rot.</label></legend>
+   <fieldset class="fs"><div class="fl"><label>Angle:</label><input data-k="sup.ang" data-cat="none" value="${fmtNum(s.ang,'f',2)}"><span class="u">deg</span></div>
+   <div class="fl"><label>H:</label><input data-k="sup.H" data-cat="none" value="${fmtNum(Math.cos(th),'f',2)}"><span class="u">${U('len')}</span></div>
+   <div class="fl"><label>V:</label><input data-k="sup.V" data-cat="none" value="${fmtNum(Math.sin(th),'f',2)}"><span class="u">${U('len')}</span></div>${pic}</fieldset>
+   <fieldset class="fs"><legend><label class="ck"><input type="checkbox" data-k="sup.pr" ${s.pr&&anyFix?'checked':''} ${anyFix?'':'disabled'}> Prescribed Displ./Rot.</label></legend>
     ${fld('Dx','sup.dx','disp',s.dx)}${fld('Dy','sup.dy','disp',s.dy)}${fld('Rz','sup.rz','rot',s.rz)}</fieldset>
-   <fieldset class="fs"><legend>Spring Stiffness Values</legend>${fld('Kx','sup.kx','spring',s.kx)}${fld('Ky','sup.ky','spring',s.ky)}${fld('Kz','sup.kz','rspring',s.kz)}</fieldset>`; }
+   ${anySpr?`<fieldset class="fs"><legend>Spring Stiffness Values</legend>${fld('Kx','sup.kx','spring',s.kx)}${fld('Ky','sup.ky','spring',s.ky)}${fld('Kz','sup.kz','rspring',s.kz)}</fieldset>`:''}`; }
 function panelHinge(){ const h=M.cur.hinge, o=(v,lbl,icon)=>`<button class="ib" data-act="hinge:${v}" aria-pressed="${h===v}" title="${lbl}" style="width:46px">${icon}</button>`;
   const bar=(a,b)=>`<svg viewBox="0 0 40 14" width="38" height="14" aria-hidden="true"><path d="M${a?7:2} 7H${b?33:38}" stroke="#1414E6" stroke-width="1.6"/>${a?'<circle cx="4.5" cy="7" r="2.6" fill="#fff" stroke="#1414E6" stroke-width="1.3"/>':'<path d="M2 3v8" stroke="#1414E6" stroke-width="1.6"/>'}${b?'<circle cx="35.5" cy="7" r="2.6" fill="#fff" stroke="#1414E6" stroke-width="1.3"/>':'<path d="M38 3v8" stroke="#1414E6" stroke-width="1.6"/>'}</svg>`;
   return `<div class="pt">Rotation Release</div><div class="grp"><div class="row">${ib('a-sel','asel','Select elements with current hinge')}${ib('a-un','aun','Unapply hinges from selected')}${ib('a-app','aapp','Apply current hinge to selected')}</div></div>
@@ -1109,7 +1117,7 @@ side.addEventListener('change',e=>{ const el=e.target, P0=ui.panel;
 side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) return; const P=ui.panel;
   if(k==='cur'){ M.cur[P]=el.value||null; save(); renderSide(); return; }
   if(k.startsWith('sup.')){ const f=k.slice(4), s=M.cur.sup;
-    if(['x','y','r'].includes(f)) s[f]=+el.value; else if(f==='pr') s.pr=el.checked;
+    if(['x','y','r'].includes(f)) s[f]=el.checked?+el.value:0; else if(f==='pr') s.pr=el.checked;
     else if(f==='ang'){ const v=pnum(el.value); if(v!=null) s.ang=v; } else if(f==='H'||f==='V'){ const th=s.ang*Math.PI/180; let H=Math.cos(th),V=Math.sin(th); const v=pnum(el.value); if(v==null) return; if(f==='H') H=v; else V=v; s.ang=Math.atan2(V,H)*180/Math.PI; }
     else { const v=pnum(el.value); if(v!=null) s[f]=fromD(el.dataset.cat,v); }
     save(); renderSide(); return; }

@@ -68,6 +68,9 @@ Copied from the real program on the owner's PC, November 2026. Keep these exact.
 - **Reactions**: dark red (#800000) arrows starting at the node, text rotated along vertical arrows; moment reaction as an arc with vertical text.
 - **Results mode** keeps the attribute panel visible but disabled. FOpenTool deliberately shows a results summary there instead (structure class, truss forces, reactions).
 - **Deformed configuration** shows no node values by default.
+- **Support Conditions panel**: four buttons (free node, select, unapply, apply); three rows, each a "Displac. X / Displac. Y / Rotation Z" box with Free and Fix, and beside it a "Spring" box with Kx / Ky / Kz. A box with Angle (deg), H (m, a combo box in Ftool), V (m) and a small sketch of the rotated axes. "Prescribed Displ./Rot." checkbox (disabled until some direction is fixed) with Dx, Dy (mm), Rz (rad). "Spring Stiffness Values" box appears only when a spring is ticked.
+- **Load panels with NONE selected** still show their fields, empty and disabled (End Moments: Ma, Mb with a sketch; Uniform and Linear: Direction box with Global checked; Thermal: "Ty+:" and "Ty-:" in °C).
+- **Rotation Release** (3 buttons, then node hinge on/off and four member options) and **Deformation Constraints** (select and apply buttons; Flexible Member, Axial Deformation, Shear Deformation; Rigid Member) match.
 - Material panel shows E, ν, α only; specific weight (gama) is stored and shown only in reports.
 
 ## Ftool `.ftl` format (version 401), as decoded
@@ -110,7 +113,7 @@ List indices are 1-based (0 = none). For fully fixed supports the angle is only 
 ## Next steps, in priority order
 
 **A. Finish Ftool parity (compare each against the real program first)**
-1. Compare the remaining panels with Ftool screenshots: Support Conditions, Rotation Release, Deformation Constraints, Nodal / End Moments / Uniform / Linear / Thermal loading, Units & Number Formatting dialog, Sign Convention dialog, Transform panel, keyboard-mode dialog, Totals, Model View Limits, About.
+1. Compare the remaining dialogs with Ftool screenshots (the attribute and load panels are done): Units & Number Formatting dialog, Sign Convention dialog, Transform panel, keyboard-mode dialog, Totals, Model View Limits, About.
 2. Compare influence-line mode, step lines/values, thermal results, inclined-support reaction reporting and hinge drawing with Ftool.
 3. Editing Mode "None" at startup.
 4. Decode the remaining `.ftl` fields (springs, prescribed displacements, node hinges, display flags 7–9 and 12–14, end-moment and thermal list order) with small sample files; then write `.ftl` files (Save as .ftl).
