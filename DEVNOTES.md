@@ -61,7 +61,9 @@ Copied from the real program on the owner's PC, November 2026. Keep these exact.
 - **New model defaults**: Grid off, grid spacing 1.00 m, Snap disabled while the grid is off, text size Small, Editing Mode box shows "None" until a tool is chosen (we show "Selection").
 - **New section form**: "New Label:" with an empty field, then a tree (Generic / Parameterized / Profile Tables) of check boxes, Integral Properties checked by default, **Done** and **Cancel** buttons at the bottom of the panel.
 - **Right-click** on a node or member selects it (red) and shows a monospace text report in the side panel ("Node / Attributes / Coordinates: ...", "Member / Attributes / Length = ... / Material: ... gama = 77.0 kN/m³ ... / Section: ... Normal orientation ... depth, ygc ..."). In results: "Node / Results / Support / Reactions: / None / Nodal / Displacements: / Dx = 0.000e+00 mm ..."; members: "Member / Shear Force / Diagram Results / Load Case: / Load Case 01 / Init: / 5.8 kN / End: / 0.8 kN / Define a reasonable step value to get results along member."
-- **Point query message** (red line under the toolbar): "Shear force at local pos.: x = 1.03 m  L = 2.00 m  -  Value: 3.2 kN".
+- **Point query message** (red line under the toolbar): "Shear force at local pos.: x = 1.03 m  L = 2.00 m  -  Value: 3.2 kN". Deformed: "Displ./rotat. at local pos.: x = 1.14 m  L = 1.50 m  -  Dx: 0.000e+00 mm  Dy: -1.348e+01 mm  Rz: -4.390e-03 rad".
+- **Point query drawing**: the queried member turns red (#FF0000), a red ordinate goes from the member to the diagram curve (deformed: from the undeformed point to the displaced point), and the value is written in red at its end (deformed: the component chosen in the DX/DY/RZ box, as -1.348e+01). The maximum-moment ordinate stays blue. Clicking empty canvas clears it.
+- **Members in results mode** are olive #666600 (the node color), not a different hue.
 - **Result scale box**: "Bending Moment: 27.2 kNm:1m". Default scale = max |value| / (0.1 × model size). Deformed Factor default = 0.1 × model size / max displacement.
 - **Reactions**: dark red (#800000) arrows starting at the node, text rotated along vertical arrows; moment reaction as an arc with vertical text.
 - **Results mode** keeps the attribute panel visible but disabled. FOpenTool deliberately shows a results summary there instead (structure class, truss forces, reactions).
@@ -74,7 +76,7 @@ Plain text, CRLF, Latin-1. Line numbers below are 1-based. Internal units kN and
 
 ```
 1   401 0                      format version
-2-16                           view, limits (line 6), grid spacing (line 7: dx dy), 15 display flags (line 8, order not confirmed), colors/sizes
+2-16                           view, limits (line 6), grid spacing (line 7: dx dy), 15 display flags (line 8, see below), colors/sizes
 17  nCases                     then nCases lines: 'Load Case 01' 1
     0                          one reserved line
     nNodal,  then lines: 'name' fx fy mz
@@ -95,7 +97,9 @@ topology (traversal), until EOF:
                               id hi hj ? shear axial  /  material idx  /  section idx  /  end-moment idx  /  uniform idx  /  linear idx  /  thermal idx
     a node record after a member belongs to that member's end node; the first node record belongs to the next member's start node.
 ```
-List indices are 1-based (0 = none). For fully fixed supports the angle is only the glyph direction; the reader sets it to 0. Unknown fields: springs, prescribed displacements, node hinges, load trains, the meaning of the display flags. To decode them, create small `.ftl` files in Ftool with only that feature and diff them.
+Line 8 display flags, 1 = on, in this order: Dimension Lines, Member Orientation, Supports, Loading with Results, Loading while Editing, Load/Spring Values, Result Values, then (assumed, all 0 in the samples) Step Lines, Step Values, Transversal Values, then Reactions, Reaction Values (confirmed), then (assumed) Bending Moment Sign, Node Numbers, Member Numbers. Confirmed by reading Ftool's Display menu check marks for `projeto.ftl`. The reader applies them.
+
+List indices are 1-based (0 = none). For fully fixed supports the angle is only the glyph direction; the reader sets it to 0. Unknown fields: springs, prescribed displacements, node hinges, load trains, display flags 7–9 and 12–14. To decode them, create small `.ftl` files in Ftool with only that feature and diff them.
 
 ## Verification
 
@@ -109,7 +113,7 @@ List indices are 1-based (0 = none). For fully fixed supports the angle is only 
 1. Compare the remaining panels with Ftool screenshots: Support Conditions, Rotation Release, Deformation Constraints, Nodal / End Moments / Uniform / Linear / Thermal loading, Units & Number Formatting dialog, Sign Convention dialog, Transform panel, keyboard-mode dialog, Totals, Model View Limits, About.
 2. Compare influence-line mode, step lines/values, thermal results, inclined-support reaction reporting and hinge drawing with Ftool.
 3. Editing Mode "None" at startup.
-4. Decode the remaining `.ftl` fields (springs, prescribed displacements, node hinges, display flags, end-moment and thermal list order) with small sample files; then write `.ftl` files (Save as .ftl).
+4. Decode the remaining `.ftl` fields (springs, prescribed displacements, node hinges, display flags 7–9 and 12–14, end-moment and thermal list order) with small sample files; then write `.ftl` files (Save as .ftl).
 5. Load cases and combinations, load trains and envelopes (Ftool's advanced features; large).
 6. Profile tables (needs the shape data) and the girder section; section mirror/rotate buttons.
 7. Mouse-driven transformations, Maintain Topology, animated deformed shape.

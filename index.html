@@ -600,9 +600,9 @@ const cv=$('#cv'), ctx=cv.getContext('2d');
 let view={ox:0,oy:0,s:60},W=0,H=0,dpr=1;
 const toS=(x,y)=>[view.ox+x*view.s,view.oy-y*view.s], toW=(sx,sy)=>[(sx-view.ox)/view.s,(view.oy-sy)/view.s];
 const PAL={
-  white:{bg:'#FFFFFF',grid:'#6F6F6F',mem:'#808000',node:'#3C3C00',sel:'#FF0000',load:'#0000A0',sup:'#007A00',dim:'#000000',diag:'#0000FF',rmem:'#A000A0',val:'#E00000',react:'#800000',fence:'#FF0000',cross:'#00A000',hint:'#FF8000'},
-  gray:{bg:'#C8C8C8',grid:'#5A5A5A',mem:'#5A5A00',node:'#2A2A00',sel:'#D00000',load:'#00007A',sup:'#005A00',dim:'#000000',diag:'#0000C8',rmem:'#7A007A',val:'#B00000',react:'#600000',fence:'#D00000',cross:'#007000',hint:'#B05000'},
-  black:{bg:'#000000',grid:'#8C8C8C',mem:'#FFFF00',node:'#FFFF9A',sel:'#FF5050',load:'#00FFFF',sup:'#00FF00',dim:'#FFFFFF',diag:'#8C8CFF',rmem:'#FF7CFF',val:'#FF6A6A',react:'#FF8C8C',fence:'#FF5050',cross:'#50FF50',hint:'#FFA040'},
+  white:{bg:'#FFFFFF',grid:'#6F6F6F',mem:'#808000',node:'#3C3C00',sel:'#FF0000',load:'#0000A0',sup:'#007A00',dim:'#000000',diag:'#0000FF',rmem:'#666600',val:'#E00000',react:'#800000',fence:'#FF0000',cross:'#00A000',hint:'#FF8000'},
+  gray:{bg:'#C8C8C8',grid:'#5A5A5A',mem:'#5A5A00',node:'#2A2A00',sel:'#D00000',load:'#00007A',sup:'#005A00',dim:'#000000',diag:'#0000C8',rmem:'#4A4A00',val:'#B00000',react:'#600000',fence:'#D00000',cross:'#007000',hint:'#B05000'},
+  black:{bg:'#000000',grid:'#8C8C8C',mem:'#FFFF00',node:'#FFFF9A',sel:'#FF5050',load:'#00FFFF',sup:'#00FF00',dim:'#FFFFFF',diag:'#8C8CFF',rmem:'#CCCC00',val:'#FF6A6A',react:'#FF8C8C',fence:'#FF5050',cross:'#50FF50',hint:'#FFA040'},
   mono:{bg:'#FFFFFF',grid:'#7A7A7A',mem:'#000000',node:'#000000',sel:'#FF0000',load:'#000000',sup:'#000000',dim:'#000000',diag:'#000000',rmem:'#000000',val:'#000000',react:'#000000',fence:'#FF0000',cross:'#00A000',hint:'#000000'}};
 const C=()=>PAL[M.disp.bg]||PAL.white;
 const SZ={S:.75,M:1,L:1.35}, sz=k=>SZ[M.opt[k]]||1;
@@ -736,7 +736,7 @@ function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loa
 function drawModel(resMode){ const P=C();
   const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=3.6*sz('hinge');
   for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
-    const bad=RES&&RES.bad===m.id&&!RES.ok; ctx.strokeStyle=sel||bad?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
+    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=sel||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
     const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
     ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
     if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr*1.6,y1+uy*hr*1.6,hr,0,7); ctx.fill(); ctx.stroke(); }
@@ -865,6 +865,16 @@ function drawIL(){ const P=C(), il=ui.il; if(!il) return; const f=curScale(), di
     if(M.disp.resVal){ let ex=ps[0]; ps.forEach(p=>{ if(Math.abs(p.v)>Math.abs(ex.v)) ex=p; }); if(Math.abs(ex.v)>il.ext*.05){ const dx=ex.o[0]-ex.b[0],dy=ex.o[1]-ex.b[1],d=Math.hypot(dx,dy)||1; ctx.strokeStyle=P.diag; ctx.lineWidth=.8; line(...ex.b,...ex.o);
       text(fmtNum(q==='M'?toD('len',ex.v):ex.v,'f',3),ex.o[0]+dx/d*8,ex.o[1]+dy/d*8,P.val,readAng(r.c,-r.s)); } } }
   const T=RES.rm.get(il.tid); if(T){ const a=nodeById(T.m.i), [sx,sy]=toS(a.x+T.c*il.xs,a.y+T.s*il.xs), nx=-T.s, ny=-T.c; ctx.strokeStyle=P.sel; ctx.lineWidth=2; line(sx+nx*10,sy+ny*10,sx-nx*10,sy-ny*10); } }
+// Point query marker, as in Ftool: a red ordinate from the member to the diagram (or to the deformed shape) with the value at its end
+function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+1e-9||ui.q==='S') return; const P=C(), a=nodeById(r.m.i), x=pq.x, bx=a.x+r.c*x, by=a.y+r.s*x, b=toS(bx,by); let o, lbl;
+  if(ui.res==='il'){ const il=ui.il, ln=il&&il.lines.find(l=>l.r===r); if(!ln) return; let best=ln.pts[0]; ln.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
+    const q=ui.q, side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up), w=best.v*curScale(); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fmtNum(q==='M'?toD('len',best.v):best.v,'f',3); }
+  else if(ui.q==='D'){ const f=curScale(), d=r.defl(x); o=toS(bx+f*d[0],by+f*d[1]); if(ui.defComp==='none') lbl=null; else lbl=ui.defComp==='Dx'?fmtNum(toD('disp',d[0]),'e',3):ui.defComp==='Dy'?fmtNum(toD('disp',d[1]),'e',3):fmtNum(toD('rot',r.rotAt(x)),'e',3); }
+  else { const q=ui.q, v=r.val(q,x), side=q==='M'?r.low.map(t=>t*(M.opt.mPos==='tension'?1:-1)):r.up, w=offWorld(v); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fq(QN[q][1],q==='M'&&!M.disp.mSign?Math.abs(v):v); }
+  ctx.strokeStyle=P.sel; ctx.lineWidth=1; line(...b,...o);
+  if(lbl==null) return; const dx=o[0]-b[0], dy=o[1]-b[1], d=Math.hypot(dx,dy);
+  if(d<2){ text(lbl,o[0],o[1]-8,P.sel); return; }
+  text(lbl,o[0]+dx/d*9,o[1]+dy/d*9,P.sel,ui.q==='D'?0:(M.disp.transv?readAng(r.s,r.c)+Math.PI/2:readAng(r.c,-r.s))); }
 function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=34*sz('load'); let mx=0; for(let i=0;i<RES.nd;i++) if(RES.fixed[i]===1) mx=Math.max(mx,Math.abs(RES.R[i])); const tol=1e-9*Math.max(mx,1e-9);
   M.nodes.forEach(n=>{ const k=RES.idx.get(n.id); if(!n.sup) return; const [x,y]=toS(n.x,n.y), th=(n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, off=18*sz('sup');
     const dir=(lx,ly)=>[lx*c-ly*s,-(lx*s+ly*c)];
@@ -889,15 +899,15 @@ function draw(){ if(!W) return; ctx.setTransform(dpr,0,0,dpr,0,0); const P=C(); 
   $('#stage').style.background=P.bg; drawGrid(); drawDims();
   const res=ui.res&&RES&&RES.ok;
   drawModel(res);
-  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else drawDiagram(); } else if(ui.res==='il') drawIL(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
+  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else drawDiagram(); } else if(ui.res==='il') drawIL(); drawQuery(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
   else if(M.disp.loadEdit) drawLoads();
   drawTool(); updateStatus(); }
 
 /* ================= Results control ================= */
 function recompute(){ RES=analyze(M); if(!RES.ok){ ui.msg=RES.error; return; } if(ui.res==='il'&&ui.il){ const T=RES.rm.get(ui.il.tid); ui.il=T?influence(RES,ui.il.tid,Math.min(ui.il.xs,T.L),ui.q):null; } }
-function enterResults(mode,q){ if(q) ui.q=q; ui.res=mode; if(mode==='il'&&(ui.q==='D'||ui.q==='S')) ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
+function enterResults(mode,q){ ui.pq=null; if(q) ui.q=q; ui.res=mode; if(mode==='il'&&(ui.q==='D'||ui.q==='S')) ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
   if(mode==='il'&&!ui.il){ ui.ilPick=true; } renderAll(); }
-function exitResults(){ ui.res=null; ui.il=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
+function exitResults(){ ui.pq=null; ui.res=null; ui.il=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
 function resMsg(){ if(!RES||!RES.ok) return RES?RES.error:''; const w=RES.warn&&RES.warn.length?RES.warn[0]+'  ':'';
   if(ui.res==='diag'&&ui.q==='S') return w+(ui.cut?'Section stresses shown. Click another point on a member to move the cut.':'Select a point on a member to see the stresses in its cross-section.');
   return w+resMsgBase(); }
@@ -1250,16 +1260,16 @@ function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy),
   if(shift&&ui.sel.t===t){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; }
   else ui.sel={t,ids:new Set([id])};
   renderAll(); }
-function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8); if(!hm){ ui.msg=''; renderTop(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
-  if(ui.res==='il'){ if(ui.ilPick){ ui.il=influence(RES,r.m.id,x,ui.q); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
-    pointQuery(hm); renderTop(); return; }
+function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8); if(!hm){ ui.msg=''; ui.pq=null; renderTop(); draw(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
+  if(ui.res==='il'){ if(ui.ilPick){ ui.pq=null; ui.il=influence(RES,r.m.id,x,ui.q); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
+    pointQuery(hm); renderTop(); draw(); return; }
   if(ui.q==='S'){ ui.cut={mid:r.m.id,xi:hm.t}; ui.info=null; ui.msg=''; renderAll(); return; }
-  pointQuery(hm); renderTop(); }
+  pointQuery(hm); renderTop(); draw(); }
 // Value at a point, written to the message line in Ftool's wording
-function pointQuery(hm){ const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L, pos=`at local pos.: x = ${fqu('len',x)}  L = ${fqu('len',r.L)}  -  `;
+function pointQuery(hm){ const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L; ui.pq={mid:r.m.id,x}; const pos=`at local pos.: x = ${fqu('len',x)}  L = ${fqu('len',r.L)}  -  `;
   if(ui.res==='il'){ if(!ui.il) return; const line=ui.il.lines.find(l=>l.r===r); if(!line) return; let best=line.pts[0]; line.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
     ui.msg=`Influence line ${pos}Value: ${fmtNum(ui.q==='M'?toD('len',best.v):best.v,'f',3)}${ui.q==='M'?' '+U('len'):''}`; return; }
-  if(ui.q==='D'){ const d=r.defl(x); ui.msg=`Deformed configuration ${pos}Dx: ${fmtNum(toD('disp',d[0]),'e',3)} ${U('disp')}  Dy: ${fmtNum(toD('disp',d[1]),'e',3)} ${U('disp')}  Rz: ${fmtNum(toD('rot',r.rotAt(x)),'e',3)} ${U('rot')}`; return; }
+  if(ui.q==='D'){ const d=r.defl(x); ui.msg=`Displ./rotat. ${pos}Dx: ${fmtNum(toD('disp',d[0]),'e',3)} ${U('disp')}  Dy: ${fmtNum(toD('disp',d[1]),'e',3)} ${U('disp')}  Rz: ${fmtNum(toD('rot',r.rotAt(x)),'e',3)} ${U('rot')}`; return; }
   const v=r.val(ui.q,x), nm={N:'Axial force',V:'Shear force',M:'Bending moment'}[ui.q];
   ui.msg=`${nm} ${pos}Value: ${fqu(QN[ui.q][1],v)}${ui.q==='N'?(v>1e-9?' (tension)':v<-1e-9?' (compression)':''):''}`; }
 cv.addEventListener('wheel',e=>{ e.preventDefault(); const [sx,sy]=sp(e); zoomAt(sx,sy,Math.exp(-e.deltaY*.0015)); },{passive:false});
@@ -1271,7 +1281,7 @@ function setTool(t){ if(ui.res) exitResults(); ui.tool=t; ui.pts=[]; ui.zoomStar
 $$('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 $$('[data-panel]').forEach(b=>b.onclick=()=>{ ui.panel=b.dataset.panel; ui.creating=null; ui.renaming=null; ui.info=null; renderAll(); });
 $$('[data-rmode]').forEach(b=>b.onclick=()=>enterResults(b.dataset.rmode,ui.res==='il'&&b.dataset.rmode==='diag'?ui.q:null));
-$$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; if(ui.res==='il'){ if(ui.il) ui.il=influence(RES,ui.il.tid,ui.il.xs,ui.q); } ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
+$$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; ui.pq=null; if(ui.res==='il'){ if(ui.il) ui.il=influence(RES,ui.il.tid,ui.il.xs,ui.q); } ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
 $('#defComp').onchange=e=>{ ui.defComp=e.target.value; draw(); };
 $('#bIlPick').onclick=()=>{ ui.ilPick=!ui.ilPick; ui.msg=''; renderTop(); };
 $('#pot').oninput=e=>{ ui.pot=+e.target.value; renderTop(); draw(); };
@@ -1384,6 +1394,8 @@ function parseFtl(txt){
   if(!/^\s*401\b/.test(L[0])) warn.push(`This file uses format ${L[0].trim().split(/\s+/)[0]}; FOpenTool was built for format 401 (Ftool 4.x).`);
   const Md=newModel(); Md.units=defUnits('SI');
   const g=nums(L[6]); if(g[0]>0&&g[1]>0){ Md.grid.dx=g[0]; Md.grid.dy=g[1]; }
+  // line 8: 15 Display menu flags. Slots 0-6, 10 and 11 confirmed against Ftool's menu; 7-9 and 12-14 assumed (all zero in the samples).
+  const df=nums(L[7]); if(df.length>=15) ['dims','orient','sups','loadRes','loadEdit','loadVal','resVal','stepLines','stepVal','transv','reac','reacVal','mSign','nodeNum','memNum'].forEach((k,j)=>{ Md.disp[k]=df[j]===1; });
   i=16; const nCases=int(); i+=nCases; i++;                                     // load cases, then one reserved line
   const lst=(k,fn)=>{ const n=int(); for(let c=0;c<n;c++){ const s=L[i++]; Md.lists[k].push({id:'i'+(Md.next.i++),name:name(s),...fn(nums(s),s)}); } };
   lst('nodal',v=>({fx:v[0]||0,fy:v[1]||0,mz:v[2]||0}));

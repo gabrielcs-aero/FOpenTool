@@ -29,11 +29,11 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Axial, shear and bending moment diagrams, deformed configuration, support reactions.
 - Influence lines for axial force, shear and bending moment at any section.
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).
-- Result scale box and slider, step lines and step values, point queries by clicking a member, CSV export of line results.
+- Result scale box and slider, step lines and step values, point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
 
 - Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
 
-**Files**: opens Ftool `.ftl` files (format 401, Ftool 4.x) and FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
+**Files**: opens Ftool `.ftl` files (format 401, Ftool 4.x), including their display settings and FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
 
 **Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting (SI or kN and m). The menus follow Ftool 4.01.
 
