@@ -1662,8 +1662,12 @@ function fileSave(){ let fmt='ftl'; const text=()=>fmt==='ftl'?writeFtl(M):JSON.
       b.querySelector('#svNote').textContent=fmt==='ftl'?'Ftool 4.x opens this file. FOpenTool-only settings (truss mode, stress units, step mode) are not part of the .ftl format.':'Keeps everything, including FOpenTool-only settings. Open it later with File > Open.'; };
     b.querySelectorAll('[name=svf]').forEach(r=>r.onchange=()=>{ fmt=r.value; upd(); }); upd();
     b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta);
-    b.querySelector('#svDown').onclick=()=>{ fileName=(b.querySelector('#svName').value.trim()||'model').replace(/\.(ftl|json)$/i,''); const t=ta.value;
+    b.querySelector('#svDown').onclick=async()=>{ fileName=(b.querySelector('#svName').value.trim()||'model').replace(/\.(ftl|json)$/i,''); const t=ta.value;
       const data=fmt==='ftl'?Uint8Array.from(t,c=>{ const k=c.charCodeAt(0); return k<256?k:63; }):t;   /* Ftool reads Latin-1 */
+      /* inside the claude.ai viewer, files go through its downloads capability, which allows .txt but not .ftl */
+      const dl=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
+      if(dl){ try{ await dl.save({filename:fileName+(fmt==='ftl'?'.ftl.txt':'.json'),data}); ui.msg=fmt==='ftl'?'Saved. Rename the file to end in .ftl before opening it in Ftool.':'Saved.'; }
+        catch(e){ ui.msg=e&&e.code==='declined'?'':'This page cannot save files here. Use Copy and save the text yourself.'; } renderTop(); return; }
       try{ const u=URL.createObjectURL(new Blob([data],{type:'application/octet-stream'})), el=document.createElement('a'); el.href=u; el.download=fileName+'.'+fmt; document.body.appendChild(el); el.click(); el.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
       catch(e){ ui.msg='This page cannot download files here. Use Copy and save the text yourself.'; renderTop(); } }; }); }
 function copyText(t,btn,ta){ const ok=()=>{ btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }; const fb=()=>{ if(ta){ ta.focus(); ta.select(); } btn.textContent='Press Ctrl+C'; };
