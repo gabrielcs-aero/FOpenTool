@@ -12,6 +12,7 @@ Still to do:
 - [ ] Load trains (moving loads) and load-train envelopes
 - [ ] Load cases, load combinations and their envelopes
 - [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec) and the girder section
+- [ ] Section parameters as in Ftool (Angle d b t, Z d b t, Double Angle d b t e, Box d b tw tf) and their `.ftl` order
 - [ ] Mirror and rotate buttons for sections
 - [x] "Maintain Topology" and Ftool's Transform panel
 - [x] Ftool's dialogs: Units & Number Formatting, Sign Convention, keyboard input, Totals, Window limits, Credits
@@ -22,6 +23,7 @@ Still to do:
 - [x] Reading springs, prescribed displacements, node hinges, units and display sizes from `.ftl`
 - [x] Writing `.ftl` files (Ftool opens them)
 - [ ] Load trains in `.ftl`
+- [x] Editing Mode "None" at startup, Ftool's reaction report (springs, inclined axes) and hinge drawing
 - [ ] Export Model Screen formats: DXF, SVG, PDF, EMF, EPS, PostScript, CGM, DGN
 
 ## Stage 2: Mechanics of Solids 1 (FGA0154)
