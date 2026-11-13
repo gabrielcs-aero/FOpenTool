@@ -89,37 +89,55 @@ Dialogs and modes compared in session 3 (all copied):
 - **Influence lines**: entering the mode or changing the quantity clears the line and asks "Indicate a member section for which to display a bending moment influence line."; after a pick: "Bending moment influence line for section at local pos.: x = 1.00 m  L = 2.00 m". Clicking again picks a new section. Box "Infl. Line Factor:" (2 decimals, empty before a pick), default 0.1 × model size / largest ordinate. The section is a red dot. The line is cut at the section; each straight piece shows its end ordinates and values (4 decimals), a constant piece one value in the middle.
 - **Errors**: analysis without materials shows a message box "You must define materials to all members!".
 - Toolbar Load Case box shows "Load Case 01"; Options "Add static load results to load-train envelope" is checked by default.
+- **Reactions report**: for any node with a support, Fx, Fy and Mz are all listed (0.0 for free directions), in the support's axes for inclined supports, spring forces included (−k·D).
+- **Hinges**: a member-end hinge is a circle touching the node on the member side; a node hinge is a circle around the node with the node dot inside.
+- **Section parameters in Ftool's panels** (read from the window controls, still to copy in FOpenTool, item A6): Rectangle d, b; I-shape d, b, tw, tf (+h); Angle d, b, t; T-shape d, b, tw, tf; C-shape d, b, tw, tf; Z-shape d, b, t; Circle d; Ring d, t; Double Angle d, b, t, e; Girder Section b1, b2, tw, d1–d5; Box d, b, tw, tf. Each shows A, As, I below, with an I unit box offering mm, cm, m, in, ft. Load Train panel: Impact Factor, Length, Concentrated Loads, Distrib. Loads [kN/m] with "Single load car (q)" / "Full/empty car (q/q')", Live Load [kN/m].
 
-## Ftool `.ftl` format (version 401), as decoded
+## Ftool `.ftl` format (version 401), fully decoded (session 3)
 
-Plain text, CRLF, Latin-1. Line numbers below are 1-based. Internal units kN and m.
+Plain text, CRLF, Latin-1. Line numbers are 1-based. Internal units kN, m, rad. Decoded by changing one thing at a time in a separate Ftool and diffing its saves; the reader and writer (`parseFtl`, `writeFtl`) follow this exactly, and Ftool opens files written by FOpenTool (checked on a two-bay frame with a closed loop, hinge, inclined roller, spring, settlement, thermal and local linear loads: identical moments and reactions).
 
 ```
-1   401 0                      format version
-2-16                           view, limits (line 6), grid spacing (line 7: dx dy), 15 display flags (line 8, see below), colors/sizes
-17  nCases                     then nCases lines: 'Load Case 01' 1
-    0                          one reserved line
-    nNodal,  then lines: 'name' fx fy mz
-    nEndMom, then lines: 'name' ma mb            (assumed, no sample yet)
-    nUnif,   then lines: dir 'name' qx qy        (dir 0 = global, 1 = local)
-    nLin,    then lines: dir 'name' pxi pyi pxj pyj   (order confirmed against Ftool)
-    nTherm,  then lines: 'name' tt tb            (assumed, no sample yet)
-    nMat,    then pairs: 'name' type  /  E nu gamma alpha     (type 0 generic, 1 steel, 2 concrete?, 3 aluminium?)
-    nSec,    then pairs: 'name' type orientation  /  params
-             type 0 integral (A As I d yb, assumed), 1 rect (h b, assumed), 2 I (d b tw tf), 4 T (d b tw tf);
-             3 angle, 5 C, 6 Z, 7 circle, 8 ring, 9 double angle, 10 girder, 11 box assumed from the menu order
-    nTrains                    load trains (not decoded; reader stops with a message if > 0)
-    nDims,   then lines: ax ay bx by  cx cy dx dy    (cx,cy / dx,dy = dimension-line ends)
-topology (traversal), until EOF:
-    node record (4 lines):  id sx sy sz angle   /  three ints (unknown, maybe springs/prescribed flags)  /  nodal-load index  /  four ints (unknown)
-    count line (number of member records that follow)
-    member record (11 lines): 11-int header (start id at 5th, end id at 8th, member id last)  /  xj yj  /  0  /  xi xj yi yj  /
-                              id hi hj ? shear axial  /  material idx  /  section idx  /  end-moment idx  /  uniform idx  /  linear idx  /  thermal idx
-    a node record after a member belongs to that member's end node; the first node record belongs to the next member's start node.
+1   401 0
+2   206          3   1                                (constants)
+4   0 1 1 v0 nFaces maxVertexId maxEdgeId 0 0 0 0      v0 = id of the first vertex
+5   x y of the first vertex
+6   -1e30 1e30 -1e30 1e30                              (view limits, unused)
+7   grid dx dy
+8   15 Display flags: dims orient sups loadRes loadEdit loadVal resVal stepLines stepVal transv reac reacVal mSign nodeNum memNum (all confirmed)
+9   0 0
+10  unit codes: len disp rot force moment dist E gamma temp alpha
+11  unit codes: sec area inertia spring rspring ? ?
+12  format codes: len disp rot force ilF moment ilM dist E gamma
+13  format codes: alpha temp sec area inertia spring rspring ? ? ?
+14  1 1          15  0 1 1 1 1 0
+16  display sizes: support/hinge load text (0 small, 1 medium, 2 large)
+17  nCases, then 'Load Case 01' 1;  then one line 0
+    nNodal  'name' fx fy mz
+    nEndMom 'name' ma mb
+    nUnif   dir 'name' qx qy               (dir 0 global, 1 local)
+    nLin    dir 'name' pxi pyi pxj pyj
+    nTherm  'name' ty+ ty-
+    nMat    'name' type / E nu gamma alpha   (type 0 generic, 1 steel; 2 concrete, 3 aluminium assumed)
+    nSec    'name' type orientation / params (0 integral A As I d yb (assumed), 1 rect h b, 2 I d b tw tf, 4 T d b tw tf; others by menu order)
+    nTrains (load trains: not decoded yet, the reader stops)
+    nDims   ax ay bx by cx cy dx dy         (c, d = ends of the dimension line)
 ```
-Line 8 display flags, 1 = on, in this order: Dimension Lines, Member Orientation, Supports, Loading with Results, Loading while Editing, Load/Spring Values, Result Values, then (assumed, all 0 in the samples) Step Lines, Step Values, Transversal Values, then Reactions, Reaction Values (confirmed), then (assumed) Bending Moment Sign, Node Numbers, Member Numbers. Confirmed by reading Ftool's Display menu check marks for `projeto.ftl`. The reader applies them.
+Unit code = base + flags. Bases: length 3, area 9, inertia 17, rotation 4, force 33, moment 65, distributed 129, E 513, specific weight 1025, spring 4097, rotational spring 8193 (temperature 2049, α 257 fixed). Flags: force N 0x4000, tf 0x8000; length cm 0x10000, mm 0x20000; degrees 0x40000. E.g. MPa = 513+0x4000+0x20000 = 147969. Format code = 2·digits, +1 for exponential (x.xxx e±xx = 7). Changing a unit in Ftool also resets that row's format.
 
-List indices are 1-based (0 = none). For fully fixed supports the angle is only the glyph direction; the reader sets it to 0. Unknown fields: springs, prescribed displacements, node hinges, load trains, display flags 7–9 and 12–14. To decode them, create small `.ftl` files in Ftool with only that feature and diff them.
+Topology is a list of Euler operations on Ftool's half-edge structure (faces lie to the right of their half-edges):
+```
+node record of vertex v0 (4 lines):  id sx sy sz angle  /  kx ky kz  /  nodal-load index  /  prescribed dx dy rz   (s: 0 free, 1 fixed, 2 spring; angle in degrees)
+then entities, each preceded by a line "1"; the list ends with " 0".
+  type 2, make edge + vertex:  "2 1 f f v1 v2 v2 vNew vStart 1 edgeId" / x y of vNew / 0 / member bounding box xmin xmax ymin ymax / member line / 6 indices / node record of vNew
+  type 4, make edge + face:    "4 1 f v1 v2 v3 v4 fNew vStart 1 edgeId" / bounding box of the component / 0 / member bounding box / member line / 6 indices
+  type 10, lone vertex:        "10 1 1 v 0 0 0 0 0 0 0" / x y / node record
+member line: id hi hj rigid shear axial;  6 indices (1-based, 0 = none): material section endMoment uniform linear thermal
+```
+- The member runs from vertex `vStart` to the other end (the bounding-box line is not the orientation).
+- In type 2, v2 is a neighbour of v1: the new edge goes just before the half-edge v1→v2, i.e. v2 is the first neighbour counterclockwise from the new edge's direction; for a vertex with no edges v2 = v1. Type 4 links v1 and v3 the same way (v2, v4 their neighbours) and the loop from v1→v2 up to v3 becomes face fNew.
+- A node hinge is written as hinges at every member end at that node. A rigid member has rigid = shear = axial = 1.
+- A fully fixed support keeps its angle only for the drawing (0 = ground below, −90 = wall on the left); its reactions are in global axes. Other supports use the angle as their axes.
 
 ## Verification
 
@@ -133,7 +151,7 @@ List indices are 1-based (0 = none). For fully fixed supports the angle is only 
 1. ~~Dialogs~~ (done in session 3: Units, Sign Convention, Transform, keyboard mode, Totals, Model View Limits, Credits).
 2. Influence lines and step lines/values are done. Still to compare: thermal results, inclined-support reaction drawing and reports, hinge drawing (needs small models in Ftool).
 3. ~~Editing Mode "None" at startup~~ (done).
-4. Decode the remaining `.ftl` fields (springs, prescribed displacements, node hinges, display flags 7–9 and 12–14, end-moment and thermal list order) with small sample files; then write `.ftl` files (Save as .ftl).
+4. ~~Decode the .ftl format and write .ftl~~ (done in session 3; only load trains remain, decode them together with item 5).
 5. Load cases and combinations, load trains and envelopes (Ftool's advanced features; large).
 6. Profile tables (needs the shape data) and the girder section; section mirror/rotate buttons.
 7. Mouse-driven transformations, Maintain Topology, animated deformed shape.

@@ -19,8 +19,9 @@ Still to do:
 - [ ] Mouse-driven transformations
 - [ ] Animated deformed shape
 - [x] Reading Ftool `.ftl` files (lists, sections, materials, dimension lines, supports, member attributes)
-- [ ] Reading springs, prescribed displacements, node hinges and load trains from `.ftl` (need sample files to decode)
-- [ ] Writing `.ftl` files
+- [x] Reading springs, prescribed displacements, node hinges, units and display sizes from `.ftl`
+- [x] Writing `.ftl` files (Ftool opens them)
+- [ ] Load trains in `.ftl`
 - [ ] Export Model Screen formats: DXF, SVG, PDF, EMF, EPS, PostScript, CGM, DGN
 
 ## Stage 2: Mechanics of Solids 1 (FGA0154)

@@ -414,7 +414,7 @@ function exampleModel(){
   const P=newItem('nodal',{name:'P',fx:0,fy:-.8,mz:0});
   M.cur.mat=st.id; M.cur.sec=sc.id; M.cur.unif=q.id; M.cur.nodal=P.id;
   const xs=[0,1,3,4.5,5], ns=xs.map(x=>addNode(x,0));
-  ns[0].sup={x:1,y:1,r:1,ang:0,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0}; ns[3].load=P.id;
+  ns[0].sup={x:1,y:1,r:1,ang:-90,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0}; ns[3].load=P.id;
   for(let k=0;k<4;k++) addMember(ns[k].id,ns[k+1].id);
   M.members[1].ld.u=q.id;
   M.dims.push({id:M.next.d++,ax:0,ay:0,bx:1,by:0,off:-1},{id:M.next.d++,ax:1,ay:0,bx:3,by:0,off:-1.5},{id:M.next.d++,ax:3,ay:0,bx:4.5,by:0,off:-1},{id:M.next.d++,ax:4.5,ay:0,bx:5,by:0,off:-1.5});
@@ -475,18 +475,18 @@ function buildSystem(Md){
   if(!recs.length){ S.error='Every member has zero length.'; return S; }
   if(trussWarn) S.warn.push('Truss analysis: member loads (distributed loads and end moments) are ignored. Apply loads at the nodes.');
   S.recs=recs;
-  const fixed=new Uint8Array(nd), pres=new Float64Array(nd), rot=[];
+  const fixed=new Uint8Array(nd), pres=new Float64Array(nd), rot=[], spr=[];
   nodes.forEach((n,k)=>{
     if(!used[k]){ fixed[3*k]=fixed[3*k+1]=fixed[3*k+2]=3; return; }
     const ld=it('nodal',n.load); if(ld){ F[3*k]+=ld.fx||0; F[3*k+1]+=ld.fy||0; F[3*k+2]+=ld.mz||0; }
   });
   nodes.forEach((n,k)=>{ const sp=n.sup; if(!used[k]||!sp) return;
-    if(sp.ang){ const th=sp.ang*Math.PI/180, c=Math.cos(th), s=Math.sin(th), a=3*k, b=3*k+1; rot.push([k,c,s]);
+    if(sp.ang&&!(sp.x===1&&sp.y===1&&sp.r===1)){ const th=sp.ang*Math.PI/180, c=Math.cos(th), s=Math.sin(th), a=3*k, b=3*k+1; rot.push([k,c,s]);
       for(let j=0;j<nd;j++){ const ka=K[a][j],kb=K[b][j]; K[a][j]=c*ka+s*kb; K[b][j]=-s*ka+c*kb; }
       for(let i=0;i<nd;i++){ const ka=K[i][a],kb=K[i][b]; K[i][a]=c*ka+s*kb; K[i][b]=-s*ka+c*kb; }
       const fa=F[a],fb=F[b]; F[a]=c*fa+s*fb; F[b]=-s*fa+c*fb; }
     const st=[sp.x,sp.y,sp.r], kk=[sp.kx,sp.ky,sp.kz], pv=[sp.dx,sp.dy,sp.rz];
-    for(let d=0;d<3;d++){ if(st[d]===2) K[3*k+d][3*k+d]+=(kk[d]||0); if(st[d]===1){ fixed[3*k+d]=1; if(sp.pr) pres[3*k+d]=pv[d]||0; } }
+    for(let d=0;d<3;d++){ if(st[d]===2){ K[3*k+d][3*k+d]+=(kk[d]||0); spr.push([3*k+d,kk[d]||0]); } if(st[d]===1){ fixed[3*k+d]=1; if(sp.pr) pres[3*k+d]=pv[d]||0; } }
   });
   let maxD=0; for(let i=0;i<nd;i++) maxD=Math.max(maxD,Math.abs(K[i][i]));
   nodes.forEach((n,k)=>{ const i=3*k+2; if(used[k]&&!fixed[i]&&Math.abs(K[i][i])<=1e-12*maxD){ fixed[i]=2; const ld=it('nodal',n.load); if(ld&&ld.mz) S.warn.push(`The moment at node ${n.id} is ignored because all members there are hinged.`); } });
@@ -502,7 +502,7 @@ function buildSystem(Md){
     const pr=A[col], pv=pr[col];
     for(let r=col+1;r<nf;r++){ const rr=A[r], f=rr[col]/pv; rr[col]=f; if(f===0) continue; for(let c2=col+1;c2<nf;c2++) rr[c2]-=f*pr[c2]; }
   }
-  Object.assign(S,{K,F,fixed,pres,free,sc,LU:A,perm,rot,used});
+  Object.assign(S,{K,F,fixed,pres,free,sc,LU:A,perm,rot,used,spr});
   return S;
 }
 function luSolve(S,b){ // b: rhs on free dofs (unscaled) -> x (unscaled)
@@ -527,6 +527,8 @@ function analyze(Md){
   const S=buildSystem(Md); if(S.error) return S;
   const {Dp,D}=solveFor(S,S.F); const nd=S.nd, R=new Float64Array(nd);
   for(let i=0;i<nd;i++) if(S.fixed[i]===1){ let s=-S.F[i]; for(let j=0;j<nd;j++) s+=S.K[i][j]*Dp[j]; R[i]=s; }
+  for(const [i,k] of S.spr) R[i]=-k*Dp[i];   /* spring reactions, in the support axes, as Ftool reports them */
+  S.hasR=i=>S.fixed[i]===1||S.spr.some(s=>s[0]===i);
   S.D=D; S.R=R; S.rm=new Map();
   for(const r of S.recs){ const {ul,q}=memberEnd(r,D,r.qfAll,r.qf); r.ul=ul; r.q=q; const L=r.L;
     r.N=x=>-q[0]-(r.pi*x+(r.pj-r.pi)*x*x/(2*L));
@@ -734,9 +736,8 @@ function drawSupport(n){ const P=C(), sp=n.sup; if(!sp||!M.disp.sups) return; co
   const hat=(x1,y1,x2,y2,dx,dy)=>{ line(x1,y1,x2,y2); for(let i=0;i<=5;i++){ const t=i/5,px=x1+(x2-x1)*t,py=y1+(y2-y1)*t; line(px,py,px+dx,py+dy); } };
   const spring=(dx,dy)=>{ ctx.beginPath(); ctx.moveTo(0,0); const L=k*1.6; for(let i=1;i<=6;i++){ const t=i/7*L, o=(i%2?1:-1)*k*.3; ctx.lineTo(dx*t-dy*o,dy*t+dx*o); } ctx.lineTo(dx*L,dy*L); ctx.stroke(); };
   const s=[sp.x,sp.y,sp.r];
-  if(s[0]===1&&s[1]===1&&s[2]===1){ const m=M.members.find(m=>m.i===n.id||m.j===n.id); let ang=Math.PI/2;
-    if(m){ const o=nodeById(m.i===n.id?m.j:m.i); ang=Math.atan2(-(o.y-n.y),o.x-n.x)+(sp.ang||0)*Math.PI/180; }
-    ctx.rotate(ang); ctx.lineWidth=1.6; line(0,-k,0,k); ctx.lineWidth=1; for(let i=0;i<=5;i++){ const yy=-k+2*k*i/5; line(0,yy,-k*.55,yy+k*.4); } }
+  if(s[0]===1&&s[1]===1&&s[2]===1){ // as in Ftool: a ground line through the node, hatched below; the support angle turns it (-90 = wall on the left)
+    ctx.lineWidth=1.6; line(-k,0,k,0); ctx.lineWidth=1; for(let i=0;i<=5;i++){ const xx=-k+2*k*i/5; line(xx,0,xx-k*.4,k*.55); } }
   else if(s[0]===1&&s[1]===1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); hat(-k,k*1.1,k,k*1.1,-k*.4,k*.45); }
   else if(s[1]===1&&s[0]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); line(-k,k*1.45,k,k*1.45); hat(-k,k*1.75,k,k*1.75,-k*.4,k*.45); }
   else if(s[0]===1&&s[1]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*1.1,-k*.7); ctx.lineTo(-k*1.1,k*.7); ctx.closePath(); ctx.stroke(); line(-k*1.45,-k,-k*1.45,k); hat(-k*1.75,-k,-k*1.75,k,-k*.45,k*.4); }
@@ -768,20 +769,19 @@ function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loa
       if(le.mb){ arc(x2-ux*r*1.4,y2-uy*r*1.4,r,le.mb,col); if(vals) text(fqu('moment',Math.abs(le.mb)),x2-ux*r*1.4,y2-uy*r*1.4-r-4,col,0,'center','bottom'); } }
   } }
 function drawModel(resMode){ const P=C();
-  const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=3.6*sz('hinge');
+  const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=4.5*sz('hinge');   /* as in Ftool: end hinges touch the node, node hinges circle it */
   for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
     const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=sel||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
     const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
     ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
-    if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr*1.6,y1+uy*hr*1.6,hr,0,7); ctx.fill(); ctx.stroke(); }
-    if(m.hj&&!nh.has(m.j)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x2-ux*hr*1.6,y2-uy*hr*1.6,hr,0,7); ctx.fill(); ctx.stroke(); }
+    if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr,y1+uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
+    if(m.hj&&!nh.has(m.j)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x2-ux*hr,y2-uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
     if(M.disp.orient){ const mx=(x1+x2)/2,my=(y1+y2)/2; ctx.fillStyle=ctx.strokeStyle; head(mx+ux*5,my+uy*5,ux,uy,8); }
     if(M.disp.memNum){ text(String(m.id),(x1+x2)/2+uy*9,(y1+y2)/2-ux*9,P.dim,0,'center','middle',P.bg); }
     if(m.rigid&&!resMode){ ctx.strokeStyle=ctx.strokeStyle; ctx.lineWidth=3.5; ctx.globalAlpha=.35; line(x1,y1,x2,y2); ctx.globalAlpha=1; } }
   for(const n of M.nodes){ const [x,y]=toS(n.x,n.y), sel=ui.sel.t==='n'&&ui.sel.ids.has(n.id), bad=RES&&!RES.ok&&RES.badNode===n.id;
     if(M.opt.truss){ ctx.strokeStyle=sel||bad?P.sel:P.node; ctx.fillStyle=P.bg; ctx.lineWidth=1.3; ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.stroke(); }
-    else if(n.hinge){ ctx.strokeStyle=sel?P.sel:P.mem; ctx.fillStyle=P.bg; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,hr*1.2,0,7); ctx.fill(); ctx.stroke(); }
-    else { ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
+    else { if(n.hinge){ ctx.strokeStyle=sel?P.sel:P.mem; ctx.fillStyle=P.bg; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,hr*1.15,0,7); ctx.fill(); ctx.stroke(); } ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
     if(M.disp.nodeNum) text(String(n.id),x+6,y-6,P.dim,0,'left','bottom'); }
   M.nodes.forEach(drawSupport);
 }
@@ -873,7 +873,7 @@ function panelResults(){ const c=classify(M,RES); let h=`<div class="pt">Structu
   if(M.opt.truss){ let mx=0; RES.recs.forEach(r=>mx=Math.max(mx,Math.abs(r.N(0)))); const tol=1e-9*Math.max(mx,1e-9);
     h+=`<div class="pt" style="margin-top:10px">Member Forces</div><table class="mt"><tr><th>Member</th><th>N (${U('force')})</th><th>State</th></tr>${RES.recs.map(r=>{ const N=r.N(r.L/2), st=Math.abs(N)<=tol?['zero','tZ']:N>0?['tension','tT']:['compression','tC']; return `<tr data-act="minfo:${r.m.id}"><td>${r.m.id}</td><td class="${st[1]}">${Math.abs(N)<=tol?fq('force',0):fq('force',N)}</td><td class="${st[1]}">${st[0]}</td></tr>`; }).join('')}</table>
     <p style="margin:4px 0 0;color:var(--muted)">Right-click a node to see its equilibrium (method of joints).</p>`; }
-  const rows=M.nodes.filter(n=>n.sup&&RES.idx.has(n.id)&&RES.used[RES.idx.get(n.id)]).map(n=>{ const k=RES.idx.get(n.id), R=RES.R, fx=RES.fixed; const v=d=>fx[3*k+d]===1?fq(d===2?'moment':'force',R[3*k+d]):'—'; return `<tr data-act="ninfo:${n.id}"><td>${n.id}</td><td>${v(0)}</td><td>${v(1)}</td>${M.opt.truss?'':`<td>${v(2)}</td>`}</tr>`; }).join('');
+  const rows=M.nodes.filter(n=>n.sup&&RES.idx.has(n.id)&&RES.used[RES.idx.get(n.id)]).map(n=>{ const k=RES.idx.get(n.id), R=RES.R, fx=RES.fixed; const v=d=>RES.hasR(3*k+d)?fq(d===2?'moment':'force',R[3*k+d]):'—'; return `<tr data-act="ninfo:${n.id}"><td>${n.id}</td><td>${v(0)}</td><td>${v(1)}</td>${M.opt.truss?'':`<td>${v(2)}</td>`}</tr>`; }).join('');
   h+=`<div class="pt" style="margin-top:10px">Support Reactions</div><table class="mt"><tr><th>Node</th><th>Fx</th><th>Fy</th>${M.opt.truss?'':'<th>Mz</th>'}</tr>${rows}</table><p style="margin:2px 0 0;color:var(--muted)">${U('force')}${M.opt.truss?'':', '+U('moment')}. Inclined supports use their own axes.</p>`;
   return h; }
 function jointEquilibrium(n){ if(!RES||!RES.ok||!M.opt.truss) return ''; const k=RES.idx.get(n.id); if(k==null||!RES.used[k]) return '';
@@ -881,7 +881,7 @@ function jointEquilibrium(n){ if(!RES||!RES.ok||!M.opt.truss) return ''; const k
   RES.recs.filter(r=>r.m.i===n.id||r.m.j===n.id).forEach(r=>{ const N=r.N(r.L/2), o=nodeById(r.m.i===n.id?r.m.j:r.m.i), L=Math.hypot(o.x-n.x,o.y-n.y), ux=(o.x-n.x)/L, uy=(o.y-n.y)/L, th=Math.atan2(uy,ux)*180/Math.PI;
     sx+=N*ux; sy+=N*uy; rows.push([`Member ${r.m.id} (θ = ${fmtNum(th,'f',1)}°)`,N*ux,N*uy]); });
   const ld=item('nodal',n.load); if(ld&&(ld.fx||ld.fy)){ sx+=ld.fx||0; sy+=ld.fy||0; rows.push(['Applied load',ld.fx||0,ld.fy||0]); }
-  if(n.sup){ const th=(n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, fx=RES.fixed, rx=fx[3*k]===1?R[3*k]:0, ry=fx[3*k+1]===1?R[3*k+1]:0; if(rx||ry){ const gx=c*rx-s*ry, gy=s*rx+c*ry; sx+=gx; sy+=gy; rows.push(['Support reaction',gx,gy]); } }
+  if(n.sup){ const th=(n.sup.x===1&&n.sup.y===1&&n.sup.r===1?0:n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, rx=RES.hasR(3*k)?R[3*k]:0, ry=RES.hasR(3*k+1)?R[3*k+1]:0; if(rx||ry){ const gx=c*rx-s*ry, gy=s*rx+c*ry; sx+=gx; sy+=gy; rows.push(['Support reaction',gx,gy]); } }
   const z=v=>Math.abs(v)<1e-9*Math.max(1,...rows.map(r=>Math.max(Math.abs(r[1]),Math.abs(r[2]))))?0:v;
   return `<div class="pt" style="margin-top:8px">Joint Equilibrium</div><p style="margin:0;color:var(--muted)">Method of joints. A member in tension pulls on the joint, so its force on the joint is N along the member, pointing away from the joint: (N·cosθ, N·sinθ).</p>
    <table class="mt"><tr><th>Force on joint</th><th>Fx</th><th>Fy</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${fq('force',z(r[1]))}</td><td>${fq('force',z(r[2]))}</td></tr>`).join('')}
@@ -918,14 +918,14 @@ function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+
   if(lbl==null) return; const dx=o[0]-b[0], dy=o[1]-b[1], d=Math.hypot(dx,dy);
   if(d<2){ text(lbl,o[0],o[1]-8,P.sel); return; }
   text(lbl,o[0]+dx/d*9,o[1]+dy/d*9,P.sel,ui.q==='D'?0:(M.disp.transv?readAng(r.s,r.c)+Math.PI/2:readAng(r.c,-r.s))); }
-function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=34*sz('load'); let mx=0; for(let i=0;i<RES.nd;i++) if(RES.fixed[i]===1) mx=Math.max(mx,Math.abs(RES.R[i])); const tol=1e-9*Math.max(mx,1e-9);
-  M.nodes.forEach(n=>{ const k=RES.idx.get(n.id); if(!n.sup) return; const [x,y]=toS(n.x,n.y), th=(n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, off=18*sz('sup');
+function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=34*sz('load'); let mx=0; for(let i=0;i<RES.nd;i++) if(RES.hasR(i)) mx=Math.max(mx,Math.abs(RES.R[i])); const tol=1e-9*Math.max(mx,1e-9);
+  M.nodes.forEach(n=>{ const k=RES.idx.get(n.id); if(!n.sup) return; const [x,y]=toS(n.x,n.y), th=(n.sup.x===1&&n.sup.y===1&&n.sup.r===1?0:n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, off=18*sz('sup');
     const dir=(lx,ly)=>[lx*c-ly*s,-(lx*s+ly*c)];
     // as in Ftool: the arrow starts at the node and points the way the reaction acts; text runs along the arrow
     const put=(v,dx,dy,cat)=>{ const ex=x+dx*Lz, ey=y+dy*Lz; arrowTo(x,y,ex,ey,col,7*sz('load')); if(M.disp.reacVal){ const vert=Math.abs(dy)>Math.abs(dx); text(fqu(cat,Math.abs(v)),(x+ex)/2+(vert?-8:0),(y+ey)/2+(vert?0:-6),col,vert?-Math.PI/2:0,'center','bottom'); } };
-    if(RES.fixed[3*k]===1&&Math.abs(R[3*k])>tol){ const [dx,dy]=dir(Math.sign(R[3*k]),0); put(R[3*k],dx,dy,'force'); }
-    if(RES.fixed[3*k+1]===1&&Math.abs(R[3*k+1])>tol){ const [dx,dy]=dir(0,Math.sign(R[3*k+1])); put(R[3*k+1],dx,dy,'force'); }
-    if(RES.fixed[3*k+2]===1&&Math.abs(R[3*k+2])>tol){ const rr=off+2; ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2; const a0=.55*Math.PI, a1=1.45*Math.PI; ctx.beginPath();
+    if(RES.hasR(3*k)&&Math.abs(R[3*k])>tol){ const [dx,dy]=dir(Math.sign(R[3*k]),0); put(R[3*k],dx,dy,'force'); }
+    if(RES.hasR(3*k+1)&&Math.abs(R[3*k+1])>tol){ const [dx,dy]=dir(0,Math.sign(R[3*k+1])); put(R[3*k+1],dx,dy,'force'); }
+    if(RES.hasR(3*k+2)&&Math.abs(R[3*k+2])>tol){ const rr=off+2; ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2; const a0=.55*Math.PI, a1=1.45*Math.PI; ctx.beginPath();
       if(R[3*k+2]>0){ ctx.arc(x,y,rr,a1,a0,true); ctx.stroke(); head(x+rr*Math.cos(a0),y+rr*Math.sin(a0),Math.sin(a0),-Math.cos(a0),7); } else { ctx.arc(x,y,rr,a0,a1,false); ctx.stroke(); head(x+rr*Math.cos(a1),y+rr*Math.sin(a1),-Math.sin(a1),Math.cos(a1),7); }
       if(M.disp.reacVal) text(fqu('moment',Math.abs(R[3*k+2])),x-rr-8,y+rr+4,col,-Math.PI/2,'right','bottom'); }
   }); }
@@ -1100,8 +1100,7 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
   if(i.t==='n'){ const n=nodeById(i.id); if(!n) return '';
     if(ui.res&&RES&&RES.ok){ const k=RES.idx.get(n.id), D=RES.D, R=RES.R, fx=RES.fixed; const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=fx[3*k+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*k+2];
       P2('Node'); P2('Results'); P2(); P2('Support'); P2('Reactions:');
-      const rs=[]; if(fx[3*k]===1) rs.push(` Fx = ${fqu('force',R[3*k])}`); if(fx[3*k+1]===1) rs.push(` Fy = ${fqu('force',R[3*k+1])}`); if(fx[3*k+2]===1) rs.push(` Mz = ${fqu('moment',R[3*k+2])}`);
-      if(rs.length){ rs.forEach(s=>P2(s)); if(n.sup?.ang) P2(` (axes rotated ${fmtNum(n.sup.ang,'f',1)}°)`); } else P2(' None');
+      if(n.sup&&[n.sup.x,n.sup.y,n.sup.r].some(Boolean)){ P2(` Fx = ${fqu('force',R[3*k])}`); P2(` Fy = ${fqu('force',R[3*k+1])}`); P2(` Mz = ${fqu('moment',R[3*k+2])}`); } else P2(' None');
       P2(); P2('Nodal'); P2('Displacements:'); P2(` Dx = ${fmtNum(toD('disp',D[3*k]),'e',3)} ${U('disp')}`); P2(` Dy = ${fmtNum(toD('disp',D[3*k+1]),'e',3)} ${U('disp')}`); P2(` Rz = ${fmtNum(toD('rot',rz),'e',3)} ${U('rot')}`); }
     else { P2('Node'); P2('Attributes'); P2(); P2('Coordinates:'); P2(` x = ${fqu('len',n.x)}`); P2(` y = ${fqu('len',n.y)}`); P2(); P2('Support'); P2('Conditions:');
       const s=n.sup||{x:0,y:0,r:0}; P2(` Dx:    ${supW(s.x)}`); P2(` Dy:    ${supW(s.y)}`); P2(` Rz:    ${supW(s.r)}`);
@@ -1482,6 +1481,27 @@ $('#fOpen').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const mode=e
    supports and member attributes are read; anything not understood is reported instead of guessed silently. */
 const FTL_SEC={0:'integral',1:'rect',2:'I',3:'angle',4:'T',5:'C',6:'Z',7:'circle',8:'ring',9:'dangle',11:'box'};
 const FTL_MAT={0:'generic',1:'steel',2:'concrete',3:'aluminium'};
+/* Units in .ftl (lines 10-13), decoded in session 3. A unit code is a base code for the quantity plus flags:
+   force N 0x4000, tf 0x8000; length cm 0x10000, mm 0x20000; angle deg 0x40000.
+   Line 10: len disp rot force moment dist E gamma (temp) (alpha); line 11: sec area inertia spring rspring (?) (?).
+   Formats (lines 12-13): code = 2·digits, +1 for exponential. Line 12: len disp rot force ilF moment ilM dist E gamma; line 13: alpha temp sec area inertia spring rspring (?) (?) (?). */
+const FTL_U10=['len','disp','rot','force','moment','dist','E','gamma',null,null], FTL_U11=['sec','area','inertia','spring','rspring',null,null];
+const FTL_F12=['len','disp','rot','force','ilF','moment','ilM','dist','E','gamma'], FTL_F13=['alpha','temp','sec','area','inertia','spring','rspring',null,null,null];
+const FTL_BASE={len:3,disp:3,sec:3,area:9,inertia:17,rot:4,force:33,moment:65,dist:129,E:513,gamma:1025,spring:4097,rspring:8193};
+const FTL_DEF={u10:[3,131075,4,33,65,129,147969,1025,2049,257],u11:[131075,131081,131089,4097,8193,65545,131075],f12:[4,7,7,2,8,2,8,4,0,2],f13:[12,0,0,9,9,7,7,4,2,6]};
+const FTL_LEN=['m','cm','mm'], FTL_FORCE=['kN','N','tf'];
+const FTL_ENAME={'kN,m':'kN/m²','N,m':'Pa','tf,m':'tf/m²','kN,cm':'kN/cm²','N,cm':'N/cm²','tf,cm':'tf/cm²','kN,mm':'GPa','N,mm':'MPa','tf,mm':'tf/mm²'};
+function ftlUnitName(cat,code){ const L=FTL_LEN[(code>>16)&3]||'m', F=FTL_FORCE[(code>>14)&3]||'kN', A=(code>>18)&1?'deg':'rad';
+  switch(cat){ case 'len': case 'disp': case 'sec': return L; case 'area': return L+'²'; case 'inertia': return L+'⁴'; case 'rot': return A; case 'force': return F;
+    case 'moment': return F+L; case 'dist': case 'spring': return F+'/'+L; case 'E': return FTL_ENAME[F+','+L]; case 'gamma': return `${F}/${L}³`; case 'rspring': return `${F}${L}/${A}`; } return null; }
+function ftlUnitCode(cat,u){ const b=FTL_BASE[cat]; let L=0,F=0,A=0;
+  if(['len','disp','sec','area','inertia'].includes(cat)) L=FTL_LEN.indexOf(u.replace(/[²⁴]/,''));
+  else if(cat==='rot') A=u==='deg'?1:0;
+  else if(cat==='E'){ const k=Object.entries(FTL_ENAME).find(([,v])=>v===u); if(k){ const [f,l]=k[0].split(','); F=FTL_FORCE.indexOf(f); L=FTL_LEN.indexOf(l); } }
+  else { const f=/^(kN|N|tf)/.exec(u); F=f?FTL_FORCE.indexOf(f[1]):0; const l=/(?:^(?:kN|N|tf)|\/)(mm|cm|m)/.exec(u); L=l?FTL_LEN.indexOf(l[1]):0; if(/deg$/.test(u)) A=1; }
+  return b+(Math.max(0,F)<<14)+(Math.max(0,L)<<16)+(A<<18); }
+const ftlFmt=(f,d)=>2*d+(f==='e'?1:0), ftlFmtDec=c=>[c%2?'e':'f',Math.min(6,c>>1)];
+/* Ftool .ftl reader (format version 401, decoded from real files and from files saved by Ftool in session 3; see DEVNOTES.md). */
 function parseFtl(txt){
   const L=txt.split(/\r?\n/), warn=[]; let i=0;
   const tk=s=>{ const out=[], re=/'([^']*)'|(\S+)/g; let m; while((m=re.exec(s||''))) out.push(m[1]!=null?{q:m[1]}:m[2]); return out; };
@@ -1490,8 +1510,13 @@ function parseFtl(txt){
   if(!/^\s*401\b/.test(L[0])) warn.push(`This file uses format ${L[0].trim().split(/\s+/)[0]}; FOpenTool was built for format 401 (Ftool 4.x).`);
   const Md=newModel(); Md.units=defUnits('SI');
   const g=nums(L[6]); if(g[0]>0&&g[1]>0){ Md.grid.dx=g[0]; Md.grid.dy=g[1]; }
-  // line 8: 15 Display menu flags. Slots 0-6, 10 and 11 confirmed against Ftool's menu; 7-9 and 12-14 assumed (all zero in the samples).
+  // line 8: the 15 Display menu flags, all confirmed against Ftool
   const df=nums(L[7]); if(df.length>=15) ['dims','orient','sups','loadRes','loadEdit','loadVal','resVal','stepLines','stepVal','transv','reac','reacVal','mSign','nodeNum','memNum'].forEach((k,j)=>{ Md.disp[k]=df[j]===1; });
+  // lines 10-13: units and number formats; line 16: support/hinge, load and text display sizes
+  const setU=(slots,v)=>slots.forEach((c,j)=>{ if(!c||v[j]==null) return; const u=ftlUnitName(c,v[j]); if(u&&UC[c][1][u]!=null) Md.units[c].u=u; });
+  const setF=(slots,v)=>slots.forEach((c,j)=>{ if(!c||v[j]==null||!isFinite(v[j])) return; const [f,d]=ftlFmtDec(v[j]); Md.units[c].f=f; Md.units[c].d=d; });
+  setU(FTL_U10,nums(L[9])); setU(FTL_U11,nums(L[10])); setF(FTL_F12,nums(L[11])); setF(FTL_F13,nums(L[12]));
+  const sz=nums(L[15]); if(sz.length>=3){ const S=['S','M','L']; Md.opt.sup=Md.opt.hinge=S[sz[0]]||'M'; Md.opt.load=S[sz[1]]||'M'; Md.opt.text=S[sz[2]]||'S'; }
   i=16; const nCases=int(); i+=nCases; i++;                                     // load cases, then one reserved line
   const lst=(k,fn)=>{ const n=int(); for(let c=0;c<n;c++){ const s=L[i++]; Md.lists[k].push({id:'i'+(Md.next.i++),name:name(s),...fn(nums(s),s)}); } };
   lst('nodal',v=>({fx:v[0]||0,fy:v[1]||0,mz:v[2]||0}));
@@ -1511,21 +1536,110 @@ function parseFtl(txt){
   const nDim=int(); for(let c=0;c<nDim;c++){ const v=nums(L[i++]); const d={id:Md.next.d++,ax:v[0],ay:v[1],bx:v[2],by:v[3],off:0}; const n=dimN(d); d.off=(v[4]-v[0])*n[0]+(v[5]-v[1])*n[1]; Md.dims.push(d); }
   const byId=(k,ix)=>ix>0?Md.lists[k][ix-1]?.id??null:null;
   const tol=1e-9, nodeAt=(x,y)=>Md.nodes.find(n=>Math.hypot(n.x-x,n.y-y)<tol)||(()=>{ const n={id:Md.next.n++,x,y,sup:null,hinge:false,load:null}; Md.nodes.push(n); return n; })();
-  let pending=null, last=null;
-  const applyNode=(n,a)=>{ if(a.s.some(Boolean)) n.sup={x:a.s[0]?1:0,y:a.s[1]?1:0,r:a.s[2]?1:0,ang:(a.s[0]&&a.s[1]&&a.s[2])?0:a.ang,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0}; if(a.load) n.load=byId('nodal',a.load); };
-  while(i<L.length){ const t=tk(L[i]), ts=t.filter(x=>typeof x==='string');
-    if(ts.length===5&&/e/i.test(ts[4])){ // node record
-      const a={s:[+ts[1],+ts[2],+ts[3]],ang:+ts[4]}; i+=2; a.load=parseInt(L[i++],10)||0; i++;
-      if(last){ applyNode(last.end,a); last=null; } else pending=a; continue; }
-    if(ts.length===11){ // member record
-      i+=3; const c=nums(L[i++]), at=nums(L[i++]), ix=[0,1,2,3,4,5].map(()=>parseInt(L[i++],10)||0);
-      const a=nodeAt(c[0],c[2]), b=nodeAt(c[1],c[3]);
-      const m={id:Md.next.m++,i:a.id,j:b.id,mat:byId('mat',ix[0]),sec:byId('sec',ix[1]),hi:!!at[1],hj:!!at[2],rigid:false,axial:at[5]!==0,shear:!!at[4],ld:{e:byId('endm',ix[2]),u:byId('unif',ix[3]),l:byId('lin',ix[4]),t:byId('therm',ix[5])}};
-      Md.members.push(m); if(pending){ applyNode(a,pending); pending=null; } last={end:b}; continue; }
+  /* Topology: a sequence of Euler operations on Ftool's half-edge structure (decoded in session 3):
+     first a node record for the starting vertex (its id is field 4 of line 4, its coordinates are line 5); then entities separated by "1" lines, ended by " 0".
+     Type 2, make edge + vertex: "2 1 f f v1 v2 v2 vnew start 1 edge", new-vertex x y, 0, member bounding box (xmin xmax ymin ymax), attributes, 6 list indices, node record of the new vertex.
+     Type 4, make edge + face: "4 1 f v1 v2 v3 v4 fnew start 1 edge", a 4-number line, 0, bounding box, attributes, 6 list indices (no node record).
+     Type 10, lone vertex: "10 1 f v 0 0 0 0 0 0 0", x y, node record.
+     The member runs from vertex "start" to the other end. Node record: id sx sy sz angle (0 free, 1 fixed, 2 spring) / kx ky kz / nodal-load index / prescribed-flag dx dy rz. */
+  const readNode=()=>{ const a=nums(L[i]), k=nums(L[i+1]), ld=parseInt(L[i+2],10)||0, pr=nums(L[i+3]); i+=4; return {s:[a[1]|0,a[2]|0,a[3]|0],ang:a[4]||0,k,load:ld,pr}; };
+  const applyNode=(n,a)=>{ if(a.s.some(Boolean)){
+      n.sup={x:a.s[0],y:a.s[1],r:a.s[2],ang:a.ang,pr:a.pr[0]===1,dx:a.pr[1]||0,dy:a.pr[2]||0,rz:a.pr[3]||0,kx:a.k[0]||0,ky:a.k[1]||0,kz:a.k[2]||0}; }
+    if(a.load) n.load=byId('nodal',a.load); };
+  const V=new Map(), vtx=(id,x,y)=>{ let n=V.get(id); if(!n){ n=nodeAt(x,y); V.set(id,n); } return n; };
+  const h4=nums(L[3]), h5=nums(L[4]); let started=false;
+  const member=(a,b,startId,ia,at,ix)=>{ const [ni,nj]=startId===ia?[a,b]:[b,a];
+    Md.members.push({id:Md.next.m++,i:ni.id,j:nj.id,mat:byId('mat',ix[0]),sec:byId('sec',ix[1]),hi:!!at[1],hj:!!at[2],rigid:!!at[3],axial:at[5]!==0,shear:!!at[4],ld:{e:byId('endm',ix[2]),u:byId('unif',ix[3]),l:byId('lin',ix[4]),t:byId('therm',ix[5])}}); };
+  while(i<L.length){ const ts=tk(L[i]).filter(x=>typeof x==='string');
+    if(!started&&ts.length===5&&/e/i.test(ts[4])){ applyNode(vtx(h4[3],h5[0]||0,h5[1]||0),readNode()); started=true; continue; }
+    if(ts.length===11){ const h=ts.map(Number); i++; started=true;
+      if(h[0]===10){ const c=nums(L[i++]); applyNode(vtx(h[3],c[0],c[1]),readNode()); continue; }
+      if(h[0]===2){ const c=nums(L[i++]), vn=vtx(h[7],c[0],c[1]), va=V.get(h[4]); i+=2; const at=nums(L[i++]), ix=[0,1,2,3,4,5].map(()=>parseInt(L[i++],10)||0);
+        if(va) member(va,vn,h[8],h[4],at,ix); else warn.push('A member in this file refers to an unknown node and was skipped.'); applyNode(vn,readNode()); continue; }
+      if(h[0]===4){ i+=3; const at=nums(L[i++]), ix=[0,1,2,3,4,5].map(()=>parseInt(L[i++],10)||0), va=V.get(h[3]), vb=V.get(h[5]);
+        if(va&&vb) member(va,vb,h[8],h[3],at,ix); else warn.push('A member in this file refers to an unknown node and was skipped.'); continue; }
+      warn.push(`Unknown record type ${h[0]} in the file; it was skipped.`); continue; }
     i++; }
+  // Ftool stores a node hinge as hinges at every member end there; show it as a node hinge
+  for(const n of Md.nodes){ const ends=Md.members.flatMap(m=>[m.i===n.id?[m,'hi']:null,m.j===n.id?[m,'hj']:null].filter(Boolean));
+    if(ends.length>=2&&ends.every(([m,k])=>m[k])){ n.hinge=true; ends.forEach(([m,k])=>m[k]=false); } }
   if(!Md.members.length) warn.push('No members were found in this file.');
   Md.cur.mat=Md.lists.mat[0]?.id??null; Md.cur.sec=Md.lists.sec[0]?.id??null;
   return {model:Md,warn}; }
+/* Ftool .ftl writer. Numbers are written the way Ftool's C library writes them (%g with 3-digit exponents, and %+.5e for coordinates). */
+function cExp(v,d){ const s=v.toExponential(d), [m,e]=s.split('e'), n=+e; return `${m}e${n<0?'-':'+'}${String(Math.abs(n)).padStart(3,'0')}`; }
+function gFmt(v){ v=+v||0; if(v===0) return '0'; const e=+v.toExponential(5).split('e')[1];
+  if(e<-4||e>=6){ let [m]=v.toExponential(5).split('e'); if(m.includes('.')) m=m.replace(/\.?0+$/,''); return `${m}e${e<0?'-':'+'}${String(Math.abs(e)).padStart(3,'0')}`; }
+  return v.toFixed(Math.max(0,5-e)).replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,''); }
+const pE=(v,d=5)=>{ v=+v||0; const s=cExp(Math.abs(v),d); return (v<0?'-':'+')+s; };
+function writeFtl(Md){ const o=[], P=s=>o.push(s), U=Md.units, lists=Md.lists;
+  const ix=(k,id)=>id==null?0:lists[k].findIndex(x=>x.id===id)+1;
+  const used=new Set(Md.members.flatMap(m=>[m.i,m.j])), nodes=Md.nodes, vid=new Map(nodes.map((n,k)=>[n.id,k+1]));
+  P('401 0'); P('206'); P('1'); const H4=o.length; P(''); P('');
+  P('-1.00000e+030 +1.00000e+030 -1.00000e+030 +1.00000e+030'); P(`${gFmt(Md.grid.dx)} ${gFmt(Md.grid.dy)}`);
+  P(['dims','orient','sups','loadRes','loadEdit','loadVal','resVal','stepLines','stepVal','transv','reac','reacVal','mSign','nodeNum','memNum'].map(k=>Md.disp[k]?1:0).join(' '));
+  P('0 0');
+  P(FTL_U10.map((c,j)=>c?ftlUnitCode(c,U[c].u):FTL_DEF.u10[j]).join(' ')); P(FTL_U11.map((c,j)=>c?ftlUnitCode(c,U[c].u):FTL_DEF.u11[j]).join(' '));
+  P(FTL_F12.map((c,j)=>c?ftlFmt(U[c].f,U[c].d):FTL_DEF.f12[j]).join(' ')); P(FTL_F13.map((c,j)=>c?ftlFmt(U[c].f,U[c].d):FTL_DEF.f13[j]).join(' '));
+  P('1 1'); P('0 1 1 1 1 0'); const S={S:0,M:1,L:2}; P(`${S[Md.opt.sup]??1} ${S[Md.opt.load]??1} ${S[Md.opt.text]??0}`);
+  P('1'); P("'Load Case 01' 1"); P('0');
+  const q=s=>`'${String(s).replace(/'/g,'`')}'`, G=gFmt;
+  P(String(lists.nodal.length)); lists.nodal.forEach(x=>P(`${q(x.name)} ${G(x.fx)} ${G(x.fy)} ${G(x.mz)}`));
+  P(String(lists.endm.length)); lists.endm.forEach(x=>P(`${q(x.name)} ${G(x.ma)} ${G(x.mb)}`));
+  P(String(lists.unif.length)); lists.unif.forEach(x=>P(`${x.dir==='local'?1:0} ${q(x.name)} ${G(x.qx)} ${G(x.qy)}`));
+  P(String(lists.lin.length)); lists.lin.forEach(x=>P(`${x.dir==='local'?1:0} ${q(x.name)} ${G(x.pxi)} ${G(x.pyi)} ${G(x.pxj)} ${G(x.pyj)}`));
+  P(String(lists.therm.length)); lists.therm.forEach(x=>P(`${q(x.name)} ${G(x.tt)} ${G(x.tb)}`));
+  const MAT_C={generic:0,steel:1,concrete:2,aluminium:3}; P(String(lists.mat.length)); lists.mat.forEach(x=>{ P(`${q(x.name)} ${MAT_C[x.type]??0}`); P(` ${G(x.E)} ${G(x.nu)} ${G(x.gamma??0)} ${G(x.alpha)}`); });
+  const SEC_C=Object.fromEntries(Object.entries(FTL_SEC).map(([k,v])=>[v,+k])); P(String(lists.sec.length));
+  lists.sec.forEach(x=>{ const p=x.p, t=x.type; P(`${q(x.name)} ${SEC_C[t]??0} 0`);
+    const v=t==='integral'?[p.A,p.As,p.I,p.d,p.yb]:t==='rect'?[p.h,p.b]:t==='circle'?[p.D]:t==='ring'?[p.D,p.t]:t==='box'?[p.d,p.b,p.t]:[p.d,p.b,p.tw,p.tf]; P(' '+v.map(G).join(' ')); });
+  P('0');
+  P(String(Md.dims.length)); Md.dims.forEach(d=>{ const n=dimN(d); P([d.ax,d.ay,d.bx,d.by,d.ax+n[0]*d.off,d.ay+n[1]*d.off,d.bx+n[0]*d.off,d.by+n[1]*d.off].map(G).join(' ')); });
+  // node hinges are written as hinges at every member end there, as Ftool does
+  const hingeAt=(m,end)=>{ const nid=end==='i'?m.i:m.j; return !!(end==='i'?m.hi:m.hj)||!!nodes.find(n=>n.id===nid)?.hinge; };
+  const nodeRec=n=>{ const s=n.sup, st=s?[s.x,s.y,s.r]:[0,0,0], spr=k=>st[k]===2;
+    P(`${vid.get(n.id)} ${st.join(' ')} ${pE(s?.ang||0,8)}`); P(`${spr(0)?G(s.kx):0} ${spr(1)?G(s.ky):0} ${spr(2)?G(s.kz):0}`); P(String(ix('nodal',n.load)));
+    P(s&&s.pr&&st.includes(1)?`1 ${G(st[0]===1?s.dx:0)} ${G(st[1]===1?s.dy:0)} ${G(st[2]===1?s.rz:0)}`:'0 0 0 0'); };
+  /* Topology, written as Ftool writes it: Euler operations on a half-edge structure, simulated here so faces and neighbours stay consistent.
+     Faces lie to the right of their half-edges: at a vertex the face corner runs counterclockwise from the incoming edge to the outgoing one,
+     so a new edge leaving v1 in direction t goes before the half-edge from v1 to the first neighbour counterclockwise from t. */
+  const byN=new Map(nodes.map(n=>[n.id,n])), ang=(a,b)=>Math.atan2(b.y-a.y,b.x-a.x), TAU=2*Math.PI;
+  const out=new Map();   // node id -> list of half-edges leaving it {v, to, face, nxt, prv}
+  const lone=new Map();  // node id -> lone half-edge of an isolated vertex
+  let nFaces=1, firstV=null, eid=0;
+  const bbox=(a,b)=>`${pE(Math.min(a.x,b.x))} ${pE(Math.max(a.x,b.x))} ${pE(Math.min(a.y,b.y))} ${pE(Math.max(a.y,b.y))}`;
+  const corner=(v,t)=>{ const hs=out.get(v.id)||[]; if(!hs.length) return lone.get(v.id); let best=null, bd=Infinity;
+    for(const h of hs){ let d=(ang(v,byN.get(h.to))-t)%TAU; if(d<=1e-12) d+=TAU; if(d<bd){ bd=d; best=h; } } return best; };
+  const link=(h,where)=>{ h.nxt=where; h.prv=where.prv; where.prv.nxt=h; where.prv=h; };
+  const addOut=h=>{ if(!out.has(h.v)) out.set(h.v,[]); out.get(h.v).push(h); };
+  const memBody=m=>{ P(`${m.id} ${hingeAt(m,'i')?1:0} ${hingeAt(m,'j')?1:0} ${m.rigid?1:0} ${m.rigid||m.shear?1:0} ${m.rigid||m.axial?1:0}`);
+    P(String(ix('mat',m.mat))); P(String(ix('sec',m.sec))); P(String(ix('endm',m.ld.e))); P(String(ix('unif',m.ld.u))); P(String(ix('lin',m.ld.l))); P(String(ix('therm',m.ld.t))); };
+  const mvfs=n=>{ const h={v:n.id,to:null,face:1}; h.nxt=h.prv=h; lone.set(n.id,h); };
+  const mev=(m,v1,vn)=>{ const he1=corner(v1,ang(v1,vn)), f=he1.face, v2=he1.to??v1.id; eid++;
+    let a, b={v:vn.id,to:v1.id,face:f};
+    if(he1.to==null){ a=he1; a.to=vn.id; lone.delete(v1.id); link(b,a); } else { a={v:v1.id,to:vn.id,face:f}; link(a,he1); link(b,he1); }
+    addOut(a); addOut(b);
+    P('1'); P(`2 1 ${f} ${f} ${vid.get(v1.id)} ${vid.get(v2)} ${vid.get(v2)} ${vid.get(vn.id)} ${vid.get(m.i)} 1 ${eid}`); P(`${pE(vn.x)} ${pE(vn.y)}`); P('0'); P(bbox(v1,vn)); memBody(m); nodeRec(vn); };
+  const mef=(m,v1,v3)=>{ const he1=corner(v1,ang(v1,v3)), he2=corner(v3,ang(v3,v1)), f=he1.face, nf=++nFaces; eid++;
+    for(let h=he1;h!==he2;h=h.nxt){ h.face=nf; if(h.nxt===he1) break; }
+    const n1={v:v3.id,to:v1.id,face:nf}, n2={v:v1.id,to:v3.id,face:f}; link(n1,he1); link(n2,he2);
+    const p1=n1.prv, p2=n2.prv; p1.nxt=n2; n2.prv=p1; p2.nxt=n1; n1.prv=p2;   // splice: the loop is cut in two
+    addOut(n1); addOut(n2);
+    const comp=[...byN.values()].filter(n=>created.has(n.id)), X=comp.map(n=>n.x), Y=comp.map(n=>n.y);
+    P('1'); P(`4 1 ${f} ${vid.get(v1.id)} ${vid.get(he1.to)} ${vid.get(v3.id)} ${vid.get(he2.to)} ${nf} ${vid.get(m.i)} 1 ${eid}`);
+    P(`${pE(Math.min(...X))} ${pE(Math.max(...X))} ${pE(Math.min(...Y))} ${pE(Math.max(...Y))}`); P('0'); P(bbox(v1,v3)); memBody(m); };
+  const created=new Set(), done=new Set();
+  const order=[...nodes.filter(n=>used.has(n.id)),...nodes.filter(n=>!used.has(n.id))];
+  for(const n0 of order){ if(created.has(n0.id)) continue;
+    if(firstV==null){ firstV=n0; nodeRec(n0); } else { P('1'); P(`10 1 1 ${vid.get(n0.id)} 0 0 0 0 0 0 0`); P(`${pE(n0.x)} ${pE(n0.y)}`); nodeRec(n0); }
+    mvfs(n0); created.add(n0.id);
+    for(;;){ let m=Md.members.find(m=>!done.has(m.id)&&created.has(m.i)!==created.has(m.j)), mode='mev';
+      if(!m){ m=Md.members.find(m=>!done.has(m.id)&&created.has(m.i)&&created.has(m.j)); mode='mef'; } if(!m) break; done.add(m.id);
+      const a=byN.get(m.i), b=byN.get(m.j);
+      if(mode==='mev'){ const [v1,vn]=created.has(a.id)?[a,b]:[b,a]; mev(m,v1,vn); created.add(vn.id); } else mef(m,a,b); } }
+  if(firstV==null){ P('0 0 0 0 +0.00000000e+000'); P('0 0 0'); P('0'); P('0 0 0 0'); }
+  o[H4]=`0 1 1 ${firstV?vid.get(firstV.id):1} ${nFaces} ${nodes.length} ${eid} 0 0 0 0`; o[H4+1]=firstV?`${pE(firstV.x)} ${pE(firstV.y)}`:'+0.00000e+000 +0.00000e+000';
+  P(' 0'); return o.join('\r\n')+'\r\n'; }
 function migrate(o){ for(const [k,v] of Object.entries(UC)) if(!o.units[k]) o.units[k]={u:v[2],f:v[3][0],d:v[3][1]}; o.opt={...newModel().opt,...o.opt}; return o; }
 function readModel(t){ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const r=parseFtl(t); return r; } const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; return {model:migrate(o),warn:[]}; }
 function fileImport(){ dlg('Import Properties',`<p style="margin:0;max-width:440px">Import the materials, sections and loads of another model (.ftl or .json). Items whose names already exist here are skipped.</p><div class="btnrow"><button class="pb def" id="imFile">Choose file...</button><button class="pb" data-close>Cancel</button></div><p id="imMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#imFile').onclick=()=>{ const f=$('#fOpen'); f.dataset.mode='import'; f.click(); }; }); }
@@ -1536,8 +1650,22 @@ function importProps(t){ try{ const {model}=readModel(t); let n=0; pushUndo();
 function loadText(t){ try{ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const {model,warn}=parseFtl(t); pushUndo(); M=model; exitResults(); clearSel(); ui.tool='select'; closeDlg(); changed(); fit(); ui.msg=warn.length?warn.join(' '):'Ftool file opened.'; renderTop(); return; }
   const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; pushUndo(); M=migrate(o); exitResults(); clearSel(); ui.tool='select'; closeDlg(); changed(); fit(); }
   catch(e){ const m=$('#opMsg'); if(m) m.textContent='That is not a FOpenTool model file.'; } }
-function fileSave(){ const t=JSON.stringify(M); dlg('Save',`<p style="margin:0;max-width:460px">The model is kept in this browser automatically. To keep a file or share it, copy the text below and save it as a .json file. Open it later with File &gt; Open.</p><textarea readonly id="svTxt" aria-label="Model text">${esc(t)}</textarea>
-  <div class="btnrow"><button class="pb def" id="svCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#svTxt'); b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }
+// Save: Ftool's .ftl (default, opens in Ftool 4.x) or FOpenTool's .json (keeps everything, including FOpenTool-only settings).
+// Downloads are blocked inside some embedded pages, so the text is also shown for copying.
+let fileName='model';
+function fileSave(){ let fmt='ftl'; const text=()=>fmt==='ftl'?writeFtl(M):JSON.stringify(M);
+  dlg('Save',`<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><label class="ck"><input type="radio" name="svf" value="ftl" checked> Ftool model (.ftl)</label><label class="ck"><input type="radio" name="svf" value="json"> FOpenTool model (.json)</label></div>
+   <label style="display:flex;gap:6px;align-items:center">File name: <input id="svName" value="${esc(fileName)}" style="flex:1;height:22px;border:1px solid var(--chrome-line);padding:0 4px"><span id="svExt">.ftl</span></label>
+   <p id="svNote" style="margin:0;max-width:480px;color:var(--muted)"></p><textarea readonly id="svTxt" aria-label="Model text"></textarea>
+   <div class="btnrow"><button class="pb def" id="svDown">Download</button><button class="pb" id="svCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{
+    const ta=b.querySelector('#svTxt'), upd=()=>{ ta.value=text(); b.querySelector('#svExt').textContent='.'+fmt;
+      b.querySelector('#svNote').textContent=fmt==='ftl'?'Ftool 4.x opens this file. FOpenTool-only settings (truss mode, stress units, step mode) are not part of the .ftl format.':'Keeps everything, including FOpenTool-only settings. Open it later with File > Open.'; };
+    b.querySelectorAll('[name=svf]').forEach(r=>r.onchange=()=>{ fmt=r.value; upd(); }); upd();
+    b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta);
+    b.querySelector('#svDown').onclick=()=>{ fileName=(b.querySelector('#svName').value.trim()||'model').replace(/\.(ftl|json)$/i,''); const t=ta.value;
+      const data=fmt==='ftl'?Uint8Array.from(t,c=>{ const k=c.charCodeAt(0); return k<256?k:63; }):t;   /* Ftool reads Latin-1 */
+      try{ const u=URL.createObjectURL(new Blob([data],{type:'application/octet-stream'})), el=document.createElement('a'); el.href=u; el.download=fileName+'.'+fmt; document.body.appendChild(el); el.click(); el.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
+      catch(e){ ui.msg='This page cannot download files here. Use Copy and save the text yourself.'; renderTop(); } }; }); }
 function copyText(t,btn,ta){ const ok=()=>{ btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); }; const fb=()=>{ if(ta){ ta.focus(); ta.select(); } btn.textContent='Press Ctrl+C'; };
   try{ navigator.clipboard.writeText(t).then(ok,fb); }catch(e){ fb(); } }
 function exportClip(){ try{ cv.toBlob(b=>{ navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(()=>{ ui.msg='Screen image copied to the clipboard.'; renderTop(); },()=>{ ui.msg='The browser did not allow copying the image.'; renderTop(); }); }); }catch(e){ ui.msg='The browser did not allow copying the image.'; renderTop(); } }
