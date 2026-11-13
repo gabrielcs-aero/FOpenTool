@@ -45,7 +45,7 @@ Search for the `/* ===` banners. In order:
 | Files | `parseFtl()` (Ftool reader), `readModel`, `loadText`, `fileImport/importProps`, `fileSave` (JSON text to copy; downloads are blocked inside claude.ai artifacts), `exportLines(mode)`, `printModel()`, `exportClip()`. |
 | Test hook | `window.__fopentool` exposes `analyze, buildSystem, influence, secCalc, sectionStress, classify, newModel, exampleModel, M, ui`. |
 
-There is a leftover unused function `panelInfoOld()`; delete it during the next cleanup.
+Other helpers worth knowing: `stepXs(L,step)` (step stations, Ftool's two step modes in `M.opt.stepMode`), `fmtIL(q,v)` (influence-line value formatting), `UC_GROUPS` / `UNAME` / `FMTS` (Units dialog), `ui.trf.on/keep` (Enable transform, Maintain topology), `ui.kv` (keyboard dialog values, internal units). `ui.tool` starts as `'none'`.
 
 ## Sign conventions (match Ftool's manual, section 7.5)
 
@@ -61,7 +61,7 @@ There is a leftover unused function `panelInfoOld()`; delete it during the next 
 Copied from the real program on the owner's PC, November 2026. Keep these exact.
 
 - **Menus** (now mirrored): File: About Ftool, Upgrade..., Sign Convention, New... Ctrl+N, Open... Ctrl+O, Save Ctrl+S, Save as..., Import Properties..., Export Line Results ▸ (Step Values..., Display Resolution...), Export Model Screen ▸ (Clipboard Ctrl+C, Print... Ctrl+P, CGM Metafile..., DGN..., DXF..., Enhanced Metafile (EMF)..., Encapsulated PostScript..., PDF..., PostScript..., SVG...), Totals, Model View Limits, Exit. Options: Analysis ▸ Linear Elastic; Support and Hinge Display Size ▸; Load Display Size ▸; Text Display Size ▸; Add static load results to load-train envelope; Save analysis result neutral file; Units && Number Formatting.... Display: as in our menu, with "Load/Spring Values".
-- **New model defaults**: Grid off, grid spacing 1.00 m, Snap disabled while the grid is off, text size Small, Editing Mode box shows "None" until a tool is chosen (we show "Selection").
+- **New model defaults**: Grid off, grid spacing 1.00 m, Snap disabled while the grid is off, text size Small, Editing Mode box shows "None" until a tool is chosen (copied); opening a file switches to "Selection".
 - **New section form**: "New Label:" with an empty field, then a tree (Generic / Parameterized / Profile Tables) of check boxes, Integral Properties checked by default, **Done** and **Cancel** buttons at the bottom of the panel.
 - **Right-click** on a node or member selects it (red) and shows a monospace text report in the side panel ("Node / Attributes / Coordinates: ...", "Member / Attributes / Length = ... / Material: ... gama = 77.0 kN/m³ ... / Section: ... Normal orientation ... depth, ygc ..."). In results: "Node / Results / Support / Reactions: / None / Nodal / Displacements: / Dx = 0.000e+00 mm ..."; members: "Member / Shear Force / Diagram Results / Load Case: / Load Case 01 / Init: / 5.8 kN / End: / 0.8 kN / Define a reasonable step value to get results along member."
 - **Point query message** (red line under the toolbar): "Shear force at local pos.: x = 1.03 m  L = 2.00 m  -  Value: 3.2 kN". Deformed: "Displ./rotat. at local pos.: x = 1.14 m  L = 1.50 m  -  Dx: 0.000e+00 mm  Dy: -1.348e+01 mm  Rz: -4.390e-03 rad".
@@ -75,6 +75,20 @@ Copied from the real program on the owner's PC, November 2026. Keep these exact.
 - **Load panels with NONE selected** still show their fields, empty and disabled (End Moments: Ma, Mb with a sketch; Uniform and Linear: Direction box with Global checked; Thermal: "Ty+:" and "Ty-:" in °C).
 - **Rotation Release** (3 buttons, then node hinge on/off and four member options) and **Deformation Constraints** (select and apply buttons; Flexible Member, Axial Deformation, Shear Deformation; Rigid Member) match.
 - Material panel shows E, ν, α only; specific weight (gama) is stored and shown only in reports.
+
+Dialogs and modes compared in session 3 (all copied):
+- **Units & Number Formatting**: buttons SI / kN-m / US on top (US changes nothing in 4.01); frames [Length, Displacement, Rotation], [Section Sizes, Section Area, Section Inertia], [Force, Moment, Distrib. Load, Temperature], [Elastic Param., Specific Weight, Thermal Expan.], [Translat. Spring, Rotation Spring], [Force Infl. Line (unit "[  ]", disabled), Moment Infl. Line (follows Length, disabled)]; each row has a unit box ("meter [ m ]", "kilo-Newton [ kN ]", "[ kNm ]", "mega-Pascal [ MPa (N/mm²) ]"...) and a Format box (x, x.x … x.xxxxxx, x e±xx … x.xxxxxx e±xx). SI defaults: m x.xx; mm x.xxx e±xx; rad x.xxx e±xx; mm x; mm² x.xxxx e±xx; mm^4 x.xxxx e±xx; kN x.x; kNm x.x; kN/m x.xx; °C x; MPa x; kN/m³ x.x; 1/°C x.xxxxxx; springs x.xxx e±xx; influence lines x.xxxx. kN-m button: displacement m, section m x.xx, area m² x.xxxx, inertia m^4 x.xxxxxx, E kN/m² x.xxx e±xx. 1 tf = 9.81 kN (checked: E 205000 MPa shows 2.089704e+07 tf/m²). OK / Cancel.
+- **Sign Convention** (title "Internal Force Sign and Diagram Display Conventions"): heading, gable-frame sketch "Member bottom side", bar sketches for positive M, V, N; two check boxes for the moment side, fixed text for V and N ("Positive diagram values are plotted on the top side of member"), "Influence line display" with two check boxes; Apply and Accept (disabled until something changes) and Close.
+- **About** is a "Credits" dialog: name, version, credits, link, date, disclaimer, Close and a Portuguese button. Ours has the same layout with FOpenTool's own text, in English and Portuguese.
+- **Totals** is a plain message: "Number of Nodes: 5 / Number of Members: 4", OK. (We add the determinacy line.)
+- **Model View Limits** is "Window limits input": "Enter with visualization window limits:", X minimum, X maximum, Y minimum, Y maximum (the visible area), OK / Cancel.
+- **Transform panel**: "Enable transform" check box (disabled until something is selected; unlocks the rest), Options frame (Maintain topology, Leave original, separator, Deselect after transform), tabs Move / Rotate / Scale / Mirror ("Center coordinates:" above X, Y in Rotate and Scale; Scale factor starts at 0.00), Tolerance 0.01, Forward then Back, Invert member orientation. Editing Mode shows "Transform". Enter in a field runs Forward. Without Maintain topology a moved member is detached from the members that stay (new nodes); with it, connected members stretch.
+- **Keyboard mode**: the button toggles; a dialog appears while an insert tool is active. "Member input": vertical tabs Absolute / Incremental, frame "Enter with member coordinates:", 1st Node X/Y, 2nd Node X/Y (Incremental: Incr. DX/DY), Tolerance 0.0010; after OK the dialog stays and continues from the last end point. "Node input": "Node coordinates:" X, Y, Tolerance. "Dimension line input": "Dimension line parameters:" Point 1 X/Y, Point 2 X/Y, Ref.Pt. X/Y, Tolerance.
+- **Step**: the two buttons next to the Step box are a radio pair, not Step Lines / Step Values (those are only in the Display menu). First (default): each member is divided into ceil(L/step) equal parts. Second: steps measured from the member start (0.4, 0.8, …, L). Step lines are drawn at interior stations in the diagram color; step values are red, at every station; zero values are never written. The deformed shape shows no values (only point queries do).
+- **Member report with a step**: after "End:" it lists " Results Along Member:", " x [m]  Bending", "        Moment [kNm]", then " 0.00   -7.8" per station (x padded to 7 characters). Without a step: " Define a reasonable / step value to get / results along member."
+- **Influence lines**: entering the mode or changing the quantity clears the line and asks "Indicate a member section for which to display a bending moment influence line."; after a pick: "Bending moment influence line for section at local pos.: x = 1.00 m  L = 2.00 m". Clicking again picks a new section. Box "Infl. Line Factor:" (2 decimals, empty before a pick), default 0.1 × model size / largest ordinate. The section is a red dot. The line is cut at the section; each straight piece shows its end ordinates and values (4 decimals), a constant piece one value in the middle.
+- **Errors**: analysis without materials shows a message box "You must define materials to all members!".
+- Toolbar Load Case box shows "Load Case 01"; Options "Add static load results to load-train envelope" is checked by default.
 
 ## Ftool `.ftl` format (version 401), as decoded
 
@@ -116,9 +130,9 @@ List indices are 1-based (0 = none). For fully fixed supports the angle is only 
 ## Next steps, in priority order
 
 **A. Finish Ftool parity (compare each against the real program first)**
-1. Compare the remaining dialogs with Ftool screenshots (the attribute and load panels are done): Units & Number Formatting dialog, Sign Convention dialog, Transform panel, keyboard-mode dialog, Totals, Model View Limits, About.
-2. Compare influence-line mode, step lines/values, thermal results, inclined-support reaction reporting and hinge drawing with Ftool.
-3. Editing Mode "None" at startup.
+1. ~~Dialogs~~ (done in session 3: Units, Sign Convention, Transform, keyboard mode, Totals, Model View Limits, Credits).
+2. Influence lines and step lines/values are done. Still to compare: thermal results, inclined-support reaction drawing and reports, hinge drawing (needs small models in Ftool).
+3. ~~Editing Mode "None" at startup~~ (done).
 4. Decode the remaining `.ftl` fields (springs, prescribed displacements, node hinges, display flags 7–9 and 12–14, end-moment and thermal list order) with small sample files; then write `.ftl` files (Save as .ftl).
 5. Load cases and combinations, load trains and envelopes (Ftool's advanced features; large).
 6. Profile tables (needs the shape data) and the girder section; section mirror/rotate buttons.
@@ -134,6 +148,6 @@ List indices are 1-based (0 = none). For fully fixed supports the angle is only 
 6. MecSol 2: Cauchy tensor calculator (invariants, principal stresses by eigenvalues), failure criteria (von Mises, Tresca, Mohr-Coulomb), deflection by double integration, torsion calculator.
 
 **C. Cleanup**
-- Remove `panelInfoOld()`.
+- ~~Remove `panelInfoOld()`~~ (done).
 - Check phone-width layout after the recent panel changes.
 - The section-stress overlay and side tables were checked at desktop width only.

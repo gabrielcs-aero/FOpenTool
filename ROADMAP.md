@@ -13,7 +13,10 @@ Still to do:
 - [ ] Load cases, load combinations and their envelopes
 - [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec) and the girder section
 - [ ] Mirror and rotate buttons for sections
-- [ ] Mouse-driven transformations and "Maintain Topology"
+- [x] "Maintain Topology" and Ftool's Transform panel
+- [x] Ftool's dialogs: Units & Number Formatting, Sign Convention, keyboard input, Totals, Window limits, Credits
+- [x] Step modes, step lines and values, influence-line display as in Ftool
+- [ ] Mouse-driven transformations
 - [ ] Animated deformed shape
 - [x] Reading Ftool `.ftl` files (lists, sections, materials, dimension lines, supports, member attributes)
 - [ ] Reading springs, prescribed displacements, node hinges and load trains from `.ftl` (need sample files to decode)

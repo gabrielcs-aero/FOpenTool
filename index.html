@@ -123,6 +123,18 @@ button,input,select{font:inherit;color:inherit}
 .kd input{height:21px;border:1px solid var(--chrome-line);text-align:right;padding:0 4px;width:76px}
 :focus-visible{outline:1px dotted #000;outline-offset:1px}
 .ftxt{font:12px/1.35 "Courier New",Consolas,monospace;margin:0;white-space:pre;overflow-x:auto}
+.ugrid-top{display:grid;grid-template-columns:repeat(3,1fr);justify-items:center}
+.ufs{display:grid;grid-template-columns:112px minmax(0,200px) auto minmax(0,110px);gap:3px 8px;align-items:center;border:1px solid var(--chrome-dark);margin:0;padding:4px 6px}
+.ufs label:nth-child(4n+3){justify-self:end;margin-left:10px}
+.ufs select{height:23px;border:1px solid var(--chrome-line);background:var(--field);min-width:0}
+.ufs select:disabled{color:var(--disabled)}
+.dlg .sk{display:block;margin:0 auto}
+.dlg .ctr{text-align:center;margin:0}
+.kd .tabsv{display:flex;gap:4px}
+.kd .vt{display:flex;flex-direction:column;gap:2px}
+.kd .vt button{writing-mode:vertical-rl;transform:rotate(180deg);border:1px solid var(--chrome-line);background:var(--chrome);padding:6px 2px;cursor:default;font-size:11px}
+.kd .vt button[aria-selected="true"]{background:var(--field);border-right-color:var(--field)}
+.kd fieldset{border:1px solid var(--chrome-dark);padding:4px 6px;margin:0}
 @media print{ body *{visibility:hidden} #cv{visibility:visible;position:fixed;inset:0;width:100%!important;height:auto!important} }
 @media (max-width:820px){
   html,body{height:auto}
@@ -150,7 +162,7 @@ button,input,select{font:inherit;color:inherit}
     <button class="ib" id="bUndo" title="Undo (Ctrl+Z)"></button>
     <button class="ib" id="bRedo" title="Redo (Ctrl+Y)"></button>
     <span class="spacer"></span>
-    <span class="lbl">Load Case:</span><select disabled aria-label="Load case"><option>Single Case</option></select>
+    <span class="lbl">Load Case:</span><select disabled aria-label="Load case"><option>Load Case 01</option></select>
     <span class="sep"></span>
     <span class="lbl">Load Train:</span><select disabled aria-label="Load train"><option>NONE</option></select>
   </div>
@@ -189,8 +201,8 @@ button,input,select{font:inherit;color:inherit}
   <div class="tb">
     <span id="msg" role="status"></span>
     <span class="lbl">Step:</span><input class="num" id="step" value="0.00" aria-label="Step"><span id="stepU">m</span>
-    <button class="ib" id="bStepL" title="Step Lines"></button>
-    <button class="ib" id="bStepV" title="Step Values"></button>
+    <button class="ib" id="bStepDiv" title="Divide each member into equal segments no longer than the step"></button>
+    <button class="ib" id="bStepStart" title="Take steps from the start of each member"></button>
   </div>
   <div class="main">
     <div class="ltb">
@@ -261,8 +273,8 @@ const IC={
  D:'<path d="M2 8h16" stroke="currentColor" stroke-width="1" opacity=".5"/><path d="M2 8c4 0 4 6 8 6s5-5 8-6" fill="none" stroke="currentColor" stroke-width="1.7"/>',
  S:'<path d="M2 17h16" stroke="currentColor" stroke-width="1"/><text x="3" y="15" font-size="15" font-style="italic" font-family="Times New Roman,serif" fill="currentColor">σ</text><path d="M12 4h5v12h-5z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M12 4l5 12" stroke="#D00000" stroke-width="1.2"/>',
  pick:'<path d="M3 15L15 3" stroke="currentColor" stroke-width="1.4"/><path d="M6 6l8 8" stroke="#D00000" stroke-width="2"/><path d="M4 17h12" stroke="currentColor" stroke-width="1"/>',
- stepL:'<rect x="2" y="6" width="16" height="8" fill="#fff" stroke="currentColor"/><path d="M5 6v8M8 6v8M11 6v8M14 6v8" stroke="currentColor"/>',
- stepV:'<path d="M2 10h16" stroke="currentColor"/><path d="M4 7v6M7 7v6M10 7v6M13 7v6M16 7v6" stroke="currentColor"/>',
+ stepDiv:'<path d="M2 10h16" stroke="#999" stroke-width="1.6"/><path d="M3 6.5v7M7.7 6.5v7M12.3 6.5v7M17 6.5v7" stroke="#00007A" stroke-width="1.6"/>',
+ stepStart:'<path d="M2 10h16" stroke="#999" stroke-width="1.6"/><path d="M3 6.5v7M7 6.5v7M11 6.5v7M15 6.5v7M17 6.5v7" stroke="#00007A" stroke-width="1.6"/>',
  select:'<path d="M5 2v14l3.5-3.5 2.6 5.5 2-1-2.6-5.4H15z" fill="#fff" stroke="#111" stroke-width="1.1"/>',
  member:'<path d="M3 17L17 3" stroke="currentColor" stroke-width="1.7"/>',
  node:'<circle cx="10" cy="10" r="2.6" fill="currentColor"/>',
@@ -288,7 +300,7 @@ const IC={
 };
 const svg=n=>`<svg viewBox="0 0 20 20" aria-hidden="true">${IC[n]}</svg>`;
 function paintIcons(){
-  const map={bNew:'new',bOpen:'open',bSave:'save',bPrint:'print',bClip:'copy',bUndo:'undo',bRedo:'redo',bKbd:'kbd',bDel:'del',bTrf:'trf',bRedraw:'redraw',bFit:'fit',bZin:'zin',bZout:'zout',bStepL:'stepL',bStepV:'stepV',bIlPick:'pick'};
+  const map={bNew:'new',bOpen:'open',bSave:'save',bPrint:'print',bClip:'copy',bUndo:'undo',bRedo:'redo',bKbd:'kbd',bDel:'del',bTrf:'trf',bRedraw:'redraw',bFit:'fit',bZin:'zin',bZout:'zout',bStepDiv:'stepDiv',bStepStart:'stepStart',bIlPick:'pick'};
   for(const [id,n] of Object.entries(map)) $('#'+id).innerHTML=svg(n);
   $$('[data-panel]').forEach(b=>b.innerHTML=svg(b.dataset.panel));
   $$('[data-rmode]').forEach(b=>b.innerHTML=svg(b.dataset.rmode));
@@ -297,26 +309,43 @@ function paintIcons(){
 }
 
 /* ================= Units & number formatting (internal: kN, m) ================= */
+// Categories, unit lists, factors and SI defaults as in Ftool's Units & Number Formatting dialog (1 tf = 9.81 kN, as Ftool uses).
+const LEN_U={m:1,cm:.01,mm:.001}, TF=9.81;
+const perLen=(f,lu)=>Object.fromEntries(Object.entries(lu).flatMap(([l,lv])=>Object.entries(f).map(([fu,fv])=>[`${fu}/${l}`,fv/lv])));
+const FORCE_U={kN:1,N:.001,tf:TF};
+const MOM_U=Object.fromEntries(Object.entries(LEN_U).flatMap(([l,lv])=>Object.entries(FORCE_U).map(([fu,fv])=>[fu+l,fv*lv])));
 const UC={
-  len:['Length',{m:1,cm:.01,mm:.001},'m',['f',2]],
-  sec:['Section dimensions',{mm:.001,cm:.01,m:1},'mm',['f',0]],
-  area:['Area',{'mm²':1e-6,'cm²':1e-4,'m²':1},'mm²',['e',4]],
-  inertia:['Moment of inertia',{'mm⁴':1e-12,'cm⁴':1e-8,'m⁴':1},'mm⁴',['e',4]],
-  force:['Force',{kN:1,N:.001,tf:9.81},'kN',['f',1]],
-  moment:['Moment',{kNm:1,Nm:.001,tfm:9.81,kNcm:.01,Nmm:1e-6},'kNm',['f',1]],
-  dist:['Distributed load',{'kN/m':1,'N/m':.001,'tf/m':9.81,'kN/cm':100,'N/mm':1},'kN/m',['f',2]],
-  E:['Elastic modulus',{MPa:1000,GPa:1e6,'kN/m²':1,'kN/cm²':1e4},'MPa',['f',0]],
-  disp:['Displacement',{mm:.001,cm:.01,m:1},'mm',['e',3]],
+  len:['Length',LEN_U,'m',['f',2]],
+  disp:['Displacement',LEN_U,'mm',['e',3]],
   rot:['Rotation',{rad:1,deg:Math.PI/180},'rad',['e',3]],
-  temp:['Temperature',{'°C':1},'°C',['f',1]],
-  alpha:['Thermal expansion',{'/°C':1},'/°C',['f',6]],
-  spring:['Spring stiffness',{'kN/m':1,'kN/mm':1000,'N/mm':1},'kN/m',['f',1]],
-  rspring:['Rotational spring',{'kNm/rad':1,'kNm/deg':180/Math.PI},'kNm/rad',['f',1]],
-  nu:['Poisson ratio',{'':1},'',['f',2]],
+  sec:['Section Sizes',LEN_U,'mm',['f',0]],
+  area:['Section Area',{'m²':1,'cm²':1e-4,'mm²':1e-6},'mm²',['e',4]],
+  inertia:['Section Inertia',{'m⁴':1,'cm⁴':1e-8,'mm⁴':1e-12},'mm⁴',['e',4]],
+  force:['Force',FORCE_U,'kN',['f',1]],
+  moment:['Moment',MOM_U,'kNm',['f',1]],
+  dist:['Distrib. Load',perLen(FORCE_U,LEN_U),'kN/m',['f',2]],
+  temp:['Temperature',{'°C':1},'°C',['f',0]],
+  E:['Elastic Param.',{'kN/m²':1,Pa:.001,'tf/m²':TF,'kN/cm²':1e4,'N/cm²':10,'tf/cm²':TF*1e4,GPa:1e6,MPa:1e3,'tf/mm²':TF*1e6},'MPa',['f',0]],
+  gamma:['Specific Weight',perLen(FORCE_U,{'m³':1,'cm³':1e-6,'mm³':1e-9}),'kN/m³',['f',1]],
+  alpha:['Thermal Expan.',{'/°C':1},'/°C',['f',6]],
+  spring:['Translat. Spring',perLen(FORCE_U,LEN_U),'kN/m',['e',3]],
+  rspring:['Rotation Spring',{...perLen(MOM_U,{rad:1}),...perLen(MOM_U,{deg:Math.PI/180})},'kNm/rad',['e',3]],
+  ilF:['Force Infl. Line',{'':1},'',['f',4]],
+  ilM:['Moment Infl. Line',LEN_U,'m',['f',4]],
   stress:['Stress',{MPa:1000,'kN/m²':1,'kN/cm²':1e4,GPa:1e6},'MPa',['f',2]],
+  nu:['Poisson ratio',{'':1},'',['f',2]],
 };
+// Groups of the Units dialog, in Ftool's order. Stress is FOpenTool's own (section stresses).
+const UC_GROUPS=[['len','disp','rot'],['sec','area','inertia'],['force','moment','dist','temp'],['E','gamma','alpha'],['spring','rspring'],['ilF','ilM'],['stress']];
+const UNAME={m:'meter [ m ]',cm:'centimeter [ cm ]',mm:'millimeter [ mm ]',rad:'radian [ rad ]',deg:'degree [ deg ]',kN:'kilo-Newton [ kN ]',N:'Newton [ N ]',tf:'ton (weight) [ tf ]','°C':'centigrade [ °C ]',
+  'kN/m²':'kilo-Pascal [ kN/m² ]',Pa:'Pascal [ Pa (N/m²) ]',GPa:'giga-Pascal [ GPa (kN/mm²) ]',MPa:'mega-Pascal [ MPa (N/mm²) ]','m⁴':'[ m^4 ]','cm⁴':'[ cm^4 ]','mm⁴':'[ mm^4 ]','/°C':'[ 1/°C ]','':'[  ]'};
+const uName=u=>UNAME[u]||`[ ${u} ]`;
+const FMTS=[0,1,2,3,4,5,6].map(d=>['f',d]).concat([0,1,2,3,4,5,6].map(d=>['e',d]));
+const fmtName=(f,d)=>(d?'x.'+'x'.repeat(d):'x')+(f==='e'?' e±xx':'');
 function defUnits(preset){ const u={}; for(const [k,v] of Object.entries(UC)) u[k]={u:v[2],f:v[3][0],d:v[3][1]};
-  if(preset==='kNm'){ Object.assign(u.sec,{u:'m',f:'f',d:3}); Object.assign(u.area,{u:'m²'}); Object.assign(u.inertia,{u:'m⁴'}); Object.assign(u.E,{u:'kN/m²',f:'e',d:3}); Object.assign(u.disp,{u:'m'}); }
+  if(preset==='kNm'){ // Ftool's kN-m button
+    Object.assign(u.disp,{u:'m'}); Object.assign(u.sec,{u:'m',f:'f',d:2}); Object.assign(u.area,{u:'m²',f:'f',d:4}); Object.assign(u.inertia,{u:'m⁴',f:'f',d:6});
+    Object.assign(u.E,{u:'kN/m²',f:'e',d:3}); Object.assign(u.stress,{u:'kN/m²',f:'e',d:3}); }
   return u; }
 const fac=c=>UC[c][1][M.units[c].u]??1;
 const U=c=>M.units[c].u;
@@ -332,7 +361,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 /* ================= Model ================= */
 let M=null;
 function defDisplay(){ return {bg:'white',dims:true,orient:false,sups:true,loadEdit:true,loadRes:false,loadVal:true,resVal:true,stepLines:false,stepVal:false,transv:false,mSign:false,reac:false,reacVal:false,nodeNum:false,memNum:false}; }
-function newModel(){ return {v:2,units:defUnits('SI'),disp:defDisplay(),opt:{sup:'M',hinge:'M',load:'M',text:'S',mPos:'tension',ilPos:'lower',truss:false},
+function newModel(){ return {v:2,units:defUnits('SI'),disp:defDisplay(),opt:{sup:'M',hinge:'M',load:'M',text:'S',mPos:'tension',ilPos:'lower',truss:false,stepMode:'div',envStatic:true},
   grid:{on:false,snap:true,dx:1,dy:1},nodes:[],members:[],dims:[],lists:{mat:[],sec:[],nodal:[],endm:[],unif:[],lin:[],therm:[]},
   cur:{mat:null,sec:null,nodal:null,endm:null,unif:null,lin:null,therm:null,sup:{x:1,y:1,r:0,ang:0,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0},hinge:'both',dc:{flex:true,axial:true,shear:false}},
   next:{n:1,m:1,d:1,i:1},step:0}; }
@@ -412,8 +441,8 @@ function buildSystem(Md){
     const a=idx.get(m.i),b=idx.get(m.j); if(a==null||b==null) continue;
     const ni=nodes[a],nj=nodes[b],dx=nj.x-ni.x,dy=nj.y-ni.y,L=Math.hypot(dx,dy); if(L<1e-12) continue;
     const mat=it('mat',m.mat), sec=it('sec',m.sec);
-    if(!mat){ S.error=`Member ${m.id} has no material. Assign one with Material Parameters.`; S.bad=m.id; return S; }
-    if(!sec){ S.error=`Member ${m.id} has no cross-section. Assign one with Section Properties.`; S.bad=m.id; return S; }
+    if(!mat){ S.error='You must define materials to all members!'; S.bad=m.id; return S; }
+    if(!sec){ S.error='You must define sections to all members!'; S.bad=m.id; return S; }
     const P=secCalc(sec); if(!P.ok){ S.error=`Section "${sec.name}" has invalid properties. I must be non-zero.`; S.bad=m.id; return S; }
     const c=dx/L,s=dy/L,E=mat.E,G=E/(2*(1+(mat.nu||0)));
     let EA=E*P.A, EI=E*P.I, phi=0;
@@ -513,8 +542,13 @@ function analyze(Md){
     S.rm.set(r.m.id,r); }
   S.ok=true; return S;
 }
-function samplesX(r,step){ const xs=new Set(); const n=Math.max(16,Math.ceil(r.L/ (step>0?step:r.L/16)));
-  for(let i=0;i<=40;i++) xs.add(r.L*i/40); if(step>0) for(let x=0;x<=r.L+1e-9;x+=step) xs.add(Math.min(x,r.L));
+// Step stations along a member, as Ftool does: 'div' splits the member into ceil(L/step) equal parts (Ftool's default), 'start' steps from the member start.
+function stepXs(L,step){ if(!(step>0)) return [0,L]; const out=[];
+  if(M.opt.stepMode==='start'){ for(let k=0;k*step<L-1e-9*L;k++) out.push(k*step); out.push(L); }
+  else { const n=Math.max(1,Math.ceil(L/step-1e-9)); for(let k=0;k<=n;k++) out.push(L*k/n); } return out; }
+const isStepX=(r,x)=>M.step>0&&stepXs(r.L,M.step).some(s=>Math.abs(s-x)<=1e-9*Math.max(1,r.L));
+function samplesX(r,step){ const xs=new Set();
+  for(let i=0;i<=40;i++) xs.add(r.L*i/40); if(step>0) stepXs(r.L,step).forEach(x=>xs.add(x));
   const dw=r.wj-r.wi, a=dw/(2*r.L), b=r.wi, c=r.q[1];
   if(Math.abs(a)>1e-14){ const D=b*b-4*a*c; if(D>=0){ for(const sgn of [1,-1]){ const x=(-b+sgn*Math.sqrt(D))/(2*a); if(x>0&&x<r.L) xs.add(x); } } }
   else if(Math.abs(b)>1e-14){ const x=-c/b; if(x>0&&x<r.L) xs.add(x); }
@@ -593,8 +627,8 @@ function classify(Md,S){ const truss=!!Md.opt.truss, used=new Set(); Md.members.
   return {cls,formula,g,m,r,j,c,truss,note,legend:truss?'m = members, r = support reactions, j = joints':'m = members, r = support reactions, j = nodes, c = internal releases (hinges)'}; }
 
 /* ================= UI state ================= */
-const ui={tool:'select',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],hover:null,info:null,msg:'',
-  scaleVal:{},pot:0,il:null,ilPick:true,undo:[],redo:[],creating:null,renaming:false,trf:{tab:'move',leave:false,desel:false,tol:.01,dx:0,dy:0,x:0,y:0,ang:0,f:1,x1:0,y1:0,x2:0,y2:1}};
+const ui={tool:'none',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],hover:null,info:null,msg:'',
+  scaleVal:{},pot:0,il:null,ilPick:true,undo:[],redo:[],creating:null,renaming:false,trf:{tab:'move',on:false,keep:false,leave:false,desel:false,tol:.01,dx:0,dy:0,x:0,y:0,ang:0,f:0,x1:0,y1:0,x2:0,y2:0}};
 let RES=null;
 const cv=$('#cv'), ctx=cv.getContext('2d');
 let view={ox:0,oy:0,s:60},W=0,H=0,dpr=1;
@@ -641,24 +675,24 @@ function snapPt(sx,sy){
 function splitMember(m,t){ const a=nodeById(m.i),b=nodeById(m.j); const n=addNode(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);
   const oldJ=m.j, oldHj=m.hj, hadL=m.ld.l||m.ld.e; m.j=n.id; m.hj=false;
   const m2=addMember(n.id,oldJ,m); m2.hj=oldHj; if(hadL){ m.ld.l=null; m.ld.e=null; ui.msg='Linear loads and end moments were removed from the divided member.'; } return n.id; }
-function resolvePoint(p){ const tol=tolG()*10;
+function resolvePoint(p,tl){ const tol=tl||tolG()*10;
   for(const n of M.nodes) if(Math.hypot(n.x-p.x,n.y-p.y)<tol) return n.id;
   for(const m of [...M.members]){ const a=nodeById(m.i),b=nodeById(m.j),[d,t]=segDist(p.x,p.y,a.x,a.y,b.x,b.y); if(d<tol&&t>1e-6&&t<1-1e-6) return splitMember(m,t); }
   return addNode(p.x,p.y).id; }
 function segInter(p1,p2,p3,p4){ const d=(p2.x-p1.x)*(p4.y-p3.y)-(p2.y-p1.y)*(p4.x-p3.x); if(Math.abs(d)<1e-14) return null;
   const t=((p3.x-p1.x)*(p4.y-p3.y)-(p3.y-p1.y)*(p4.x-p3.x))/d, u=((p3.x-p1.x)*(p2.y-p1.y)-(p3.y-p1.y)*(p2.x-p1.x))/d; return {t,u}; }
-function insertMember(A,B){
-  if(Math.hypot(A.x-B.x,A.y-B.y)<tolG()*10) return;
+function insertMember(A,B,tl){ const tol=tl||tolG()*10;
+  if(Math.hypot(A.x-B.x,A.y-B.y)<tol) return;
   pushUndo(); const eps=1e-9;
   for(const m of [...M.members]){ const a=nodeById(m.i),b=nodeById(m.j), r=segInter(A,B,a,b); if(r&&r.t>eps&&r.t<1-eps&&r.u>eps&&r.u<1-eps) splitMember(m,r.u); }
-  const ia=resolvePoint(A), ib=resolvePoint(B), na=nodeById(ia), nb=nodeById(ib);
+  const ia=resolvePoint(A,tl), ib=resolvePoint(B,tl), na=nodeById(ia), nb=nodeById(ib);
   const ts=[{t:0,id:ia},{t:1,id:ib}], L2=(nb.x-na.x)**2+(nb.y-na.y)**2;
-  for(const n of M.nodes){ if(n.id===ia||n.id===ib) continue; const [d,t]=segDist(n.x,n.y,na.x,na.y,nb.x,nb.y); if(d<tolG()*10&&t>eps&&t<1-eps) ts.push({t,id:n.id}); }
+  for(const n of M.nodes){ if(n.id===ia||n.id===ib) continue; const [d,t]=segDist(n.x,n.y,na.x,na.y,nb.x,nb.y); if(d<tol&&t>eps&&t<1-eps) ts.push({t,id:n.id}); }
   ts.sort((p,q)=>p.t-q.t);
   for(let k=0;k<ts.length-1;k++){ const i=ts[k].id,j=ts[k+1].id; if(i===j||M.members.some(m=>(m.i===i&&m.j===j)||(m.i===j&&m.j===i))) continue; addMember(i,j); }
   changed();
 }
-function insertNode(p){ pushUndo(); resolvePoint(p); changed(); }
+function insertNode(p,tl){ pushUndo(); resolvePoint(p,tl); changed(); }
 function insertDim(a,b,c){ const d={id:M.next.d++,ax:a.x,ay:a.y,bx:b.x,by:b.y,off:0}; const n=dimN(d); d.off=(c.x-a.x)*n[0]+(c.y-a.y)*n[1]; if(Math.hypot(b.x-a.x,b.y-a.y)<1e-9) return; pushUndo(); M.dims.push(d); changed(); }
 function deleteSel(){ if(!ui.sel.t) return; commit(()=>{
   const gone=ui.sel.t==='m'?M.members.filter(m=>ui.sel.ids.has(m.id)):ui.sel.t==='n'?M.members.filter(m=>ui.sel.ids.has(m.i)||ui.sel.ids.has(m.j)):[];
@@ -754,7 +788,7 @@ function drawModel(resMode){ const P=C();
 /* ---- results drawing ---- */
 const QN={N:['Axial Force','force'],V:['Shear Force','force'],M:['Bending Moment','moment'],D:['Deformed Factor',null],S:['Section Stresses',null]};
 function baseScale(){ if(!RES||!RES.ok||ui.q==='S') return 1; const ext=extent();
-  if(ui.res==='il'){ return ui.il&&ui.il.ext>0?0.18*ext/ui.il.ext:1; }
+  if(ui.res==='il'){ return ui.il&&ui.il.ext>0?0.1*ext/ui.il.ext:1; }   // Ftool: 0.1 x model size / largest ordinate
   if(ui.q==='D'){ let dm=0; for(const r of RES.recs) for(let i=0;i<=8;i++){ const d=r.defl(r.L*i/8); dm=Math.max(dm,Math.hypot(d[0],d[1])); } return dm>0?0.1*ext/dm:1; }
   let mx=0; for(const r of RES.recs) for(const x of samplesX(r,0)) mx=Math.max(mx,Math.abs(r.val(ui.q,x)));
   const cat=QN[ui.q][1]; if(!(mx>0)) return 1; const v=toD(cat,mx)/(toD('len',0.1*ext)); return +v.toPrecision(3); }
@@ -773,10 +807,11 @@ function drawDiagram(){ const P=C(), q=ui.q, step=M.step, mpos=M.opt.mPos==='ten
     if(M.opt.truss&&q==='N'&&vmax<=gmax*1e-9){ const b=nodeById(r.m.j), [x1,y1]=toS(a.x,a.y), [x2,y2]=toS(b.x,b.y); ctx.strokeStyle=P.bg; ctx.lineWidth=2; line(x1,y1,x2,y2); ctx.strokeStyle=P.rmem; ctx.lineWidth=1; ctx.setLineDash([5,4]); line(x1,y1,x2,y2); ctx.setLineDash([]); if(M.disp.resVal) text('0',(x1+x2)/2-r.s*8,(y1+y2)/2-r.c*8,P.val); continue; }
     const lbl=v=>{ const s=q==='M'&&!M.disp.mSign?Math.abs(v):v; return fq(cat,s); };
     const ang=M.disp.transv?readAng(r.s,r.c)+Math.PI/2:readAng(r.c,-r.s);
-    const put=(p,off)=>{ if(Math.abs(p.v)<=tol&&!M.disp.stepVal) return; const dx=p.o[0]-p.b[0], dy=p.o[1]-p.b[1], d=Math.hypot(dx,dy)||1; text(lbl(p.v),p.o[0]+dx/d*(off||8),p.o[1]+dy/d*(off||8),P.val,ang); };
-    if(M.disp.stepLines||step>0&&M.disp.stepLines){ ctx.strokeStyle=P.diag; ctx.lineWidth=.8; pts.filter(p=>step>0?Math.abs(p.x/step-Math.round(p.x/step))<1e-6:true).forEach(p=>line(...p.b,...p.o)); }
+    const put=(p,off)=>{ if(Math.abs(p.v)<=tol) return; /* Ftool never writes zero values, not even at steps */ const dx=p.o[0]-p.b[0], dy=p.o[1]-p.b[1], d=Math.hypot(dx,dy)||1; text(lbl(p.v),p.o[0]+dx/d*(off||8),p.o[1]+dy/d*(off||8),P.val,ang); };
+    const atSteps=step>0?stepXs(r.L,step).map(sx=>pts.reduce((b,p)=>Math.abs(p.x-sx)<Math.abs(b.x-sx)?p:b,pts[0])):[];
+    if(M.disp.stepLines&&step>0){ ctx.strokeStyle=P.diag; ctx.lineWidth=.8; atSteps.slice(1,-1).forEach(p=>line(...p.b,...p.o)); }
     if(M.disp.resVal){
-      if(M.disp.stepVal&&step>0){ pts.filter(p=>Math.abs(p.x/step-Math.round(p.x/step))<1e-6||p.x===r.L).forEach(p=>put(p)); }
+      if(M.disp.stepVal&&step>0){ atSteps.forEach(p=>put(p)); }
       else { const p0=pts[0], pL=pts[pts.length-1]; let ex=null;
         for(let i=1;i<pts.length-1;i++){ const p=pts[i]; if(Math.abs(p.v)>Math.abs(pts[i-1].v)&&Math.abs(p.v)>=Math.abs(pts[i+1].v)&&Math.abs(p.v)>Math.max(Math.abs(p0.v),Math.abs(pL.v))*1.001+tol) ex=p; }
         if(Math.abs(p0.v-pL.v)<=tol*10&&!ex){ const mid=pts[Math.floor(pts.length/2)]; put(mid); }
@@ -854,21 +889,29 @@ function jointEquilibrium(n){ if(!RES||!RES.ok||!M.opt.truss) return ''; const k
 function drawDeformed(){ const P=C(), f=curScale();
   ctx.strokeStyle=P.diag; ctx.lineWidth=1.4;
   for(const r of RES.recs){ const a=nodeById(r.m.i); ctx.beginPath(); for(let i=0;i<=30;i++){ const x=r.L*i/30, d=r.defl(x), [sx,sy]=toS(a.x+r.c*x+f*d[0],a.y+r.s*x+f*d[1]); i?ctx.lineTo(sx,sy):ctx.moveTo(sx,sy); } ctx.stroke(); }
-  if(M.disp.resVal&&M.disp.stepVal&&ui.defComp!=='none') M.nodes.forEach((n,k)=>{ const i=RES.idx.get(n.id); if(!RES.used[i]) return; const D=RES.D; const [sx,sy]=toS(n.x+f*D[3*i],n.y+f*D[3*i+1]);
-    let v; if(ui.defComp==='Dx') v=fqu('disp',D[3*i]); else if(ui.defComp==='Dy') v=fqu('disp',D[3*i+1]); else { const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=RES.fixed[3*i+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*i+2]; v=fqu('rot',rz); }
-    text(v,sx+6,sy-6,P.val,0,'left','bottom'); }); }
-function drawIL(){ const P=C(), il=ui.il; if(!il) return; const f=curScale(), dirSign=M.opt.ilPos==='lower'?1:-1, q=ui.q;
+  // As in Ftool, the deformed shape carries no values; a point query shows them.
+}
+// Influence-line values: dimensionless for N and V, length (the Length unit) for M, each with its own format from the Units dialog.
+function fmtIL(q,v){ return q==='M'?fmtNum(toD('len',v),M.units.ilM.f,M.units.ilM.d):fmtNum(v,M.units.ilF.f,M.units.ilF.d); }
+const IL_NAME={N:'axial force',V:'shear force',M:'bending moment'};
+// As in Ftool: the line is cut at the section; each straight piece gets its end ordinates and values (one value in the middle when it is constant). The section is a red dot.
+function drawIL(){ const P=C(), il=ui.il; if(!il) return; const f=curScale(), q=ui.q;
   for(const {r,pts} of il.lines){ const a=nodeById(r.m.i);
     const side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up);
-    const ps=pts.map(p=>{ const bx=a.x+r.c*p.a, by=a.y+r.s*p.a, o=p.v*f; return {v:p.v,b:toS(bx,by),o:toS(bx+side[0]*o,by+side[1]*o)}; });
+    const ps=pts.map(p=>{ const bx=a.x+r.c*p.a, by=a.y+r.s*p.a, o=p.v*f; return {a:p.a,v:p.v,b:toS(bx,by),o:toS(bx+side[0]*o,by+side[1]*o)}; });
     ctx.strokeStyle=P.diag; ctx.lineWidth=1.2; ctx.beginPath(); ps.forEach((p,i)=>i?ctx.lineTo(...p.o):ctx.moveTo(...p.o)); ctx.stroke();
-    if(M.disp.resVal){ let ex=ps[0]; ps.forEach(p=>{ if(Math.abs(p.v)>Math.abs(ex.v)) ex=p; }); if(Math.abs(ex.v)>il.ext*.05){ const dx=ex.o[0]-ex.b[0],dy=ex.o[1]-ex.b[1],d=Math.hypot(dx,dy)||1; ctx.strokeStyle=P.diag; ctx.lineWidth=.8; line(...ex.b,...ex.o);
-      text(fmtNum(q==='M'?toD('len',ex.v):ex.v,'f',3),ex.o[0]+dx/d*8,ex.o[1]+dy/d*8,P.val,readAng(r.c,-r.s)); } } }
-  const T=RES.rm.get(il.tid); if(T){ const a=nodeById(T.m.i), [sx,sy]=toS(a.x+T.c*il.xs,a.y+T.s*il.xs), nx=-T.s, ny=-T.c; ctx.strokeStyle=P.sel; ctx.lineWidth=2; line(sx+nx*10,sy+ny*10,sx-nx*10,sy-ny*10); } }
+    const own=r.m.id===il.tid, cut=own?ps.findIndex(p=>p.a>=il.xs-1e-8*r.L):-1;
+    const pieces=own&&cut>0?[ps.slice(0,cut),ps.slice(cut)]:[ps], tol=il.ext*1e-6;
+    for(const pc of pieces){ if(pc.length<2) continue; const p0=pc[0], p1=pc[pc.length-1];
+      ctx.strokeStyle=P.diag; ctx.lineWidth=1; for(const p of [p0,p1]) if(Math.abs(p.v)>tol) line(...p.b,...p.o);
+      if(!M.disp.resVal) continue;
+      const put=p=>{ if(Math.abs(p.v)<=tol) return; const dx=p.o[0]-p.b[0], dy=p.o[1]-p.b[1], d=Math.hypot(dx,dy)||1; text(fmtIL(q,p.v),p.o[0]+dx/d*8,p.o[1]+dy/d*8,P.val,readAng(r.c,-r.s)); };
+      if(Math.abs(p0.v-p1.v)<=tol) put(pc[Math.floor(pc.length/2)]); else { put(p0); put(p1); } } }
+  const T=RES.rm.get(il.tid); if(T){ const a=nodeById(T.m.i), [sx,sy]=toS(a.x+T.c*il.xs,a.y+T.s*il.xs); ctx.fillStyle=P.sel; ctx.beginPath(); ctx.arc(sx,sy,3,0,7); ctx.fill(); } }
 // Point query marker, as in Ftool: a red ordinate from the member to the diagram (or to the deformed shape) with the value at its end
 function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+1e-9||ui.q==='S') return; const P=C(), a=nodeById(r.m.i), x=pq.x, bx=a.x+r.c*x, by=a.y+r.s*x, b=toS(bx,by); let o, lbl;
   if(ui.res==='il'){ const il=ui.il, ln=il&&il.lines.find(l=>l.r===r); if(!ln) return; let best=ln.pts[0]; ln.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
-    const q=ui.q, side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up), w=best.v*curScale(); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fmtNum(q==='M'?toD('len',best.v):best.v,'f',3); }
+    const q=ui.q, side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up), w=best.v*curScale(); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fmtIL(q,best.v); }
   else if(ui.q==='D'){ const f=curScale(), d=r.defl(x); o=toS(bx+f*d[0],by+f*d[1]); if(ui.defComp==='none') lbl=null; else lbl=ui.defComp==='Dx'?fmtNum(toD('disp',d[0]),'e',3):ui.defComp==='Dy'?fmtNum(toD('disp',d[1]),'e',3):fmtNum(toD('rot',r.rotAt(x)),'e',3); }
   else { const q=ui.q, v=r.val(q,x), side=q==='M'?r.low.map(t=>t*(M.opt.mPos==='tension'?1:-1)):r.up, w=offWorld(v); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fq(QN[q][1],q==='M'&&!M.disp.mSign?Math.abs(v):v); }
   ctx.strokeStyle=P.sel; ctx.lineWidth=1; line(...b,...o);
@@ -912,11 +955,13 @@ function resMsg(){ if(!RES||!RES.ok) return RES?RES.error:''; const w=RES.warn&&
   if(ui.res==='diag'&&ui.q==='S') return w+(ui.cut?'Section stresses shown. Click another point on a member to move the cut.':'Select a point on a member to see the stresses in its cross-section.');
   return w+resMsgBase(); }
 function resMsgBase(){ const nm={N:'axial force',V:'shear force',M:'bending moment',D:'deformed configuration'}[ui.q];
-  if(ui.res==='il') return ui.ilPick?`Select a section on a member to draw the ${nm} influence line.`:`Select a point on a member to get the ${nm} influence line value.`;
+  if(ui.res==='il'){ const il=ui.il, T=il&&RES.rm.get(il.tid);
+    if(T&&ui.ilPick) return `${nm[0].toUpperCase()+nm.slice(1)} influence line for section at local pos.: x = ${fqu('len',il.xs)}  L = ${fqu('len',T.L)}`;
+    return ui.ilPick?`Indicate a member section for which to display a ${nm} influence line.`:`Select a point on a member to get the ${nm} influence line value.`; }
   return `Select a point on a member to get ${nm} result.`; }
 
 /* ================= Chrome rendering ================= */
-const MODE_NAMES={select:'Selection',member:'Insert Member',node:'Insert Node',dim:'Insert Dimension Line',zoom:'Zoom Window',trf:'Transform'};
+const MODE_NAMES={none:'None',select:'Selection',member:'Insert Member',node:'Insert Node',dim:'Insert Dimension Line',zoom:'Zoom Window',trf:'Transform'};
 function renderTop(){
   $$('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',!ui.res&&b.dataset.tool===ui.tool));
   $$('[data-panel]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.panel===ui.panel));
@@ -926,13 +971,13 @@ function renderTop(){
   $('#bKbd').setAttribute('aria-pressed',ui.kbd); $('#bTrf').setAttribute('aria-pressed',ui.panel==='trf');
   $('#bUndo').disabled=!ui.undo.length||!!ui.res; $('#bRedo').disabled=!ui.redo.length||!!ui.res;
   $('#bDel').disabled=!ui.sel.t||!!ui.res; $('#pot').disabled=!ui.res; $('#defComp').value=ui.defComp;
-  $('#bStepL').setAttribute('aria-pressed',M.disp.stepLines); $('#bStepV').setAttribute('aria-pressed',M.disp.stepVal);
+  $('#bStepDiv').setAttribute('aria-pressed',M.opt.stepMode!=='start'); $('#bStepStart').setAttribute('aria-pressed',M.opt.stepMode==='start');
   const mb=$('#modeBox');
   if(ui.res==='diag'&&ui.q==='S'&&RES&&RES.ok){ mb.innerHTML=`<span class="lbl">Results:</span><span class="box">Section Stresses</span>`; $('#pot').disabled=true; }
-  else if(ui.res&&RES&&RES.ok){ const [lab,cat]=ui.res==='il'?[`IL ${ {N:'Axial Force',V:'Shear Force',M:'Bending Moment'}[ui.q]} Factor`,null]:QN[ui.q];
-    const unit=cat?`${U(cat)}:1${U('len')}`:'';
-    mb.innerHTML=`<span class="lbl">${lab}:</span><input class="num" id="scaleIn" value="${fmtNum(curScale(),'f',ui.q==='D'||ui.res==='il'?1:1)}" aria-label="Scale"><span>${unit}</span>`; }
-  else mb.innerHTML=`<span class="lbl">Editing Mode:</span><span class="box">${ui.res?'Results':(MODE_NAMES[ui.tool]||'Selection')}</span>`;
+  else if(ui.res&&RES&&RES.ok){ const il=ui.res==='il', [lab,cat]=il?['Infl. Line Factor',null]:QN[ui.q];
+    const unit=cat?`${U(cat)}:1${U('len')}`:'', val=il&&!ui.il?'':fmtNum(curScale(),'f',il?2:1);
+    mb.innerHTML=`<span class="lbl">${lab}:</span><input class="num" id="scaleIn" value="${val}" aria-label="Scale"><span>${unit}</span>`; }
+  else mb.innerHTML=`<span class="lbl">Editing Mode:</span><span class="box">${ui.panel==='trf'?'Transform':(MODE_NAMES[ui.tool]||'Selection')}</span>`;
   $('#msg').textContent=ui.msg||(ui.res?resMsg():'');
   $('#step').value=fq('len',M.step); $('#stepU').textContent=U('len');
   $$('.uL').forEach(e=>e.textContent=U('len'));
@@ -1036,14 +1081,18 @@ function panelDC(){ const d=M.cur.dc; return `<div class="pt">Deformation Constr
    <label class="ck" style="padding-left:16px"><input type="checkbox" data-k="dc.axial" ${d.axial?'checked':''} ${d.flex?'':'disabled'}> Axial Deformation</label>
    <label class="ck" style="padding-left:16px"><input type="checkbox" data-k="dc.shear" ${d.shear?'checked':''} ${d.flex?'':'disabled'}> Shear Deformation</label></fieldset>
   <fieldset class="fs"><label class="ck"><input type="checkbox" data-k="dc.rigid" ${!d.flex?'checked':''}> Rigid Member</label></fieldset>`; }
-function panelTrf(){ const t=ui.trf, has=!!ui.sel.t&&ui.sel.t!=='d'||ui.sel.t==='d';
-  const tab=(k,l)=>`<button role="tab" aria-selected="${t.tab===k}" data-act="ttab:${k}">${l}</button>`, f=(l,k,u)=>`<div class="fl"><label>${l}:</label><input data-k="t.${k}" data-cat="none" value="${t[k]}"><span class="u">${u}</span></div>`;
-  let body={move:f('DX','dx',U('len'))+f('DY','dy',U('len')),rotate:f('X','x',U('len'))+f('Y','y',U('len'))+f('Angle','ang','deg'),scale:f('X','x',U('len'))+f('Y','y',U('len'))+f('Factor','f',''),mirror:f('X1','x1',U('len'))+f('Y1','y1',U('len'))+f('X2','x2',U('len'))+f('Y2','y2',U('len'))}[t.tab];
-  return `<div class="pt">Transform</div><fieldset class="fs" ${has?'':'disabled'}><div class="tabs" role="tablist">${tab('move','Move')}${tab('rotate','Rotate')}${tab('scale','Scale')}${tab('mirror','Mirror')}</div>${body}
-   ${f('Tolerance','tol',U('len'))}<label class="ck"><input type="checkbox" data-k="t.leave" ${t.leave?'checked':''}> Leave Original</label><label class="ck"><input type="checkbox" disabled> Maintain Topology</label><label class="ck"><input type="checkbox" data-k="t.desel" ${t.desel?'checked':''}> Deselect after transform</label>
-   <div class="btnrow"><button class="pb" data-act="t-back">Back</button><button class="pb def" data-act="t-fwd">Forwards</button></div></fieldset>
-   <div class="btnrow" style="margin-top:6px"><button class="pb" data-act="t-inv" ${ui.sel.t==='m'?'':'disabled'}>Invert member orientation</button></div>
-   ${has?'':'<p style="color:var(--muted);text-align:center">Select members or nodes to transform.</p>'}`; }
+// Same controls as Ftool's Transform panel. "Enable transform" is available once something is selected and unlocks the rest.
+function panelTrf(){ const t=ui.trf, has=!!ui.sel.t, on=has&&t.on, dis=on?'':'disabled';
+  const tab=(k,l)=>`<button role="tab" aria-selected="${t.tab===k}" data-act="ttab:${k}">${l}</button>`, num=v=>fmtNum(v,'f',2);
+  const f=(l,k,u,v)=>`<div class="fl"><label>${l}:</label><input data-k="t.${k}" data-cat="none" value="${v??num(t[k])}" ${dis}><span class="u">${u}</span></div>`, L=U('len');
+  const ctr=`<p style="margin:2px 0 4px 12px">Center coordinates:</p>`;
+  const body={move:f('DX','dx',L)+f('DY','dy',L),rotate:ctr+f('X','x',L)+f('Y','y',L)+f('Angle','ang','deg'),scale:ctr+f('X','x',L)+f('Y','y',L)+f('Factor','f',''),mirror:f('X1','x1',L)+f('Y1','y1',L)+f('X2','x2',L)+f('Y2','y2',L)}[t.tab];
+  return `<div class="pt">Transform</div><label class="ck" style="justify-content:center;margin:6px 0"><input type="checkbox" data-k="t.on" ${on?'checked':''} ${has?'':'disabled'}> Enable transform</label>
+   <fieldset class="fs" style="width:fit-content;margin:4px auto" ${dis}><legend>Options</legend><label class="ck"><input type="checkbox" data-k="t.keep" ${t.keep?'checked':''}> Maintain topology</label><label class="ck"><input type="checkbox" data-k="t.leave" ${t.leave?'checked':''}> Leave original</label><hr style="width:100%;border:0;border-top:1px solid var(--chrome-dark);margin:2px 0"><label class="ck"><input type="checkbox" data-k="t.desel" ${t.desel?'checked':''}> Deselect after transform</label></fieldset>
+   <div class="tabs" role="tablist" style="margin-top:8px">${tab('move','Move')}${tab('rotate','Rotate')}${tab('scale','Scale')}${tab('mirror','Mirror')}</div><div style="min-height:118px;background:var(--field);padding:4px 0">${body}</div>
+   <div style="margin-top:8px">${f('Tolerance','tol',L)}</div>
+   <div class="btnrow" style="margin-top:6px"><button class="pb" data-act="t-fwd" ${dis}>Forward</button><button class="pb" data-act="t-back" ${dis}>Back</button></div>
+   <div class="btnrow" style="margin-top:8px"><button class="pb" data-act="t-inv" ${ui.sel.t==='m'?'':'disabled'} style="width:176px">Invert member orientation</button></div>`; }
 /* Right-click reports, in the same text layout as Ftool */
 const SEC_INFO={integral:'Integral properties',rect:'Rectangle',I:'I shape',T:'T shape',C:'C shape',Z:'Z shape',angle:'Angle',dangle:'Double angle',circle:'Circle',ring:'Ring',box:'Box'};
 function infoText(i){ const o=[], P2=(s='')=>o.push(s);
@@ -1066,13 +1115,13 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
         for(const [lab,x] of [['Init:',0],['End:',r.L]]){ const d=r.defl(x); P2(` ${lab}`); P2(`  Dx = ${fmtNum(toD('disp',d[0]),'e',3)} ${U('disp')}`); P2(`  Dy = ${fmtNum(toD('disp',d[1]),'e',3)} ${U('disp')}`); P2(`  Rz = ${fmtNum(toD('rot',r.rotAt(x)),'e',3)} ${U('rot')}`); } }
       else if(ui.res==='diag'&&ui.q!=='S'){ const nm=QN[ui.q][0], cat=QN[ui.q][1]; P2('Member'); P2(` ${nm}`); P2(' Diagram Results'); P2(); P2(' Load Case:'); P2('  Load Case 01'); P2();
         P2(' Init:'); P2(`  ${fqu(cat,r.val(ui.q,0))}`); P2(' End:'); P2(`  ${fqu(cat,r.val(ui.q,r.L))}`);
-        if(ui.q==='M'){ const xs=samplesX(r,0); let ex=null; for(let k=1;k<xs.length-1;k++){ const v=r.val('M',xs[k]); if(Math.abs(v)>Math.abs(r.val('M',xs[k-1]))&&Math.abs(v)>=Math.abs(r.val('M',xs[k+1]))) ex=xs[k]; } if(ex!=null){ P2(' Local extreme:'); P2(`  ${fqu(cat,r.val('M',ex))} at x = ${fqu('len',ex)}`); } }
-        P2(); if(M.step>0){ P2(` Values at step ${fqu('len',M.step)}:`); samplesX(r,M.step).filter(x=>Math.abs(x/M.step-Math.round(x/M.step))<1e-6||x===r.L).forEach(x=>P2(`  x = ${fq('len',x).padStart(7)}   ${fq(cat,r.val(ui.q,x)).padStart(9)}`)); }
-        else { P2(' Define a reasonable'); P2(' step value to get'); P2(' results along member.'); } }
+        if(M.step>0){ const [w1,w2]=nm.split(' '); P2(' Results Along Member:'); P2(` ${`x [${U('len')}]`.padEnd(7)}${w1}`); P2(` ${''.padEnd(7)}${w2} [${U(cat)}]`);
+          stepXs(r.L,M.step).forEach(x=>P2(` ${fq('len',x).padEnd(7)}${fq(cat,r.val(ui.q,x))}`)); }
+        else { P2(); P2(' Define a reasonable'); P2(' step value to get'); P2(' results along member.'); } }
       else if(ui.res==='il'){ P2('Member'); P2(' Influence Line'); P2(); P2(' Select a section on a'); P2(' member to draw the'); P2(' influence line.'); } }
     else { const mat=item('mat',m.mat), sec=item('sec',m.sec);
       P2('Member'); P2('Attributes'); P2(); P2(`Length = ${fqu('len',L)}`); P2();
-      if(mat){ P2(`Material: ${mat.name}`); P2(' Type: Isotropic'); P2(` E       = ${fqu('E',mat.E)}`); P2(` Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(` gama    = ${fmtNum(mat.gamma??0,'f',1)} kN/m³`); P2(` alpha   = ${fqu('alpha',mat.alpha)}`); } else P2('Material: None.');
+      if(mat){ P2(`Material: ${mat.name}`); P2(' Type: Isotropic'); P2(` E       = ${fqu('E',mat.E)}`); P2(` Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(` gama    = ${fqu('gamma',mat.gamma??0)}`); P2(` alpha   = ${fqu('alpha',mat.alpha)}`); } else P2('Material: None.');
       P2();
       if(sec){ const S=secCalc(sec); P2(`Section: ${sec.name}`); P2(` Type: ${SEC_INFO[sec.type]||sec.type}`); P2(' Normal orientation');
         for(const p of SEC_TYPES[sec.type].p) P2(` ${p.padEnd(5)} = ${fqu('sec',sec.p[p])}`);
@@ -1089,21 +1138,6 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
 function panelInfo(){ const i=ui.info; if(!i) return ''; let h=infoText(i);
   if(i.t==='n'&&RES&&RES.ok&&ui.res){ const n=nodeById(i.id); if(n) h+=jointEquilibrium(n); }
   return h; }
-function panelInfoOld(){ const i=ui.info; if(!i) return ''; let h='';
-  if(i.t==='n'){ const n=nodeById(i.id); if(!n) return ''; h+=`<div class="pt">Node ${n.id}</div><dl class="info"><dt>X</dt><dd>${fqu('len',n.x)}</dd><dt>Y</dt><dd>${fqu('len',n.y)}</dd>
-    <dt>Support</dt><dd>${n.sup?['x','y','r'].map(k=>({0:'free',1:'fix',2:'spring'})[n.sup[k]]).join(' / '):'none'}</dd><dt>Hinge</dt><dd>${n.hinge?'yes':'no'}</dd><dt>Nodal load</dt><dd>${esc(item('nodal',n.load)?.name||'NONE')}</dd></dl>`;
-    if(RES&&RES.ok){ const k=RES.idx.get(n.id), D=RES.D, R=RES.R, fx=RES.fixed; const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=fx[3*k+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*k+2];
-      h+=`<div class="pt" style="margin-top:8px">Results</div><dl class="info"><dt>Dx</dt><dd>${fqu('disp',D[3*k])}</dd><dt>Dy</dt><dd>${fqu('disp',D[3*k+1])}</dd><dt>Rz</dt><dd>${fqu('rot',rz)}</dd>
-      ${fx[3*k]===1?`<dt>Fx${n.sup?.ang?' (local)':''}</dt><dd>${fqu('force',R[3*k])}</dd>`:''}${fx[3*k+1]===1?`<dt>Fy${n.sup?.ang?' (local)':''}</dt><dd>${fqu('force',R[3*k+1])}</dd>`:''}${fx[3*k+2]===1?`<dt>Mz</dt><dd>${fqu('moment',R[3*k+2])}</dd>`:''}</dl>`+jointEquilibrium(n); } }
-  if(i.t==='m'){ const m=memById(i.id); if(!m) return ''; const a=nodeById(m.i),b=nodeById(m.j), L=Math.hypot(b.x-a.x,b.y-a.y);
-    h+=`<div class="pt">Member ${m.id}</div><dl class="info"><dt>Nodes</dt><dd>${m.i} → ${m.j}</dd><dt>Length</dt><dd>${fqu('len',L)}</dd><dt>Material</dt><dd>${esc(item('mat',m.mat)?.name||'—')}</dd><dt>Section</dt><dd>${esc(item('sec',m.sec)?.name||'—')}</dd>
-    <dt>Hinges</dt><dd>${m.hi&&m.hj?'both ends':m.hi?'start':m.hj?'end':'none'}</dd><dt>Type</dt><dd>${m.rigid?'rigid':'flexible'+(m.axial?'':', no axial def.')+(m.shear?', shear def.':'')}</dd>
-    <dt>Uniform</dt><dd>${esc(item('unif',m.ld.u)?.name||'NONE')}</dd><dt>Linear</dt><dd>${esc(item('lin',m.ld.l)?.name||'NONE')}</dd><dt>Thermal</dt><dd>${esc(item('therm',m.ld.t)?.name||'NONE')}</dd><dt>End moments</dt><dd>${esc(item('endm',m.ld.e)?.name||'NONE')}</dd></dl>`;
-    if(RES&&RES.ok){ const r=RES.rm.get(m.id); if(r){ const xs=samplesX(r,M.step); let mx=xs[0]; xs.forEach(x=>{ if(Math.abs(r.val('M',x))>Math.abs(r.val('M',mx))) mx=x; });
-      h+=`<div class="pt" style="margin-top:8px">Results</div><dl class="info"><dt>N start / end</dt><dd>${fq('force',r.N(0))} / ${fq('force',r.N(r.L))}</dd><dt>V start / end</dt><dd>${fq('force',r.val('V',0))} / ${fq('force',r.val('V',r.L))}</dd>
-      <dt>M start / end</dt><dd>${fq('moment',r.val('M',0))} / ${fq('moment',r.val('M',r.L))}</dd><dt>M extreme</dt><dd>${fqu('moment',r.val('M',mx))} at ${fqu('len',mx)}</dd></dl>`;
-      if(M.step>0&&ui.res==='diag'&&ui.q!=='D'){ h+=`<table class="info" style="width:100%;margin-top:6px"><tr><th style="text-align:left">x</th><th style="text-align:right">${QN[ui.q][0]}</th></tr>${xs.filter(x=>Math.abs(x/M.step-Math.round(x/M.step))<1e-6||x===r.L).map(x=>`<tr><td>${fq('len',x)}</td><td style="text-align:right">${fq(QN[ui.q][1],r.val(ui.q,x))}</td></tr>`).join('')}</table>`; } } } }
-  return h+`<div class="btnrow" style="margin-top:8px"><button class="pb" data-act="info-close">Close</button></div>`; }
 function renderSide(){ const fk=document.activeElement&&side.contains(document.activeElement)?document.activeElement.dataset.k:null;
   let h=''; if(ui.info) h=panelInfo(); else if(ui.res==='diag'&&ui.q==='S') h=panelSection(); else if(ui.res&&ui.panel!=='trf') h=panelResults(); else if(ui.panel==='sup') h=panelSup(); else if(ui.panel==='hinge') h=panelHinge(); else if(ui.panel==='dc') h=panelDC(); else if(ui.panel==='trf') h=panelTrf();
   else { h=listHead(ui.panel); if(ui.creating!==ui.panel&&ui.renaming!==ui.panel) h+=panelBody(ui.panel); }
@@ -1122,7 +1156,7 @@ side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) re
     else { const v=pnum(el.value); if(v!=null) s[f]=fromD(el.dataset.cat,v); }
     save(); renderSide(); return; }
   if(k.startsWith('dc.')){ const d=M.cur.dc, f=k.slice(3); if(f==='rigid') d.flex=!el.checked; else if(f==='flex') d.flex=el.checked; else d[f]=el.checked; save(); renderSide(); return; }
-  if(k.startsWith('t.')){ const f=k.slice(2); if(el.type==='checkbox') ui.trf[f]=el.checked; else { const v=pnum(el.value); if(v!=null) ui.trf[f]=v; } return; }
+  if(k.startsWith('t.')){ const f=k.slice(2); if(el.type==='checkbox'){ ui.trf[f]=el.checked; if(f==='on') renderSide(); } else { const v=pnum(el.value); if(v!=null) ui.trf[f]=v; } return; }
   const cur=item(P,M.cur[P]); if(!cur) return;
   if(k==='dir'){ commit(()=>{ cur.dir=el.value; }); return; }
   const v=pnum(el.value); if(v==null){ renderSide(); return; }
@@ -1175,7 +1209,8 @@ function selectWithCurrent(P){ let t='m', ids=[];
 
 /* ================= Transformations ================= */
 function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to transform.'; renderTop(); return; }
-  const t=ui.trf, s=back?-1:1;
+  const t=ui.trf, s=back?-1:1; if(!t.on) return;
+  if(t.tab==='scale'&&!(t.f>0)){ ui.msg='The scale factor must be greater than zero.'; renderTop(); return; }
   let fn;
   if(t.tab==='move') fn=(x,y)=>[x+s*fromD('len',t.dx),y+s*fromD('len',t.dy)];
   else if(t.tab==='rotate'){ const ox=fromD('len',t.x),oy=fromD('len',t.y),a=s*t.ang*Math.PI/180,c=Math.cos(a),sn=Math.sin(a); fn=(x,y)=>[ox+(x-ox)*c-(y-oy)*sn,oy+(x-ox)*sn+(y-oy)*c]; }
@@ -1189,7 +1224,11 @@ function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to tran
         nodeIds.forEach(id=>{ const n=nodeById(id), [x,y]=fn(n.x,n.y); let e=M.nodes.find(o=>Math.hypot(o.x-x,o.y-y)<tol); if(!e){ e=addNode(x,y); e.sup=n.sup?JSON.parse(JSON.stringify(n.sup)):null; e.hinge=n.hinge; e.load=n.load; } map.set(id,e.id); });
         const newIds=[]; ms.forEach(m=>{ const i=map.get(m.i), j=map.get(m.j); if(i===j||M.members.some(o=>(o.i===i&&o.j===j)||(o.i===j&&o.j===i))) return; const c=addMember(i,j,m); c.hi=m.hi; c.hj=m.hj; c.ld={...m.ld}; newIds.push(c.id); });
         if(!t.desel) ui.sel={t:ui.sel.t,ids:new Set(ui.sel.t==='m'?newIds:[...map.values()])}; }
-      else { nodeIds.forEach(id=>{ const n=nodeById(id); [n.x,n.y]=fn(n.x,n.y); });
+      else { // Without "Maintain topology" the selected members are detached from the members that stay: shared nodes are duplicated.
+        if(ui.sel.t==='m'&&!t.keep){ const selIds=new Set(ms.map(m=>m.id));
+          for(const id of [...nodeIds]){ if(!M.members.some(m=>!selIds.has(m.id)&&(m.i===id||m.j===id))) continue; const n=nodeById(id), c=addNode(n.x,n.y); c.hinge=n.hinge;
+            ms.forEach(m=>{ if(m.i===id) m.i=c.id; if(m.j===id) m.j=c.id; }); nodeIds.delete(id); nodeIds.add(c.id); } }
+        nodeIds.forEach(id=>{ const n=nodeById(id); [n.x,n.y]=fn(n.x,n.y); });
         for(const id of nodeIds){ const n=nodeById(id), o=M.nodes.find(o=>o.id!==id&&!nodeIds.has(o.id)&&Math.hypot(o.x-n.x,o.y-n.y)<tol); if(o){ M.members.forEach(m=>{ if(m.i===id) m.i=o.id; if(m.j===id) m.j=o.id; }); M.nodes=M.nodes.filter(x=>x.id!==id); } }
         M.members=M.members.filter((m,i,a)=>m.i!==m.j&&a.findIndex(o=>(o.i===m.i&&o.j===m.j)||(o.i===m.j&&o.j===m.i))===i); }
     }
@@ -1197,20 +1236,29 @@ function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to tran
   }); }
 
 /* ================= Keyboard mode dialog ================= */
+// Ftool's keyboard input dialogs: "Member input" (Absolute / Incremental tabs), "Node input" and "Dimension line input".
+// After OK the member dialog continues from the last end point, as in Ftool.
 function renderKbd(){ const kd=$('#kd'); const on=ui.kbd&&!ui.res&&['member','node','dim'].includes(ui.tool); kd.hidden=!on; if(!on) return;
-  const v=ui.kv||(ui.kv={x1:0,y1:0,x2:fromD('len',1)/1,y2:0,off:-.5,tol:.01});
-  const f=(l,k,u='')=>`<label>${l}</label><input data-kv="${k}" value="${fq('len',v[k])}">`;
-  let g;
-  if(ui.tool==='member') g=`<div class="g">${f('X1:','x1')}<span>${U('len')}</span>${f('Y1:','y1')}${f('X2:','x2')}<span>${U('len')}</span>${f('Y2:','y2')}</div>`;
-  else if(ui.tool==='node') g=`<div class="g">${f('X:','x1')}<span>${U('len')}</span>${f('Y:','y1')}</div>`;
-  else g=`<div class="g">${f('X1:','x1')}<span>${U('len')}</span>${f('Y1:','y1')}${f('X2:','x2')}<span>${U('len')}</span>${f('Y2:','y2')}${f('Offset:','off')}<span>${U('len')}</span></div>`;
-  kd.innerHTML=`<div class="ttl">${MODE_NAMES[ui.tool]}</div>${g}<div class="g"><label>Tolerance:</label><input data-kv="tol" value="${fq('len',v.tol)}"><span>${U('len')}</span></div><div class="btnrow"><button class="pb def" data-kact="ok">OK</button><button class="pb" data-kact="cancel">Cancel</button></div>`; }
-$('#kd').addEventListener('click',e=>{ const b=e.target.closest('[data-kact]'); if(!b) return; if(b.dataset.kact==='cancel'){ ui.kbd=false; renderAll(); return; } kbdOk(); });
+  const v=ui.kv||(ui.kv={x1:0,y1:0,x2:0,y2:0,dx:0,dy:0,rx:0,ry:0,tol:.001,tab:'abs'});
+  const f=(l,k)=>`<label>${l}</label><input data-kv="${k}" value="${k==='tol'?fmtNum(toD('len',v.tol),'f',4):fq('len',v[k])}"><span>${U('len')}</span>`;
+  const grid=rows=>`<div class="g" style="grid-template-columns:auto 76px auto">${rows.map(r=>f(...r)).join('')}</div>`, tol=['Tolerance:','tol'];
+  let title, body;
+  if(ui.tool==='member'){ title='Member input'; const inc=v.tab==='inc';
+    body=`<div class="tabsv"><div class="vt" role="tablist"><button role="tab" aria-selected="${!inc}" data-kact="tab:abs">Absolute</button><button role="tab" aria-selected="${inc}" data-kact="tab:inc">Incremental</button></div>
+      <fieldset><legend>Enter with member coordinates:</legend>${grid([['1st Node X:','x1'],['1st Node Y:','y1'],inc?['Incr. DX:','dx']:['2nd Node X:','x2'],inc?['Incr. DY:','dy']:['2nd Node Y:','y2'],tol])}</fieldset></div>`; }
+  else if(ui.tool==='node'){ title='Node input'; body=`<fieldset><legend>Node coordinates:</legend>${grid([['X:','x1'],['Y:','y1'],tol])}</fieldset>`; }
+  else { title='Dimension line input'; body=`<fieldset><legend>Dimension line parameters:</legend>${grid([['Point 1 X:','x1'],['Point 1 Y:','y1'],['Point 2 X:','x2'],['Point 2 Y:','y2'],['Ref.Pt. X:','rx'],['Ref.Pt. Y:','ry'],tol])}</fieldset>`; }
+  kd.innerHTML=`<div class="ttl">${title}</div>${body}<div class="btnrow" style="gap:20px"><button class="pb def" data-kact="ok">OK</button><button class="pb" data-kact="cancel">Cancel</button></div>`; }
+function kbdRead(){ const v=ui.kv; $$('#kd [data-kv]').forEach(i=>{ const n=pnum(i.value); if(n!=null) v[i.dataset.kv]=fromD('len',n); }); }
+$('#kd').addEventListener('click',e=>{ const b=e.target.closest('[data-kact]'); if(!b) return; const a=b.dataset.kact;
+  if(a.startsWith('tab:')){ kbdRead(); ui.kv.tab=a.slice(4); renderKbd(); return; }
+  if(a==='cancel'){ ui.kbd=false; renderAll(); return; } kbdOk(); });
 $('#kd').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); kbdOk(); } if(e.key==='Escape'){ ui.kbd=false; renderAll(); } });
-function kbdOk(){ const v=ui.kv; $$('#kd [data-kv]').forEach(i=>{ const n=pnum(i.value); if(n!=null) v[i.dataset.kv]=fromD('len',n); });
-  if(ui.tool==='member'){ insertMember({x:v.x1,y:v.y1},{x:v.x2,y:v.y2}); const dx=v.x2-v.x1,dy=v.y2-v.y1; v.x1=v.x2; v.y1=v.y2; v.x2+=dx; v.y2+=dy; }
-  else if(ui.tool==='node') insertNode({x:v.x1,y:v.y1});
-  else insertDim({x:v.x1,y:v.y1},{x:v.x2,y:v.y2},(()=>{ const d={ax:v.x1,ay:v.y1,bx:v.x2,by:v.y2}, n=dimN(d); return {x:v.x1+n[0]*v.off,y:v.y1+n[1]*v.off}; })());
+function kbdOk(){ kbdRead(); const v=ui.kv, tol=Math.max(v.tol,1e-9);
+  if(ui.tool==='member'){ if(v.tab==='inc'){ insertMember({x:v.x1,y:v.y1},{x:v.x1+v.dx,y:v.y1+v.dy},tol); v.x1+=v.dx; v.y1+=v.dy; }
+    else { insertMember({x:v.x1,y:v.y1},{x:v.x2,y:v.y2},tol); const dx=v.x2-v.x1,dy=v.y2-v.y1; v.x1=v.x2; v.y1=v.y2; v.x2+=dx; v.y2+=dy; } }
+  else if(ui.tool==='node') insertNode({x:v.x1,y:v.y1},tol);
+  else insertDim({x:v.x1,y:v.y1},{x:v.x2,y:v.y2},{x:v.rx,y:v.ry});
   renderKbd(); const first=$('#kd [data-kv]'); if(first){ first.focus(); first.select(); } }
 
 /* ================= Canvas interaction ================= */
@@ -1235,6 +1283,7 @@ cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setP
     const need={member:2,node:1,dim:3}[ui.tool];
     if(ui.pts.length>=need){ const pts=ui.pts; ui.pts=[]; if(ui.tool==='member') insertMember(pts[0],pts[1]); else if(ui.tool==='node') insertNode(pts[0]); else insertDim(pts[0],pts[1],pts[2]); }
     draw(); return; }
+  if(ui.tool==='none') return;   // Ftool starts with Editing Mode "None": nothing happens until a tool is chosen
   // select mode
   drag={sx,sy,shift:e.shiftKey,moved:false};
 });
@@ -1276,7 +1325,7 @@ function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,
 // Value at a point, written to the message line in Ftool's wording
 function pointQuery(hm){ const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L; ui.pq={mid:r.m.id,x}; const pos=`at local pos.: x = ${fqu('len',x)}  L = ${fqu('len',r.L)}  -  `;
   if(ui.res==='il'){ if(!ui.il) return; const line=ui.il.lines.find(l=>l.r===r); if(!line) return; let best=line.pts[0]; line.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
-    ui.msg=`Influence line ${pos}Value: ${fmtNum(ui.q==='M'?toD('len',best.v):best.v,'f',3)}${ui.q==='M'?' '+U('len'):''}`; return; }
+    ui.msg=`Influence line ${pos}Value: ${fmtIL(ui.q,best.v)}${ui.q==='M'?' '+U('len'):''}`; return; }
   if(ui.q==='D'){ const d=r.defl(x); ui.msg=`Displ./rotat. ${pos}Dx: ${fmtNum(toD('disp',d[0]),'e',3)} ${U('disp')}  Dy: ${fmtNum(toD('disp',d[1]),'e',3)} ${U('disp')}  Rz: ${fmtNum(toD('rot',r.rotAt(x)),'e',3)} ${U('rot')}`; return; }
   const v=r.val(ui.q,x), nm={N:'Axial force',V:'Shear force',M:'Bending moment'}[ui.q];
   ui.msg=`${nm} ${pos}Value: ${fqu(QN[ui.q][1],v)}${ui.q==='N'?(v>1e-9?' (tension)':v<-1e-9?' (compression)':''):''}`; }
@@ -1289,19 +1338,19 @@ function setTool(t){ if(ui.res) exitResults(); ui.tool=t; ui.pts=[]; ui.zoomStar
 $$('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 $$('[data-panel]').forEach(b=>b.onclick=()=>{ ui.panel=b.dataset.panel; ui.creating=null; ui.renaming=null; ui.info=null; renderAll(); });
 $$('[data-rmode]').forEach(b=>b.onclick=()=>enterResults(b.dataset.rmode,ui.res==='il'&&b.dataset.rmode==='diag'?ui.q:null));
-$$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; ui.pq=null; if(ui.res==='il'){ if(ui.il) ui.il=influence(RES,ui.il.tid,ui.il.xs,ui.q); } ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
+$$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; ui.pq=null; if(ui.res==='il'){ ui.il=null; ui.ilPick=true; } ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
 $('#defComp').onchange=e=>{ ui.defComp=e.target.value; draw(); };
 $('#bIlPick').onclick=()=>{ ui.ilPick=!ui.ilPick; ui.msg=''; renderTop(); };
 $('#pot').oninput=e=>{ ui.pot=+e.target.value; renderTop(); draw(); };
 $('#modeBox').addEventListener('change',e=>{ if(e.target.id!=='scaleIn') return; const v=pnum(e.target.value); if(v>0){ const k=ui.res==='il'?'IL'+ui.q:ui.q; ui.scaleVal[k]=v; ui.pot=0; $('#pot').value=0; draw(); renderTop(); } });
-$('#bKbd').onclick=()=>{ ui.kbd=!ui.kbd; if(ui.kbd&&!['member','node','dim'].includes(ui.tool)) ui.tool='member'; if(ui.res) exitResults(); renderAll(); if(ui.kbd){ const f=$('#kd [data-kv]'); if(f){ f.focus(); f.select(); } } };
+$('#bKbd').onclick=()=>{ ui.kbd=!ui.kbd; if(ui.res) exitResults(); renderAll(); if(ui.kbd){ const f=$('#kd [data-kv]'); if(f){ f.focus(); f.select(); } } };
 $('#bDel').onclick=deleteSel;
 $('#bTrf').onclick=()=>{ if(ui.res&&ui.res!=='diag') return; ui.panel=ui.panel==='trf'?'mat':'trf'; ui.info=null; if(ui.res) exitResults(); ui.tool='select'; renderAll(); };
 $('#bRedraw').onclick=()=>draw(); $('#bFit').onclick=fit; $('#bZin').onclick=()=>zoomAt(W/2,H/2,1.25); $('#bZout').onclick=()=>zoomAt(W/2,H/2,.8);
 $('#bUndo').onclick=undo; $('#bRedo').onclick=redo;
 $('#bNew').onclick=()=>fileNew(); $('#bOpen').onclick=()=>fileOpen(); $('#bSave').onclick=()=>fileSave(); $('#bClip').onclick=()=>exportClip();
-$('#bStepL').onclick=()=>{ M.disp.stepLines=!M.disp.stepLines; save(); renderTop(); draw(); };
-$('#bStepV').onclick=()=>{ M.disp.stepVal=!M.disp.stepVal; save(); renderTop(); draw(); };
+$('#bStepDiv').onclick=()=>{ M.opt.stepMode='div'; save(); renderTop(); draw(); if(ui.info) renderSide(); };
+$('#bStepStart').onclick=()=>{ M.opt.stepMode='start'; save(); renderTop(); draw(); if(ui.info) renderSide(); };
 $('#step').onchange=e=>{ const v=pnum(e.target.value); if(v!=null&&v>=0){ M.step=fromD('len',v); save(); } renderTop(); draw(); if(ui.info) renderSide(); };
 $('#gOn').onchange=e=>{ M.grid.on=e.target.checked; save(); renderTop(); draw(); }; $('#gSnap').onchange=e=>{ M.grid.snap=e.target.checked; save(); };
 $('#gX').onchange=e=>{ const v=pnum(e.target.value); if(v>0) M.grid.dx=fromD('len',v); save(); renderTop(); draw(); };
@@ -1337,7 +1386,7 @@ function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
     ['Totals','totals'],['Model View Limits','limits'],'-',['Exit',null,'',true]];
   if(name==='options') return [['Analysis',null,'',false,'',[['Linear Elastic','noop','',true,'chk']]],'-',
     ['Support and Hinge Display Size',null,'',false,'',sizes('suphinge',o.sup)],['Load Display Size',null,'',false,'',sizes('load',o.load)],['Text Display Size',null,'',false,'',sizes('text',o.text)],'-',
-    ['Add static load results to load-train envelope',null,'',true,'chk'],'-',['Save analysis result neutral file',null,'',true],'-',
+    ['Add static load results to load-train envelope','opt:envStatic','',false,o.envStatic?'chk':''],'-',['Save analysis result neutral file',null,'',true],'-',
     ['Structure Type (FOpenTool)',null,'',false,'',[['Frame: members carry N, V and M','struct:frame','',false,o.truss?'':'chk'],['Truss: pinned joints, axial force only','struct:truss','',false,o.truss?'chk':'']]],'-',
     ['Units & Number Formatting...','units']];
   return [['White Background','bg:white','',false,d.bg==='white'?'chk':''],['Gray Background','bg:gray','',false,d.bg==='gray'?'chk':''],['Black Background','bg:black','',false,d.bg==='black'?'chk':''],['Black Foreground','bg:mono','',false,d.bg==='mono'?'chk':''],'-',
@@ -1355,6 +1404,7 @@ $('#menu').addEventListener('mouseover',e=>{ const b=e.target.closest('button');
 document.addEventListener('pointerdown',e=>{ if(!e.target.closest('.menu')&&!e.target.closest('.menubar')) closeMenu(); });
 function menuClick(e){ const b=e.target.closest('[data-mact]'); if(!b||b.disabled) return; if(b.dataset.kids!=null){ showSub(b); return; } const [a,p,q]=b.dataset.mact.split(':'); if(!a) return; closeMenu();
   if(a==='disp'){ M.disp[p]=!M.disp[p]; save(); renderTop(); draw(); }
+  else if(a==='opt'){ M.opt[p]=!M.opt[p]; save(); }
   else if(a==='bg'){ M.disp.bg=p; save(); draw(); }
   else if(a==='size'){ if(p==='suphinge'){ M.opt.sup=q; M.opt.hinge=q; } else M.opt[p]=q; save(); draw(); }
   else if(a==='import') fileImport(); else if(a==='print') printModel();
@@ -1367,25 +1417,63 @@ $('#menu').addEventListener('click',menuClick); $('#menu2').addEventListener('cl
 function dlg(title,body,onMount){ $('#dlgT').textContent=title; $('#dlgB').innerHTML=body; $('#ov').hidden=false; if(onMount) onMount($('#dlgB')); const f=$('#dlgB').querySelector('input,select,textarea,button'); if(f) f.focus(); }
 function closeDlg(){ $('#ov').hidden=true; }
 $('#ov').addEventListener('click',e=>{ if(e.target===$('#ov')||e.target.closest('[data-close]')) closeDlg(); });
-function dlgAbout(){ dlg('About FOpenTool',`<p style="margin:0;max-width:420px">FOpenTool is an open-source, browser-based program for linear-elastic analysis of two-dimensional frames and trusses. Its interface and workflow follow the Ftool program from PUC-Rio, so Ftool users can work without relearning.</p><p style="margin:0;max-width:420px;color:var(--muted)">FOpenTool is an independent project and is not affiliated with Ftool, Tecgraf, PUC-Rio or Marlin.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
+// Credits, laid out like Ftool's: name, version, credits, link, date, disclaimer; Close and a language button.
+const ABOUT_TXT={en:{lang:'Portuguese',sub:'Open-source, browser-based edition',cred:'An independent, open-source program that follows the interface and workflow of Ftool (PUC-Rio), extended with Mechanics of Solids content for UnB (FGA0154, FGA0179).\n\nDeveloped by: gabrielcs-aero, with Claude (Anthropic)\n\nMIT License. Runs offline in any modern browser, with nothing to install.',
+  disc:'Disclaimer: FOpenTool is not affiliated with or endorsed by Ftool, Tecgraf/PUC-Rio or Marlin. Neither the authors nor any related institution are responsible for any use or misuse of the program and its results. The user is responsible for all conclusions made while using the program. There is no warranty and no guarantee.'},
+ pt:{lang:'English',sub:'Edição de código aberto, no navegador',cred:'Um programa independente e de código aberto que segue a interface e o fluxo de trabalho do Ftool (PUC-Rio), ampliado com o conteúdo de Mecânica dos Sólidos da UnB (FGA0154, FGA0179).\n\nDesenvolvido por: gabrielcs-aero, com Claude (Anthropic)\n\nLicença MIT. Funciona offline em qualquer navegador moderno, sem instalar nada.',
+  disc:'Aviso: o FOpenTool não tem vínculo com o Ftool, o Tecgraf/PUC-Rio ou a Marlin, nem é endossado por eles. Nem os autores nem qualquer instituição relacionada são responsáveis por qualquer uso ou mau uso do programa e de seus resultados. O usuário é responsável por todas as conclusões tiradas com o programa. Não há garantia de nenhum tipo.'}};
+const APP_VERSION='0.3', APP_DATE='November 2026';
+function dlgAbout(){ let lg='en'; const body=()=>{ const t=ABOUT_TXT[lg]; return `<p class="ctr" style="font-size:15px;font-weight:700">FOpenTool - Two-Dimensional Frame Analysis Tool</p><p class="ctr">Version ${APP_VERSION}<br>${t.sub}</p>
+   <p class="ctr" style="white-space:pre-line;max-width:470px">${t.cred}</p><p class="ctr" style="color:var(--muted)">${APP_DATE}</p><p style="margin:0;max-width:520px;font-size:11.5px">${t.disc}</p>
+   <div class="btnrow" style="gap:120px"><button class="pb def" data-close>Close</button><button class="pb" id="abLang">${t.lang}</button></div>`; };
+  const mount=b=>{ b.querySelector('#abLang').onclick=()=>{ lg=lg==='en'?'pt':'en'; b.innerHTML=body(); mount(b); }; };
+  dlg('Credits',body(),mount); }
+// Ftool shows a plain message with the two counts; the determinacy line is FOpenTool's addition.
 function dlgTotals(){ const c=M.members.length?classify(M,analyze(M)):null;
-  dlg('Totals',`<table><tr><td>Nodes:</td><td style="text-align:right">${M.nodes.length}</td></tr><tr><td>Members:</td><td style="text-align:right">${M.members.length}</td></tr><tr><td>Dimension lines:</td><td style="text-align:right">${M.dims.length}</td></tr></table>
-  ${c?`<fieldset class="fs"><legend>Static determinacy (${c.truss?'truss':'frame'})</legend><b>${c.cls}</b><span style="font-family:'Cambria Math','Times New Roman',serif">${c.formula}</span><span style="color:var(--muted)">${c.legend}. ${c.note}</span></fieldset>`:''}<div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
-function dlgLimits(){ const b=bbox(); dlg('Limits',b?`<table><tr><td>X min:</td><td>${fqu('len',b.x0)}</td></tr><tr><td>X max:</td><td>${fqu('len',b.x1)}</td></tr><tr><td>Y min:</td><td>${fqu('len',b.y0)}</td></tr><tr><td>Y max:</td><td>${fqu('len',b.y1)}</td></tr></table><div class="btnrow"><button class="pb def" data-close>OK</button></div>`:'<p>The model is empty.</p><div class="btnrow"><button class="pb def" data-close>OK</button></div>'); }
-function dlgSign(){ dlg('Sign Convention',`<svg viewBox="0 0 300 120" width="300" height="120" aria-hidden="true" style="background:#fff;border:1px solid #ccc;max-width:100%">
-  <path d="M30 100V40L150 20 270 40V100" fill="none" stroke="#808000" stroke-width="2"/><path d="M36 100V44 M156 26 L264 44 M264 44V100 M36 44L150 26" fill="none" stroke="#D00000" stroke-width="1" stroke-dasharray="3 2" transform="translate(4 4)"/>
-  <text x="150" y="70" font-size="11" text-anchor="middle" font-family="Arial">dashed: lower fibers</text></svg>
-  <p style="margin:0;max-width:440px">Lower fibers are the bottom side of horizontal and inclined members and the right side of vertical members. Axial force is positive in tension. Shear force is positive when the resultant of the forces to the left of a section points up. Bending moment is positive when it puts the lower fibers in tension. Positive axial and shear values are drawn on the upper side.</p>
-  <fieldset class="fs"><legend>Bending moment diagram</legend><label class="ck"><input type="radio" name="mpos" value="tension" ${M.opt.mPos==='tension'?'checked':''}> Positive values drawn on the tension side</label><label class="ck"><input type="radio" name="mpos" value="compression" ${M.opt.mPos!=='tension'?'checked':''}> Positive values drawn on the compression side</label></fieldset>
-  <fieldset class="fs"><legend>Influence lines</legend><label class="ck"><input type="radio" name="ilpos" value="lower" ${M.opt.ilPos==='lower'?'checked':''}> Positive values drawn on the lower fibers</label><label class="ck"><input type="radio" name="ilpos" value="diagram" ${M.opt.ilPos!=='lower'?'checked':''}> Follow the diagram convention</label></fieldset>
-  <div class="btnrow"><button class="pb def" id="sgOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{ b.querySelector('#sgOk').onclick=()=>{ M.opt.mPos=b.querySelector('[name=mpos]:checked').value; M.opt.ilPos=b.querySelector('[name=ilpos]:checked').value; save(); closeDlg(); draw(); }; }); }
-function dlgUnits(){ const rows=Object.entries(UC).filter(([k])=>k!=='nu').map(([k,v])=>`<tr><td>${v[0]}</td><td><select data-uk="${k}">${Object.keys(v[1]).map(u=>`<option ${u===M.units[k].u?'selected':''}>${u}</option>`).join('')}</select></td>
-   <td><select data-uf="${k}"><option value="f" ${M.units[k].f==='f'?'selected':''}>Decimal</option><option value="e" ${M.units[k].f==='e'?'selected':''}>Exponential</option></select></td><td><input type="number" min="0" max="8" data-ud="${k}" value="${M.units[k].d}" style="width:48px"></td></tr>`).join('');
-  dlg('Units & Number Formatting',`<div class="btnrow" style="justify-content:flex-start"><button class="pb" id="uSI">SI Units</button><button class="pb" id="uKNM">kN &amp; m Units</button></div>
-   <div style="overflow-x:auto"><table><tr><th style="text-align:left">Quantity</th><th>Unit</th><th>Format</th><th>Digits</th></tr>${rows}</table></div><div class="btnrow"><button class="pb def" id="uOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{
-    const fill=u=>{ for(const k in u){ const s=b.querySelector(`[data-uk="${k}"]`); if(!s) continue; s.value=u[k].u; b.querySelector(`[data-uf="${k}"]`).value=u[k].f; b.querySelector(`[data-ud="${k}"]`).value=u[k].d; } };
-    b.querySelector('#uSI').onclick=()=>fill(defUnits('SI')); b.querySelector('#uKNM').onclick=()=>fill(defUnits('kNm'));
-    b.querySelector('#uOk').onclick=()=>{ b.querySelectorAll('[data-uk]').forEach(s=>{ const k=s.dataset.uk; M.units[k]={u:s.value,f:b.querySelector(`[data-uf="${k}"]`).value,d:Math.max(0,Math.min(8,+b.querySelector(`[data-ud="${k}"]`).value||0))}; }); ui.scaleVal={}; save(); closeDlg(); renderAll(); }; }); }
+  dlg('Message',`<p style="margin:0">Number of Nodes: ${M.nodes.length}<br>Number of Members: ${M.members.length}</p>
+  ${c?`<p style="margin:0;color:var(--muted);max-width:360px">${c.cls}: ${c.formula}</p>`:''}<div class="btnrow"><button class="pb def" data-close>OK</button></div>`); }
+// Ftool: "Window limits input", the limits of the visible drawing area, editable.
+function dlgLimits(){ const [x0,y1]=toW(0,0), [x1,y0]=toW(W,H), v={x0,x1,y0,y1};
+  const f=(l,k)=>`<label>${l}</label><input data-lim="${k}" value="${fq('len',v[k])}"><span>${U('len')}</span>`;
+  dlg('Window limits input',`<fieldset class="fs"><legend>Enter with visualization window limits:</legend><div class="kd-g" style="display:grid;grid-template-columns:auto 84px auto;gap:6px 4px;align-items:center">${f('X minimum:','x0')}${f('X maximum:','x1')}${f('Y minimum:','y0')}${f('Y maximum:','y1')}</div></fieldset>
+   <div class="btnrow"><button class="pb def" id="limOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{ b.querySelectorAll('input').forEach(i=>{ i.style.cssText='height:21px;border:1px solid var(--chrome-line);text-align:right;padding:0 4px;width:84px'; });
+    b.querySelector('#limOk').onclick=()=>{ const g=k=>fromD('len',pnum(b.querySelector(`[data-lim="${k}"]`).value)); const a=g('x0'),c=g('x1'),d=g('y0'),e=g('y1');
+      if(!(c>a)||!(e>d)){ ui.msg='The maximum must be larger than the minimum.'; renderTop(); return; }
+      view.s=Math.min(W/(c-a),H/(e-d)); view.ox=W/2-(a+c)/2*view.s; view.oy=H/2+(d+e)/2*view.s; closeDlg(); draw(); }; }); }
+// Ftool's "Internal Force Sign and Diagram Display Conventions" dialog, with sketches drawn for this app.
+function signSketch(kind){ const bar=`<path d="M4 9h94M142 9h94" stroke="#808080" stroke-width="7"/><path d="M4 15h94M142 15h94" stroke="#E00000" stroke-width="1.6"/><path d="M120 4v12" stroke="#808080" stroke-width="5"/><path d="M117 17h6" stroke="#E00000" stroke-width="1.6"/>`;
+  const g={M:['↺','↻','↺','↻'],V:['↓','↑','↓','↑'],N:['→','←','→','←']}[kind];
+  return `<svg class="sk" viewBox="0 0 240 22" width="380" height="30" aria-hidden="true">${bar}${g.map((c,i)=>`<text x="${[103,112,128,137][i]}" y="13" font-size="${kind==='M'?9:10}" font-weight="700" text-anchor="middle" fill="#00008B" font-family="Arial">${c}</text>`).join('')}</svg>`; }
+function dlgSign(){ const o={m:M.opt.mPos,il:M.opt.ilPos};
+  const frame=`<svg class="sk" viewBox="0 0 220 122" width="216" height="120" aria-hidden="true"><g stroke="#808080" stroke-width="4" fill="none" stroke-linecap="square"><path d="M14 118V62H206V118M110 118V12M14 62L110 12 206 62"/></g>
+   <g stroke="#E00000" stroke-width="1.6" fill="none"><path d="M20 118V68H104M116 118V68H200M212 118V64M22 58L104 15.5M116 20.5L198 63"/></g></svg>`;
+  dlg('Internal Force Sign and Diagram Display Conventions',`<p class="ctr" style="font-size:15px;font-weight:700">Conventions for Internal Force Sign and Diagram Display</p>${frame}<p class="ctr"><b>Member bottom side</b></p>
+   ${signSketch('M')}<p class="ctr"><b>Positive bending moment</b></p>
+   <label class="ck" style="justify-content:center"><input type="checkbox" data-sg="m" value="tension" ${o.m==='tension'?'checked':''}> Plot diagram values on the tension side of member</label>
+   <label class="ck" style="justify-content:center"><input type="checkbox" data-sg="m" value="compression" ${o.m!=='tension'?'checked':''}> Plot diagram values on the compression side of member</label>
+   ${signSketch('V')}<p class="ctr"><b>Positive shear force</b><br><b>Positive diagram values are plotted on the top side of member</b></p>
+   ${signSketch('N')}<p class="ctr"><b>Positive axial force</b><br><b>Positive diagram values are plotted on the top side of member</b></p>
+   <hr style="width:100%;border:0;border-top:1px solid var(--chrome-dark)"><p class="ctr"><b>Influence line display</b></p>
+   <label class="ck"><input type="checkbox" data-sg="il" value="lower" ${o.il==='lower'?'checked':''}> Plot positive influence line values on the bottom side of member</label>
+   <label class="ck"><input type="checkbox" data-sg="il" value="diagram" ${o.il!=='lower'?'checked':''}> Influence line plot convention follows internal force diagram convention</label>
+   <div class="btnrow" style="gap:60px"><button class="pb" id="sgApply" disabled>Apply</button><button class="pb" id="sgAcc" disabled>Accept</button><button class="pb def" data-close>Close</button></div>`,b=>{
+    const dirty=()=>{ const d=o.m!==M.opt.mPos||o.il!==M.opt.ilPos; b.querySelector('#sgApply').disabled=!d; b.querySelector('#sgAcc').disabled=!d; };
+    b.querySelectorAll('[data-sg]').forEach(c=>c.onchange=()=>{ o[c.dataset.sg]=c.value; b.querySelectorAll(`[data-sg="${c.dataset.sg}"]`).forEach(x=>x.checked=x.value===c.value); dirty(); });
+    const apply=()=>{ M.opt.mPos=o.m; M.opt.ilPos=o.il; save(); draw(); dirty(); };
+    b.querySelector('#sgApply').onclick=apply; b.querySelector('#sgAcc').onclick=()=>{ apply(); closeDlg(); }; }); }
+// Same layout as Ftool: SI / kN-m / US buttons, then one frame per group with a unit box and a Format box on each row.
+// Ftool's US button changes nothing in version 4.01; it is kept for the same layout.
+function dlgUnits(){ const fmtOpts=k=>FMTS.map(([f,d],i)=>`<option value="${i}" ${M.units[k].f===f&&M.units[k].d===d?'selected':''}>${fmtName(f,d)}</option>`).join('');
+  const row=k=>{ const fixed=k==='ilF'||k==='ilM', cur=k==='ilM'?M.units.len.u:M.units[k].u;
+    return `<label for="uk_${k}">${UC[k][0]}:</label><select id="uk_${k}" data-uk="${k}" ${fixed?'disabled':''}>${Object.keys(UC[k][1]).map(u=>`<option value="${u}" ${u===cur?'selected':''}>${esc(uName(u))}</option>`).join('')}</select>
+      <label for="uf_${k}">Format:</label><select id="uf_${k}" data-uf="${k}">${fmtOpts(k)}</select>`; };
+  dlg('Units & Number Formatting',`<div class="ugrid-top"><button class="pb" id="uSI">SI</button><button class="pb" id="uKNM">kN-m</button><button class="pb" id="uUS">US</button></div>
+   ${UC_GROUPS.map(g=>`<fieldset class="ufs">${g.map(row).join('')}</fieldset>`).join('')}
+   <div class="btnrow" style="gap:60px"><button class="pb def" id="uOk">OK</button><button class="pb" data-close>Cancel</button></div>`,b=>{
+    const fill=u=>{ for(const k in u){ const s=b.querySelector(`[data-uk="${k}"]`); if(!s) continue; if(k!=='ilM'&&k!=='ilF') s.value=u[k].u; b.querySelector(`[data-uf="${k}"]`).value=FMTS.findIndex(([f,d])=>f===u[k].f&&d===u[k].d); } };
+    b.querySelector('#uSI').onclick=()=>fill(defUnits('SI')); b.querySelector('#uKNM').onclick=()=>fill(defUnits('kNm')); b.querySelector('#uUS').onclick=()=>{};
+    b.querySelector('[data-uk="len"]').onchange=e=>{ b.querySelector('[data-uk="ilM"]').value=e.target.value; };
+    b.querySelector('#uOk').onclick=()=>{ b.querySelectorAll('[data-uk]').forEach(s=>{ const k=s.dataset.uk, [f,d]=FMTS[+b.querySelector(`[data-uf="${k}"]`).value]||['f',2]; M.units[k]={u:s.value,f,d}; }); ui.scaleVal={}; save(); closeDlg(); renderAll(); }; }); }
 function fileNew(){ pushUndo(); const keep={units:M.units,disp:M.disp,opt:M.opt,grid:M.grid}; M=newModel(); Object.assign(M,JSON.parse(JSON.stringify(keep))); exitResults(); clearSel(); ui.panel='mat'; ui.tool='select'; changed(); fit(); ui.msg='New model. Undo restores the previous one.'; renderTop(); }
 function fileOpen(){ dlg('Open',`<p style="margin:0">Open an Ftool model (.ftl) or a FOpenTool model (.json), or paste its text below.</p><textarea id="opTxt" spellcheck="false" aria-label="Model text"></textarea>
   <div class="btnrow"><button class="pb" id="opFile">Choose file...</button><button class="pb def" id="opLoad">Open</button><button class="pb" data-close>Cancel</button></div><p id="opMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#opFile').onclick=()=>$('#fOpen').click(); b.querySelector('#opLoad').onclick=()=>loadText(b.querySelector('#opTxt').value); }); }
@@ -1438,15 +1526,15 @@ function parseFtl(txt){
   if(!Md.members.length) warn.push('No members were found in this file.');
   Md.cur.mat=Md.lists.mat[0]?.id??null; Md.cur.sec=Md.lists.sec[0]?.id??null;
   return {model:Md,warn}; }
-function migrate(o){ for(const [k,v] of Object.entries(UC)) if(!o.units[k]) o.units[k]={u:v[2],f:v[3][0],d:v[3][1]}; if(o.opt.truss==null) o.opt.truss=false; return o; }
+function migrate(o){ for(const [k,v] of Object.entries(UC)) if(!o.units[k]) o.units[k]={u:v[2],f:v[3][0],d:v[3][1]}; o.opt={...newModel().opt,...o.opt}; return o; }
 function readModel(t){ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const r=parseFtl(t); return r; } const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; return {model:migrate(o),warn:[]}; }
 function fileImport(){ dlg('Import Properties',`<p style="margin:0;max-width:440px">Import the materials, sections and loads of another model (.ftl or .json). Items whose names already exist here are skipped.</p><div class="btnrow"><button class="pb def" id="imFile">Choose file...</button><button class="pb" data-close>Cancel</button></div><p id="imMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#imFile').onclick=()=>{ const f=$('#fOpen'); f.dataset.mode='import'; f.click(); }; }); }
 function importProps(t){ try{ const {model}=readModel(t); let n=0; pushUndo();
     for(const k of Object.keys(M.lists)) for(const it of model.lists[k]||[]){ if(L_(k).some(x=>x.name===it.name)) continue; L_(k).push({...JSON.parse(JSON.stringify(it)),id:'i'+(M.next.i++)}); n++; }
     closeDlg(); changed(); ui.msg=`${n} propert${n===1?'y':'ies'} imported.`; renderTop(); }
   catch(e){ const m=$('#imMsg'); if(m) m.textContent='That file could not be read.'; } }
-function loadText(t){ try{ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const {model,warn}=parseFtl(t); pushUndo(); M=model; exitResults(); clearSel(); closeDlg(); changed(); fit(); ui.msg=warn.length?warn.join(' '):'Ftool file opened.'; renderTop(); return; }
-  const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; pushUndo(); M=migrate(o); exitResults(); clearSel(); closeDlg(); changed(); fit(); }
+function loadText(t){ try{ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const {model,warn}=parseFtl(t); pushUndo(); M=model; exitResults(); clearSel(); ui.tool='select'; closeDlg(); changed(); fit(); ui.msg=warn.length?warn.join(' '):'Ftool file opened.'; renderTop(); return; }
+  const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; pushUndo(); M=migrate(o); exitResults(); clearSel(); ui.tool='select'; closeDlg(); changed(); fit(); }
   catch(e){ const m=$('#opMsg'); if(m) m.textContent='That is not a FOpenTool model file.'; } }
 function fileSave(){ const t=JSON.stringify(M); dlg('Save',`<p style="margin:0;max-width:460px">The model is kept in this browser automatically. To keep a file or share it, copy the text below and save it as a .json file. Open it later with File &gt; Open.</p><textarea readonly id="svTxt" aria-label="Model text">${esc(t)}</textarea>
   <div class="btnrow"><button class="pb def" id="svCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#svTxt'); b.querySelector('#svCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }
@@ -1456,7 +1544,7 @@ function exportClip(){ try{ cv.toBlob(b=>{ navigator.clipboard.write([new Clipbo
 function printModel(){ draw(); try{ window.print(); }catch(e){} }
 function exportLines(mode){ if(!RES?.ok) return; const ms=selMembers(); const list=ms.length?ms:M.members; const q=ui.q==='D'?'D':ui.q; const step=mode==='step'&&M.step>0?M.step:null;
   const rows=[['member','x_'+U('len'),...(q==='D'?['Dx_'+U('disp'),'Dy_'+U('disp')]:[QN[q][0].replace(' ','_')+'_'+U(QN[q][1])])]];
-  list.forEach(m=>{ const r=RES.rm.get(m.id); if(!r) return; const xs=step?samplesX(r,step).filter(x=>Math.abs(x/step-Math.round(x/step))<1e-6||x===r.L):samplesX(r,0);
+  list.forEach(m=>{ const r=RES.rm.get(m.id); if(!r) return; const xs=step?stepXs(r.L,step):samplesX(r,0);
     xs.forEach(x=>{ if(q==='D'){ const d=r.defl(x); rows.push([m.id,fq('len',x),toD('disp',d[0]).toPrecision(6),toD('disp',d[1]).toPrecision(6)]); } else rows.push([m.id,fq('len',x),toD(QN[q][1],r.val(q,x)).toPrecision(6)]); }); });
   const t=rows.map(r=>r.join(',')).join('\n');
   dlg('Export Line Results',`<p style="margin:0">${ms.length?'Selected members':'All members'}, ${q==='D'?'deformed configuration':QN[q][0].toLowerCase()}${step?', at the current step':''}. Copy the CSV text below.</p><textarea readonly id="elTxt">${esc(t)}</textarea><div class="btnrow"><button class="pb def" id="elCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{ const ta=b.querySelector('#elTxt'); b.querySelector('#elCopy').onclick=e=>copyText(ta.value,e.target,ta); }); }

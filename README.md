@@ -10,7 +10,8 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Insert members, nodes and dimension lines with the mouse (snapping to nodes, members and the grid) or in keyboard mode with typed coordinates.
 - Members that cross are split automatically, and a node placed on a member divides it.
 - Selection by click, Shift-click and fence (left to right selects what is fully inside, right to left selects what it touches).
-- Transformations: move, rotate, scale and mirror, with Leave Original and Invert member orientation.
+- Transformations: move, rotate, scale and mirror, with Maintain topology, Leave original and Invert member orientation.
+- Keyboard input dialogs for members (absolute or incremental coordinates), nodes and dimension lines.
 - Undo and redo. The model is saved in the browser automatically.
 
 **Attributes** (named lists, applied to the current selection, as in Ftool)
@@ -29,13 +30,13 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Axial, shear and bending moment diagrams, deformed configuration, support reactions.
 - Influence lines for axial force, shear and bending moment at any section.
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).
-- Result scale box and slider, step lines and step values, point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
+- Result scale box and slider, step lines and step values (with Ftool's two step modes: equal parts per member, or steps from the member start), point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
 
 - Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
 
 **Files**: opens Ftool `.ftl` files (format 401, Ftool 4.x), including their display settings and FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
 
-**Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting (SI or kN and m). The menus follow Ftool 4.01.
+**Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting with Ftool's unit lists and formats (SI and kN-m presets). The menus, dialogs (Units, Sign Convention, Transform, keyboard input, Totals, Window limits) and messages follow Ftool 4.01.
 
 ### Beyond Ftool
 
