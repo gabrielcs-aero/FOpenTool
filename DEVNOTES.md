@@ -9,7 +9,10 @@ Machine-specific details (paths on the owner's PC, account names, the Ftool test
 2. **Then cover UnB's Mechanics of Solids 1 and 2** (FGA0154, FGA0179). See `ROADMAP.md`, which follows those syllabi in order.
 3. **UI language is English.** The owner writes in Portuguese and English; reply in the language they use, but keep the app in English.
 4. **Every new result should be traceable**: show the formula and the substituted values, so students can check homework.
-5. **Single file**: everything lives in `index.html` (HTML + CSS + vanilla JS, no libraries, no build). Keep it that way.
+5. **One self-contained file to ship**: the app people open is `index.html`, which runs offline by double-clicking, with nothing to install and nothing loaded from the internet. Today it is all hand-written HTML, CSS and JS.
+   - **Libraries are allowed** when a feature really needs one (PDF or DXF export, for example). Paste the library's code into the file (minified, with its license comment) instead of loading it from a CDN. MIT, BSD or Apache licenses only. List each one below with its version and license. Don't add a library for something a few dozen lines can do.
+   - **Splitting the source is allowed** once `index.html` gets hard to work on: put modules under `src/` and add a small build script (Python or Node, no npm dependencies needed to run it) that joins them into `index.html`. Commit the built `index.html` as well, so the repository still has a file you can open directly and publish as the artifact. Document the build command here and in the README.
+   - Libraries in use: none yet.
 6. **Verify numerically** before shipping: hand calculations in the browser console, and comparison with Ftool on the same model when possible (see "Verification").
 7. The owner sends screenshots of differences from Ftool. Treat each as a bug to fix exactly.
 
