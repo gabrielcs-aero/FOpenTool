@@ -15,7 +15,10 @@ Still to do:
 - [ ] Mirror and rotate buttons for sections
 - [ ] Mouse-driven transformations and "Maintain Topology"
 - [ ] Animated deformed shape
-- [ ] Reading Ftool `.ftl` files and exporting DXF
+- [x] Reading Ftool `.ftl` files (lists, sections, materials, dimension lines, supports, member attributes)
+- [ ] Reading springs, prescribed displacements, node hinges and load trains from `.ftl` (need sample files to decode)
+- [ ] Writing `.ftl` files
+- [ ] Export Model Screen formats: DXF, SVG, PDF, EMF, EPS, PostScript, CGM, DGN
 
 ## Stage 2: Mechanics of Solids 1 (FGA0154)
 
@@ -24,13 +27,14 @@ Follows the course content in order: rigid-body equilibrium, structural analysis
 **1. Equilibrium of rigid bodies**
 - [ ] Free-body diagram of the whole structure or of any member, with loads and reactions drawn as vectors
 - [ ] Equilibrium equations written out (ΣFx = 0, ΣFy = 0, ΣM = 0) with the numbers substituted
-- [ ] Supports and static determinacy: count reactions and releases, and classify the structure as hypostatic (unstable), isostatic (determinate) or hyperstatic (indeterminate), with its degree
+- [x] Supports and static determinacy: count reactions and releases, and classify the structure as hypostatic (unstable), isostatic (determinate) or hyperstatic (indeterminate), with its degree
 
 **2. Structural analysis**
 - [x] External forces (loads and reactions) and internal-force diagrams N, V, M
 - [ ] Internal forces at a chosen cut, shown as a free-body diagram of each side
 - [ ] Equations of N(x), V(x) and M(x) for each member, and the relations dV/dx = −q and dM/dx = V
-- [ ] Truss analysis: a truss mode with pin-jointed, axial-only members, a member-force table marked tension or compression, zero-force members highlighted, and the method of joints and method of sections shown step by step
+- [x] Truss analysis: a truss mode with pin-jointed, axial-only members, a member-force table marked tension or compression, zero-force members highlighted, and the method of joints shown for any joint
+- [ ] Method of sections shown step by step for a chosen cut
 
 **3. Stresses and strains**
 - [ ] Concept of stress: normal and shear stress on a cut, σ = N/A and average τ = V/A
@@ -55,11 +59,14 @@ Follows the course content in order: stress analysis, theory of elasticity, fail
 
 **1. Stress analysis**
 - [ ] Torsion: circular shafts, τ = T·r/J and angle of twist φ = TL/(GJ), stepped shafts, and thin-walled closed sections with shear flow q = T/(2A_m). A plane frame has no torque, so this is a separate shaft calculator inside the app.
-- [ ] Pure bending: normal stress at any point of a section, σ = M·y/I, chosen by clicking a member
-- [ ] Normal stress diagram over the cross-section, with maximum tension and compression
-- [ ] Neutral line position, y₀ = N·I/(M·A), drawn on the section and along the member
-- [ ] Transverse loading: shear stress distribution τ = V·Q/(I·b), and shear flow in built-up sections
-- [ ] Combined loading: axial force plus bending (σ = N/A ± M·c/I), with the core (kern) of the section; stress envelopes along each member
+- [x] Pure bending: normal stress at any point of a section, σ = M·y/I, chosen by clicking a member
+- [x] Normal stress diagram over the cross-section, with maximum tension and compression
+- [x] Neutral line position, y₀ = N·I/(M·A), drawn on the section
+- [ ] Neutral line drawn along the member
+- [x] Transverse loading: shear stress distribution τ = V·Q/(I·b)
+- [ ] Shear flow in built-up sections
+- [x] Combined loading: axial force plus bending (σ = N/A ± M·c/I), with the largest tension and compression along each member
+- [ ] Core (kern) of the section; stress envelope diagrams along each member
 
 **2. Theory of elasticity**
 - [ ] Stress vector on a plane with normal n, t = σ·n, split into normal and shear parts

@@ -31,7 +31,17 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).
 - Result scale box and slider, step lines and step values, point queries by clicking a member, CSV export of line results.
 
-**Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support, hinge, load and text sizes; units and number formatting (SI or kN and m).
+- Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
+
+**Files**: opens Ftool `.ftl` files (format 401, Ftool 4.x) and FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
+
+**Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting (SI or kN and m). The menus follow Ftool 4.01.
+
+### Beyond Ftool
+
+- **Section stresses**: click a point on a member to cut it there. Shows N, V and M at the cut, normal stress σ = N/A − M·y/I at the upper and lower fibers, the neutral line y₀ = N·I/(M·A), the shear stress distribution τ = V·Q/(I·b), and the largest tension and compression along the member. A diagram draws the cross-section with both stress distributions.
+- **Truss analysis** (Options > Structure Type): every joint is pinned and members carry axial force only. A member-force table marks each member as tension, compression or zero-force, and right-clicking a joint shows its equilibrium (method of joints) with ΣFx = 0 and ΣFy = 0.
+- **Static determinacy**: classifies the structure as hypostatic, isostatic or hyperstatic, with its degree and the count shown (3m + r − 3j − c for frames, m + r − 2j for trusses).
 
 ## Not yet implemented
 
@@ -39,17 +49,16 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Load cases and combinations
 - Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills and Vallourec shapes) and the girder section
 - Mouse-driven transformations
-- Reading Ftool `.ftl` files
-- Section stresses: normal stress from axial force and bending (σ = N/A ± M·c/I) at any point along a member
-- Stress diagrams over the cross-section (normal stress distribution and shear stress τ = V·Q/(I·b))
-- Neutral line: its position in the section, y₀ = N·I/(M·A), drawn on the section and along the member
-- Truss analysis: a truss mode with pin-jointed, axial-only members and a table of member forces marked tension or compression (for now, trusses can be modeled by releasing rotations at the nodes)
+- Export to CGM, DGN, DXF, EMF, EPS, PDF, PostScript and SVG
+- Reading load trains, springs, prescribed displacements and node hinges from `.ftl` files (those fields are not decoded yet)
 
 See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the content of Mechanics of Solids 1 and 2 at UnB (FGA0154 and FGA0179).
 
 ## Verification
 
-The solver uses the direct stiffness method with static condensation for hinges. It has been checked against closed-form results for simply supported and cantilever beams, fixed-end thermal gradients, free thermal expansion, support settlement, spring supports, triangular loads, inclined supports, shear deformation, member end moments, influence lines and a three-hinged frame.
+The solver uses the direct stiffness method with static condensation for hinges. It has been checked against closed-form results for simply supported and cantilever beams, fixed-end thermal gradients, free thermal expansion, support settlement, spring supports, triangular loads, inclined supports, shear deformation, member end moments, influence lines and a three-hinged frame. Section stresses were checked against hand calculations for rectangular, I, T, circular and box sections, and truss forces and determinacy counts against textbook cases.
+
+It has also been compared with Ftool 4.01 itself on the same `.ftl` files: bending moments, shear forces, axial forces, the deformed shape (tip displacement and rotation), reactions and default diagram scales all match to the digits Ftool shows.
 
 ## Disclaimer
 
