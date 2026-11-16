@@ -11,9 +11,10 @@ Done: modeling, attributes, loads, diagrams, deformed shape, reactions and influ
 Still to do:
 - [ ] Load trains (moving loads) and load-train envelopes
 - [ ] Load cases, load combinations and their envelopes
-- [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec) and the girder section
-- [ ] Section parameters as in Ftool (Angle d b t, Z d b t, Double Angle d b t e, Box d b tw tf) and their `.ftl` order
-- [ ] Mirror and rotate buttons for sections
+- [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec)
+- [x] Section parameters as in Ftool (Angle d b t, Z d b t, Double Angle d b t e, Box d b tw tf, Girder Section) and their `.ftl` order
+- [x] Mirror and rotate buttons for sections (orientation code in `.ftl`)
+- [x] Member and node reports with Ftool's exact layout (orientation names, inclination, prescribed displacements, springs)
 - [x] "Maintain Topology" and Ftool's Transform panel
 - [x] Ftool's dialogs: Units & Number Formatting, Sign Convention, keyboard input, Totals, Window limits, Credits
 - [x] Step modes, step lines and values, influence-line display as in Ftool

@@ -57,6 +57,8 @@ button,input,select{font:inherit;color:inherit}
 .fl input{height:21px;border:1px solid var(--chrome-line);background:var(--field);text-align:right;padding:0 4px;width:84px}
 .fl input[readonly]{background:#F7F7F7;color:#333}
 .fl .u{color:#000;white-space:nowrap}
+.fl2{display:grid;grid-template-columns:24px 50px 24px 50px auto;align-items:center;gap:3px 3px;justify-content:center;margin:2px 0}
+.fl2 label{text-align:right} .fl2 input{height:21px;border:1px solid var(--chrome-line);background:var(--field);text-align:right;padding:0 3px;width:50px}
 .fs{border:1px solid var(--chrome-line);border-radius:2px;padding:4px 6px;margin:6px 0;display:flex;flex-direction:column;gap:3px}
 .fs legend{padding:0 3px}
 .ck{display:flex;align-items:center;gap:4px}
@@ -296,6 +298,10 @@ const IC={
  aall:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/><text x="3" y="13" font-size="7" font-weight="700" fill="currentColor" font-family="Arial">all</text>',
  aun:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M5 4c0 4 2 6 5 7" fill="none" stroke="#D00000" stroke-width="1.6"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/><path d="M11.5 2.5l4 5M15.5 2.5l-4 5" stroke="#D00000" stroke-width="1.3"/>',
  aapp:'<path d="M3 15h14" stroke="currentColor" stroke-width="1.4"/><path d="M5 4c0 4 2 6 5 7" fill="none" stroke="#D00000" stroke-width="1.6"/><path d="M8.5 9.5L10.5 11.3 8 12.5z" fill="#D00000"/><path d="M11 2h5v6h-5z" fill="#fff" stroke="currentColor"/>',
+ mirH:'<path d="M10 2v16" stroke="#777" stroke-width="1" stroke-dasharray="2 1.5"/><path d="M8 5L2.5 10 8 15z" fill="currentColor"/><path d="M12 5l5.5 5L12 15z" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+ mirV:'<path d="M2 10h16" stroke="#777" stroke-width="1" stroke-dasharray="2 1.5"/><path d="M5 8L10 2.5 15 8z" fill="currentColor"/><path d="M5 12l5 5.5 5-5.5z" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+ rotL:'<path d="M15.5 12.5A6 6 0 1 1 13 5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 2.5l4.5 2.2-3.6 3.4z" fill="currentColor"/>',
+ rotR:'<path d="M4.5 12.5A6 6 0 1 0 7 5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 2.5L5 4.7l3.6 3.4z" fill="currentColor"/>',
  sfree:'<path d="M2 12h16" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="12" r="2.4" fill="currentColor"/><path d="M10 3v5" stroke="#D00000" stroke-width="1.4"/>',
 };
 const svg=n=>`<svg viewBox="0 0 20 20" aria-hidden="true">${IC[n]}</svg>`;
@@ -366,37 +372,88 @@ function newModel(){ return {v:2,units:defUnits('SI'),disp:defDisplay(),opt:{sup
   cur:{mat:null,sec:null,nodal:null,endm:null,unif:null,lin:null,therm:null,sup:{x:1,y:1,r:0,ang:0,pr:false,dx:0,dy:0,rz:0,kx:0,ky:0,kz:0},hinge:'both',dc:{flex:true,axial:true,shear:false}},
   next:{n:1,m:1,d:1,i:1},step:0}; }
 const MAT_TYPES={generic:['Generic Isotropic',1e8,.3,1e-5,0],steel:['Steel Isotropic',2.05e8,.3,1.2e-5,77],concrete:['Concrete Isotropic',2.5e7,.2,1e-5,25],aluminium:['Aluminium Isotropic',7e7,.33,2.3e-5,27]};
+/* Sections, as in Ftool 4.01 (checked against it in session 4). Each parameterized section is built from polygons in its normal orientation
+   (y up from the bottom face), then mirrored/rotated by its orientation code, so A, ȳ, I, the width b(y) and the sketch all come from the same shape.
+   p: parameter keys in panel order; lab: labels; ftl: order in the .ftl file; sk: proportions used only for the panel sketch. */
 const SEC_TYPES={
   integral:{label:'Integral Properties',p:[]},
-  rect:{label:'Rectangle',p:['b','h'],def:{b:.12,h:.4}},
-  I:{label:'I-shape',p:['d','b','tw','tf'],def:{d:.2,b:.1,tw:.006,tf:.01}},
-  T:{label:'T-shape',p:['d','b','tw','tf'],def:{d:.4,b:.3,tw:.1,tf:.1}},
-  C:{label:'C-shape',p:['d','b','tw','tf'],def:{d:.2,b:.075,tw:.006,tf:.01}},
-  circle:{label:'Circle',p:['D'],def:{D:.1}},
-  ring:{label:'Ring',p:['D','t'],def:{D:.1,t:.005}},
-  box:{label:'Box',p:['d','b','t'],def:{d:.2,b:.1,t:.006}},
-  angle:{label:'Angle',p:['d','b','tw','tf'],def:{d:.1,b:.1,tw:.008,tf:.008}},
-  Z:{label:'Z-shape',p:['d','b','tw','tf'],def:{d:.2,b:.075,tw:.006,tf:.01}},
-  dangle:{label:'Double Angle',p:['d','b','tw','tf'],def:{d:.1,b:.1,tw:.008,tf:.008}},
+  rect:{label:'Rectangle',p:['d','b'],sk:{d:60,b:36}},
+  I:{label:'I-shape',p:['d','b','tw','tf'],sk:{d:60,b:42,tw:6,tf:7}},
+  angle:{label:'Angle',p:['d','b','t'],sk:{d:56,b:40,t:7}},
+  T:{label:'T-shape',p:['d','b','tw','tf'],sk:{d:56,b:46,tw:7,tf:8}},
+  C:{label:'C-shape',p:['d','b','tw','tf'],sk:{d:60,b:30,tw:7,tf:7}},
+  Z:{label:'Z-shape',p:['d','b','t'],sk:{d:60,b:30,t:6}},
+  circle:{label:'Circle',p:['d'],sk:{d:56}},
+  ring:{label:'Ring',p:['d','t'],sk:{d:56,t:7}},
+  dangle:{label:'Double Angle',p:['d','b','t','e'],sk:{d:56,b:28,t:6,e:6}},
+  girder:{label:'Girder Section',p:['b1','b2','tw','d1','d2','d3','d4','d5'],ftl:['d1','d2','d3','d4','d5','b1','b2','tw'],sk:{b1:60,b2:26,tw:7,d1:8,d2:10,d3:30,d4:8,d5:10}},
+  box:{label:'Box',p:['d','b','tw','tf'],sk:{d:56,b:40,tw:6,tf:6}},
 };
 // The new-section list, grouped and ordered as in Ftool. Entries without a key are not available yet.
 const SEC_TREE=[['Generic',[['integral','Integral Properties']]],
-  ['Parameterized',[['rect','Rectangle'],['I','I-shape'],['angle','Angle'],['T','T-shape'],['C','C-shape'],['Z','Z-shape'],['circle','Circle'],['ring','Ring'],['dangle','Double Angle'],[null,'Girder Section'],['box','Box']]],
+  ['Parameterized',[['rect','Rectangle'],['I','I-shape'],['angle','Angle'],['T','T-shape'],['C','C-shape'],['Z','Z-shape'],['circle','Circle'],['ring','Ring'],['dangle','Double Angle'],['girder','Girder Section'],['box','Box']]],
   ['Profile Tables',[[null,'Welded I-shapes (BR)'],[null,'Electro-Welded I-shapes (BR)'],[null,'Gerdau-AcoMinas I-shapes (BR)'],[null,'AISC Parallel I-shapes'],[null,'Mills shapes (BR)'],[null,'Vallourec tubes (BR)']]]];
+const rectP=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+const trapP=(ya,wa,yb,wb)=>[[-wa/2,ya],[wa/2,ya],[wb/2,yb],[-wb/2,yb]];
+// Polygons of a section in its normal orientation. Circle and ring are not polygons (handled analytically).
+function secPolys(type,P){ const {d,b,tw,tf,t,e}=P;
+  switch(type){
+    case 'rect': return [rectP(-b/2,0,b/2,d)];
+    case 'I': return [rectP(-b/2,0,b/2,tf),rectP(-tw/2,tf,tw/2,d-tf),rectP(-b/2,d-tf,b/2,d)];
+    case 'T': return [rectP(-tw/2,0,tw/2,d-tf),rectP(-b/2,d-tf,b/2,d)];
+    case 'C': return [rectP(0,0,b,tf),rectP(0,tf,tw,d-tf),rectP(0,d-tf,b,d)];                 // web on the left, open to the right
+    case 'angle': return [rectP(0,0,t,d),rectP(t,0,b,t)];                                         // vertical leg on the left, leg b at the bottom
+    case 'Z': return [rectP(-b+t/2,0,t/2,t),rectP(-t/2,t,t/2,d-t),rectP(-t/2,d-t,b-t/2,d)];      // top flange to the right
+    case 'dangle': return [rectP(e/2,0,e/2+t,d),rectP(e/2+t,0,e/2+b,t),rectP(-e/2-t,0,-e/2,d),rectP(-e/2-b,0,-e/2-t,t)];
+    case 'girder': { const {b1,b2,d1,d2,d3,d4,d5}=P, y1=d5, y2=y1+d4, y3=y2+d3, y4=y3+d2, y5=y4+d1;
+      return [rectP(-b2/2,0,b2/2,y1),trapP(y1,b2,y2,tw),rectP(-tw/2,y2,tw/2,y3),trapP(y3,tw,y4,b1),rectP(-b1/2,y4,b1/2,y5)]; }
+    case 'box': return [rectP(-b/2,0,b/2,tf),rectP(-b/2,tf,-b/2+tw,d-tf),rectP(b/2-tw,tf,b/2,d-tf),rectP(-b/2,d-tf,b/2,d)];
+  } return null; }
+/* Orientation code, as Ftool stores it (third number of the section header in .ftl). Decoded from Ftool's buttons:
+   code & 3 = quarter turns counterclockwise, code & 4 = mirrored left-right (applied before the turn).
+   The angle has no rotation; Ftool codes its up-down mirror as 3 and its left-right mirror as 4 (both: 7). */
+function orientFn(type,code){ code=code|0; if(!code) return (x,y)=>[x,y];
+  if(type==='angle'){ const fx=code&4?-1:1, fy=(code&3)?-1:1; return (x,y)=>[fx*x,fy*y]; }
+  const m=code&4?-1:1, r=code&3; return (x,y)=>{ x*=m; for(let k=0;k<r;k++) [x,y]=[-y,x]; return [x,y]; }; }
+// What each orientation button does to the code, per shape, and whether it is enabled (same as Ftool). Buttons: H mirror, V mirror, rotate CCW, rotate CW.
+function orientOps(type,code){ code=code|0; const r=code&1, none=[null,null,null,null];
+  switch(type){
+    case 'I': return [null,null,code^1,code^1];
+    case 'Z': return [code^4,code^4,code^1,code^1];
+    case 'angle': return [code^4,code^3,null,null];
+    case 'C': return [r?null:code^2,r?code^2:null,(code+1)&3,(code+3)&3];
+    case 'T': case 'dangle': case 'girder': return [r?code^2:null,r?null:code^2,(code+1)&3,(code+3)&3];
+  } return none; }
+// Shear area As, with Ftool's rules (checked value by value): web(s) times full depth; turned a quarter, the flanges.
+function secAs(type,P,code,A){ const q=(code|0)&1, D=type==='girder'?P.d1+P.d2+P.d3+P.d4+P.d5:P.d;
+  switch(type){
+    case 'rect': return A*5/6;
+    case 'I': return q?2*P.b*P.tf:P.tw*D;
+    case 'T': return q?P.b*P.tf:P.tw*D;
+    case 'C': return q?2*P.b*P.tf:P.tw*D;
+    case 'Z': return q?2*P.b*P.t:P.t*D;
+    case 'angle': return P.t*D;
+    case 'dangle': return q?2*P.b*P.t:2*P.t*D;
+    case 'girder': return q?P.b1*P.d1+P.b2*P.d5:P.tw*D;
+    case 'box': return 2*P.tw*D;
+    case 'circle': return A/2;
+    case 'ring': return .9*A;
+  } return 0; }
+// Oriented polygons with the bottom at y = 0 (null for integral, circle and ring)
+function secGeom(s,P0){ const P=P0||s.p||{}, pl=secPolys(s.type,P); if(!pl) return null; const f=orientFn(s.type,s.orient);
+  const out=pl.map(poly=>poly.map(([x,y])=>f(x,y))); let y0=Infinity; out.forEach(poly=>poly.forEach(p=>y0=Math.min(y0,p[1]))); out.forEach(poly=>poly.forEach(p=>p[1]-=y0)); return out; }
+function polyProps(polys){ let A=0,Sy=0,Iy0=0,ymax=0;
+  for(const p of polys){ let a=0,sy=0,iy=0; for(let k=0;k<p.length;k++){ const [x1,y1]=p[k],[x2,y2]=p[(k+1)%p.length], c=x1*y2-x2*y1; a+=c; sy+=(y1+y2)*c; iy+=(y1*y1+y1*y2+y2*y2)*c; ymax=Math.max(ymax,y1); }
+    const sg=a<0?-1:1; A+=sg*a/2; Sy+=sg*sy/6; Iy0+=sg*iy/12; }
+  const yb=A>0?Sy/A:0; return {A,yb,I:Iy0-A*yb*yb,d:ymax}; }
 function secCalc(s){
-  const P=s.p||{}; let A,As,I,d,yb;
-  switch(s.type){
-    case 'integral': ({A,As,I,d,yb}=P); break;
-    case 'rect': A=P.b*P.h; As=A*5/6; I=P.b*P.h**3/12; d=P.h; yb=d/2; break;
-    case 'angle': case 'dangle': { const n=s.type==='dangle'?2:1, Aw=P.tw*P.d, Af=(P.b-P.tw)*P.tf, A1=Aw+Af; yb=(Aw*P.d/2+Af*P.tf/2)/A1;
-      const I1=P.tw*P.d**3/12+Aw*(P.d/2-yb)**2+(P.b-P.tw)*P.tf**3/12+Af*(P.tf/2-yb)**2; A=n*A1; I=n*I1; As=n*P.tw*P.d; d=P.d; break; }
-    case 'I': case 'C': case 'Z': { const h=P.d-2*P.tf; A=2*P.b*P.tf+P.tw*h; As=P.tw*P.d; I=(P.b*P.d**3-(P.b-P.tw)*h**3)/12; d=P.d; yb=d/2; break; }
-    case 'T': { const hw=P.d-P.tf, Aw=P.tw*hw, Af=P.b*P.tf; A=Aw+Af; yb=(Aw*hw/2+Af*(P.d-P.tf/2))/A; I=P.tw*hw**3/12+Aw*(yb-hw/2)**2+P.b*P.tf**3/12+Af*(P.d-P.tf/2-yb)**2; As=P.tw*P.d; d=P.d; break; }
-    case 'circle': A=Math.PI*P.D**2/4; As=.9*A; I=Math.PI*P.D**4/64; d=P.D; yb=d/2; break;
-    case 'ring': { const Di=P.D-2*P.t; A=Math.PI*(P.D**2-Di**2)/4; As=A/2; I=Math.PI*(P.D**4-Di**4)/64; d=P.D; yb=d/2; break; }
-    case 'box': { const bi=P.b-2*P.t, hi=P.d-2*P.t; A=P.b*P.d-bi*hi; As=2*P.t*P.d; I=(P.b*P.d**3-bi*hi**3)/12; d=P.d; yb=d/2; break; }
-  }
-  return {A,As,I,d,yb,ok:isFinite(I)&&I>0&&isFinite(A)&&A>=0};
+  const P=s.p||{}; let A=0,As=0,I=0,d=0,yb=0;
+  if(s.type==='integral'){ ({A,As,I,d,yb}=P); }
+  else if(s.type==='circle'){ d=P.d; A=Math.PI*d*d/4; I=Math.PI*d**4/64; yb=d/2; As=secAs('circle',P,0,A); }
+  else if(s.type==='ring'){ d=P.d; const di=d-2*P.t; A=Math.PI*(d*d-di*di)/4; I=Math.PI*(d**4-di**4)/64; yb=d/2; As=secAs('ring',P,0,A); }
+  else { const g=secGeom(s); if(g){ ({A,yb,I,d}=polyProps(g)); As=secAs(s.type,P,s.orient,A); } }
+  const ok=isFinite(I)&&I>0&&isFinite(A)&&A>=0;
+  return {A:A||0,As:As||0,I:I||0,d:d||0,yb:yb||0,ok};
 }
 const L_=k=>M.lists[k];
 const item=(k,id)=>id==null?null:L_(k).find(x=>x.id===id)||null;
@@ -409,7 +466,7 @@ function newItem(k,o){ const it={id:'i'+(M.next.i++),...o}; L_(k).push(it); retu
 function exampleModel(){
   M=newModel();
   const st=newItem('mat',{name:'Steel',type:'steel',E:2.05e8,nu:.3,alpha:1.2e-5});
-  const sc=newItem('sec',{name:'barra-I',type:'I',p:{d:.2,b:.1,tw:.006,tf:.01}});
+  const sc=newItem('sec',{name:'barra-I',type:'I',orient:0,p:{d:.2,b:.1,tw:.006,tf:.01}});
   const q=newItem('unif',{name:'q',dir:'global',qx:0,qy:-2.5});
   const P=newItem('nodal',{name:'P',fx:0,fy:-.8,mz:0});
   M.cur.mat=st.id; M.cur.sec=sc.id; M.cur.unif=q.id; M.cur.nodal=P.id;
@@ -578,20 +635,19 @@ function influence(S,tid,xs,qn){
 }
 const maxLen=S=>S.recs.reduce((m,r)=>Math.max(m,r.L),0);
 
-/* Section stresses. Section coordinate y is measured from the face on the local -y side (the "bottom" of the section definition). */
+/* Section stresses. Section coordinate y is measured from the bottom face of the (oriented) section. */
 function secWidth(s){ const P=s.p||{};
-  switch(s.type){
-    case 'rect': return ()=>P.b;
-    case 'I': case 'C': case 'Z': return y=>(y<P.tf||y>P.d-P.tf)?P.b:P.tw;
-    case 'T': return y=>y>P.d-P.tf?P.b:P.tw;
-    case 'angle': return y=>y<P.tf?P.b:P.tw;
-    case 'dangle': return y=>2*(y<P.tf?P.b:P.tw);
-    case 'box': return y=>(y<P.t||y>P.d-P.t)?P.b:2*P.t;
-    case 'circle': { const r=P.D/2; return y=>2*Math.sqrt(Math.max(0,r*r-(y-r)**2)); }
-    case 'ring': { const r=P.D/2, ri=r-P.t; return y=>{ const u=y-r; return 2*Math.sqrt(Math.max(0,r*r-u*u))-2*Math.sqrt(Math.max(0,ri*ri-u*u)); }; }
-  } return null; }
-function secBreaks(s){ const P=s.p||{}; switch(s.type){ case 'I': case 'C': case 'Z': return [P.tf,P.d-P.tf]; case 'T': return [P.d-P.tf];
-  case 'angle': case 'dangle': return [P.tf]; case 'box': return [P.t,P.d-P.t]; case 'ring': return [P.t,P.D-P.t]; } return []; }
+  if(s.type==='circle'){ const r=P.d/2; return y=>2*Math.sqrt(Math.max(0,r*r-(y-r)**2)); }
+  if(s.type==='ring'){ const r=P.d/2, ri=r-P.t; return y=>{ const u=y-r; return 2*Math.sqrt(Math.max(0,r*r-u*u))-2*Math.sqrt(Math.max(0,ri*ri-u*u)); }; }
+  const g=secGeom(s); if(!g) return null; const top=Math.max(...g.flat().map(p=>p[1]));
+  // sum of the chords at height y; each polygon counts on [ymin, ymax) so stacked parts are not counted twice at their joint
+  return y=>{ let w=0; for(const p of g){ const ys=p.map(q=>q[1]), y0=Math.min(...ys), y1=Math.max(...ys); if(y<y0||y>y1||(y===y1&&y1<top)) continue;
+      let lo=Infinity,hi=-Infinity; for(let k=0;k<p.length;k++){ const [xa,ya]=p[k],[xb,yb]=p[(k+1)%p.length];
+        if(ya===yb){ if(ya===y){ lo=Math.min(lo,xa,xb); hi=Math.max(hi,xa,xb); } continue; }
+        if((ya-y)*(yb-y)<=0){ const x=xa+(xb-xa)*(y-ya)/(yb-ya); lo=Math.min(lo,x); hi=Math.max(hi,x); } }
+      if(hi>lo) w+=hi-lo; } return w; }; }
+function secBreaks(s){ const P=s.p||{}; if(s.type==='ring') return [P.t,P.d-P.t]; const g=secGeom(s); if(!g) return [];
+  return [...new Set(g.flat().map(p=>+p[1].toPrecision(12)))].sort((a,b)=>a-b); }
 // Stresses at distance x along member r. Fiber coordinate yf: from the centroid, positive toward the upper fibers (Ftool convention).
 function sectionStress(r,x){
   const P=r.P, A=P.A, I=P.I, d=P.d, yb=P.yb, sg=r.sg, wid=secWidth(r.sec);
@@ -1001,8 +1057,11 @@ function listHead(k){ const cur=item(k,M.cur[k]), lst=L_(k), isLoad=!['mat','sec
   else h+=`<select class="lst" data-k="cur" aria-label="${PANEL_T[k]} list">${isLoad?`<option value="">NONE</option>`:(lst.length?'':'<option value="">—</option>')}${lst.map(x=>`<option value="${x.id}" ${x.id===M.cur[k]?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`;
   const nodeL=k==='nodal';
   h+=`<div class="grp"><div class="row">${ib('l-new','lnew','Create new')}${ib('l-imp','limp','Import list from file (not available)',true)}${ib('l-ren','lren','Rename current',!cur)}${ib('l-del','ldel','Delete current',!cur)}${ib('l-con','lcon','Condense list (remove unused)')}</div>
-    <div class="row">${ib('a-sel','asel',`Select ${nodeL?'nodes':'members'} with current`)}${['mat','sec'].includes(k)?ib('a-all','aall','Apply current to all members',!cur):''}${ib('a-un','aun',`Unapply from selected ${nodeL?'nodes':'members'}`)}${ib('a-app','aapp',`Apply current to selected ${nodeL?'nodes':'members'}`)}</div></div>`;
+    <div class="row">${ib('a-sel','asel',`Select ${nodeL?'nodes':'members'} with current`)}${['mat','sec'].includes(k)?ib('a-all','aall','Apply current to all members',!cur):''}${ib('a-un','aun',`Unapply from selected ${nodeL?'nodes':'members'}`)}${ib('a-app','aapp',`Apply current to selected ${nodeL?'nodes':'members'}`)}</div>${k==='sec'?secOrientRow(cur):''}</div>`;
   return h; }
+// Third row of the section panel, as in Ftool: mirror left-right, mirror up-down, rotate counterclockwise, rotate clockwise (enabled per shape).
+function secOrientRow(cur){ const ops=cur?orientOps(cur.type,cur.orient):[null,null,null,null];
+  return `<div class="row">${[['mirH','Mirror section horizontally'],['mirV','Mirror section vertically'],['rotL','Rotate section counterclockwise'],['rotR','Rotate section clockwise']].map(([ic,t],i)=>ib('sec-or:'+i,ic,t,ops[i]==null)).join('')}</div>`; }
 // As in Ftool: type a label, then press Enter or pick a type. Esc cancels.
 function createForm(k){ let sel='';
   if(k==='mat') sel=`<label class="nl" for="newType">Material type:</label><select id="newType" size="4">${Object.entries(MAT_TYPES).map(([t,v])=>`<option value="${t}" ${t==='generic'?'selected':''}>${v[0]}</option>`).join('')}</select>`;
@@ -1014,25 +1073,57 @@ function createItem(P,type){ const inp=$('#newName'), name=inp?inp.value.trim():
   if(L_(P).some(x=>x.name===name)){ ui.msg='Use a label different from the existing ones.'; renderTop(); inp.focus(); return; }
   ui.msg=''; commit(()=>{ let o={name};
     if(P==='mat'){ const t=MAT_TYPES[type]; o={...o,type,E:t[1],nu:t[2],alpha:t[3],gamma:t[4]}; }
-    if(P==='sec') o={...o,type,p:type==='integral'?{A:.01,As:.0083,I:1e-4,d:.3,yb:.15}:{...SEC_TYPES[type].def}};
+    if(P==='sec') o={...o,type,orient:0,p:Object.fromEntries((type==='integral'?['A','As','I','d','yb']:SEC_TYPES[type].p).map(k=>[k,0]))};   /* Ftool starts every field at 0 */
     if(P==='nodal') o={...o,fx:0,fy:0,mz:0}; if(P==='endm') o={...o,ma:0,mb:0}; if(P==='unif') o={...o,dir:'global',qx:0,qy:0};
     if(P==='lin') o={...o,dir:'global',pxi:0,pyi:0,pxj:0,pyj:0}; if(P==='therm') o={...o,tt:0,tb:0};
     M.cur[P]=newItem(P,o).id; ui.creating=null; ui.newSecType=null; }); }
-function shapeSVG(t){ const s='stroke="#1414E6" stroke-width="1.6" fill="#E6ECFF"';
-  const lbl=(x,y,t)=>`<text x="${x}" y="${y}" font-size="11" font-family="Arial" fill="#000" text-anchor="middle">${t}</text>`;
-  const body={
-    rect:`<rect x="30" y="12" width="40" height="70" ${s}/>${lbl(50,96,'b')}${lbl(84,50,'h')}`,
-    I:`<path d="M28 12h44v10H55v50h17v10H28V72h17V22H28z" ${s}/>${lbl(50,96,'b')}${lbl(86,50,'d')}${lbl(50,9,'tw')}${lbl(18,20,'tf')}`,
-    T:`<path d="M24 12h52v14H57v56H43V26H24z" ${s}/>${lbl(50,9,'b')}${lbl(88,50,'d')}${lbl(50,96,'tw')}${lbl(14,22,'tf')}`,
-    C:`<path d="M32 12h40v10H45v50h27v10H32z" ${s}/>${lbl(52,96,'b')}${lbl(86,50,'d')}${lbl(22,50,'tw')}${lbl(80,20,'tf')}`,
-    circle:`<circle cx="50" cy="47" r="34" ${s}/>${lbl(50,96,'D')}`,
-    ring:`<circle cx="50" cy="47" r="34" ${s}/><circle cx="50" cy="47" r="26" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'D')}${lbl(88,50,'t')}`,
-    angle:`<path d="M30 12h10v60h34v10H30z" ${s}/>${lbl(52,96,'b')}${lbl(18,50,'d')}${lbl(35,9,'tw')}${lbl(84,80,'tf')}`,
-    Z:`<path d="M45 12H78V22H55V82H22V72H45z" ${s}/>${lbl(62,9,'b')}${lbl(88,50,'d')}${lbl(38,50,'tw')}${lbl(14,80,'tf')}`,
-    dangle:`<path d="M46 12h3v70H18v-8h28z" ${s}/><path d="M51 12h3v62h28v8H51z" ${s}/>${lbl(32,96,'b')}${lbl(91,50,'d')}${lbl(50,9,'tw')}${lbl(10,80,'tf')}`,
-    box:`<path d="M28 12h44v70H28z" ${s}/><path d="M35 19h30v56H35z" fill="#fff" stroke="#1414E6" stroke-width="1.6"/>${lbl(50,96,'b')}${lbl(84,50,'d')}${lbl(31,9,'t')}`,
-    integral:`<path d="M30 14h40v66H30z" ${s} stroke-dasharray="4 3"/><path d="M22 65h56" stroke="#D00000" stroke-dasharray="3 2"/>${lbl(50,96,'A, As, I')}${lbl(86,74,'ȳ')}${lbl(86,48,'d')}`}[t];
-  return `<svg class="shape" width="104" height="102" viewBox="0 0 100 100" aria-hidden="true">${body||''}</svg>`; }
+/* Panel sketch of a section, drawn from its own polygons at fixed proportions and turned with its orientation, as Ftool does.
+   Dimension marks: [x1,y1,x2,y2,nx,ny,label,gap]: a line between two points of the normal-orientation shape, moved along (nx,ny) by gap pixels, label beyond it. */
+const SEC_DIMS={
+  rect:P=>[[-P.b/2,0,P.b/2,0,0,-1,'b'],[P.b/2,0,P.b/2,P.d,1,0,'d']],
+  I:P=>[[-P.b/2,0,P.b/2,0,0,-1,'b'],[P.b/2,0,P.b/2,P.d,1,0,'d'],[-P.tw/2,P.d,P.tw/2,P.d,0,1,'tw'],[-P.b/2,P.d-P.tf,-P.b/2,P.d,-1,0,'tf']],
+  T:P=>[[-P.b/2,P.d,P.b/2,P.d,0,1,'b'],[P.b/2,0,P.b/2,P.d,1,0,'d'],[-P.tw/2,0,P.tw/2,0,0,-1,'tw'],[-P.b/2,P.d-P.tf,-P.b/2,P.d,-1,0,'tf']],
+  C:P=>[[0,0,0,P.d,-1,0,'d'],[0,0,P.b,0,0,-1,'b'],[0,P.d,P.tw,P.d,0,1,'tw'],[P.b,P.d-P.tf,P.b,P.d,1,0,'tf']],
+  angle:P=>[[0,0,0,P.d,-1,0,'d'],[0,0,P.b,0,0,-1,'b'],[0,P.d,P.t,P.d,0,1,'t']],
+  Z:P=>[[-P.t/2,P.d,P.b-P.t/2,P.d,0,1,'b'],[P.b-P.t/2,0,P.b-P.t/2,P.d,1,0,'d'],[-P.b+P.t/2,0,-P.b+P.t/2,P.t,-1,0,'t']],
+  dangle:P=>[[P.e/2,0,P.e/2+P.b,0,0,-1,'b'],[P.e/2+P.b,0,P.e/2+P.b,P.d,1,0,'d'],[P.e/2,P.d,P.e/2+P.t,P.d,0,1,'t'],[-P.e/2,0,P.e/2,0,0,-1,'e']],
+  girder:P=>{ const y1=P.d5,y2=y1+P.d4,y3=y2+P.d3,y4=y3+P.d2,y5=y4+P.d1, x=P.b1/2;
+    return [[-P.b1/2,y5,P.b1/2,y5,0,1,'b1'],[-P.b2/2,0,P.b2/2,0,0,-1,'b2'],[-P.tw/2,(y2+y3)/2,P.tw/2,(y2+y3)/2,-1,0,'tw',0],
+      [x,y4,x,y5,1,0,'d1'],[x,y3,x,y4,1,0,'d2'],[x,y2,x,y3,1,0,'d3'],[x,y1,x,y2,1,0,'d4'],[x,0,x,y1,1,0,'d5']]; },
+  box:P=>[[-P.b/2,0,P.b/2,0,0,-1,'b'],[P.b/2,0,P.b/2,P.d,1,0,'d'],[-P.b/2,P.d,-P.b/2+P.tw,P.d,0,1,'tw'],[P.b/2,P.d-P.tf,P.b/2,P.d,1,0,'tf']],
+  circle:P=>[[-P.d/2,0,P.d/2,0,0,-1,'d']],
+  ring:P=>[[-P.d/2,0,P.d/2,0,0,-1,'d'],[P.d/2-P.t,P.d/2,P.d/2,P.d/2,1,0,'t',0]],
+};
+const subLbl=t=>{ const m=/^([a-z])([a-z0-9]+)$/.exec(t); return m?`${m[1]}<tspan dy="3" font-size="8">${m[2]}</tspan>`:t; };
+function secSketch(sec){ const type=sec.type, T=SEC_TYPES[type], col='#1414E6';
+  if(type==='integral') return `<svg class="shape" width="104" height="92" viewBox="0 0 100 90" aria-hidden="true"><path d="M30 8h40v66H30z" stroke="${col}" stroke-width="1.6" fill="#fff" stroke-dasharray="4 3"/><path d="M22 59h56" stroke="#D00000" stroke-dasharray="3 2"/><text x="50" y="87" font-size="11" font-family="Arial" text-anchor="middle">A, As, I</text><text x="86" y="68" font-size="11" font-family="Arial">ȳ</text><text x="76" y="42" font-size="11" font-family="Arial">d</text></svg>`;
+  const P=T.sk, f=orientFn(type,sec.orient);
+  let polys; if(type==='circle'||type==='ring'){ const c=(r,n=48)=>[...Array(n)].map((_,k)=>[r*Math.cos(2*Math.PI*k/n),P.d/2+r*Math.sin(2*Math.PI*k/n)]); polys=type==='ring'?[c(P.d/2),c(P.d/2-P.t)]:[c(P.d/2)]; }
+  else polys=secPolys(type,P);
+  const tp=([x,y])=>{ const [u,v]=f(x,y); return [u,-v]; };       // to screen (y down), before scaling
+  const sp=polys.map(p=>p.map(tp)), all=sp.flat(), x0=Math.min(...all.map(p=>p[0])), x1=Math.max(...all.map(p=>p[0])), y0=Math.min(...all.map(p=>p[1])), y1=Math.max(...all.map(p=>p[1]));
+  const s=Math.min(64/(x1-x0||1),64/(y1-y0||1)), X=([x,y])=>[(x-x0)*s,(y-y0)*s];
+  const r2=v=>Math.round(v*10)/10, ext=[[0,0],[(x1-x0)*s,(y1-y0)*s]];
+  let body='';
+  if(type==='circle'||type==='ring'){ const c=X(tp([0,P.d/2])), r=P.d/2*s; body+=`<circle cx="${r2(c[0])}" cy="${r2(c[1])}" r="${r2(r)}" fill="#fff" stroke="${col}" stroke-width="1.6"/>`; if(type==='ring') body+=`<circle cx="${r2(c[0])}" cy="${r2(c[1])}" r="${r2(r-P.t*s)}" fill="none" stroke="${col}" stroke-width="1.6"/>`; }
+  else { // outline of the union: each polygon filled white, then only the edge pieces that belong to one polygon (joints between parts are not drawn)
+    body+=sp.map(p=>`<path d="M${p.map(q=>X(q).map(r2).join(' ')).join('L')}Z" fill="#fff" stroke="none"/>`).join('');
+    const segs=[]; sp.forEach(p=>p.forEach((a,k)=>segs.push([X(a),X(p[(k+1)%p.length])])));
+    const onSeg=(q,[a,b])=>{ const L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-9) return false; const t=((q[0]-a[0])*(b[0]-a[0])+(q[1]-a[1])*(b[1]-a[1]))/L/L; return t>-1e-6&&t<1+1e-6&&Math.abs((q[0]-a[0])*(b[1]-a[1])-(q[1]-a[1])*(b[0]-a[0]))/L<1e-6; };
+    const pieces=[]; segs.forEach(([a,b])=>{ const ts=[0,1], L2=(b[0]-a[0])**2+(b[1]-a[1])**2; segs.forEach(sg=>sg.forEach(q=>{ if(onSeg(q,[a,b])) ts.push(((q[0]-a[0])*(b[0]-a[0])+(q[1]-a[1])*(b[1]-a[1]))/L2); }));
+      const u=[...new Set(ts.map(t=>Math.round(t*1e6)/1e6))].sort((p,q)=>p-q); for(let k=0;k<u.length-1;k++){ if(u[k+1]-u[k]<1e-6) continue; pieces.push([[a[0]+(b[0]-a[0])*u[k],a[1]+(b[1]-a[1])*u[k]],[a[0]+(b[0]-a[0])*u[k+1],a[1]+(b[1]-a[1])*u[k+1]]]); } });
+    const key=([p,q])=>{ const a=p.map(v=>Math.round(v*100)), b=q.map(v=>Math.round(v*100)); return (a[0]<b[0]||a[0]===b[0]&&a[1]<=b[1])?a.concat(b).join(','):b.concat(a).join(','); };
+    const cnt=new Map(); pieces.forEach(pc=>cnt.set(key(pc),(cnt.get(key(pc))||0)+1));
+    body+=`<path d="${pieces.filter(pc=>cnt.get(key(pc))===1).map(([p,q])=>`M${r2(p[0])} ${r2(p[1])}L${r2(q[0])} ${r2(q[1])}`).join('')}" stroke="${col}" stroke-width="1.6" fill="none" stroke-linecap="square"/>`; }
+  // dimension marks
+  const lin=(nx,ny)=>{ const [u,v]=f(nx,ny); return [u,-v]; };
+  for(const [ax,ay,bx,by,nx,ny,lab,gap] of (SEC_DIMS[type]?SEC_DIMS[type](P):[])){ const n=lin(nx,ny), g=gap??5, a=X(tp([ax,ay])), b=X(tp([bx,by]));
+    const A=[a[0]+n[0]*g,a[1]+n[1]*g], B=[b[0]+n[0]*g,b[1]+n[1]*g], dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1, tx=-dy/L*2.5, ty=dx/L*2.5;
+    if(L>1) body+=`<path d="M${r2(A[0])} ${r2(A[1])}L${r2(B[0])} ${r2(B[1])}M${r2(A[0]-tx)} ${r2(A[1]-ty)}L${r2(A[0]+tx)} ${r2(A[1]+ty)}M${r2(B[0]-tx)} ${r2(B[1]-ty)}L${r2(B[0]+tx)} ${r2(B[1]+ty)}" stroke="#000" stroke-width=".8" fill="none"/>`;
+    const w=lab.length>1?9:5, lx=(A[0]+B[0])/2+n[0]*(w+4), ly=(A[1]+B[1])/2+n[1]*9+4; body+=`<text x="${r2(lx)}" y="${r2(ly)}" font-size="11" font-family="Arial" text-anchor="middle">${subLbl(lab)}</text>`;
+    ext.push([lx-w-3,ly-12],[lx+w+3,ly+4]); }
+  const ex0=Math.min(...ext.map(p=>p[0])), ex1=Math.max(...ext.map(p=>p[0])), ey0=Math.min(...ext.map(p=>p[1])), ey1=Math.max(...ext.map(p=>p[1]));
+  return `<svg class="shape" width="${r2(ex1-ex0+4)}" height="${r2(ey1-ey0+4)}" viewBox="${r2(ex0-2)} ${r2(ey0-2)} ${r2(ex1-ex0+4)} ${r2(ey1-ey0+4)}" aria-hidden="true">${body}</svg>`; }
 function panelBody(k){ let cur=item(k,M.cur[k]); if(!cur){ if(k==='mat'||k==='sec') return `<p class="note" style="text-align:center;color:var(--muted)">Create a ${k==='mat'?'material':'section'} with the first button.</p>`;
     // as in Ftool: with NONE selected the fields stay visible, empty and disabled
     return panelBody._fields(k,{dir:'global'}).replace(/<input /g,'<input disabled '); }
@@ -1041,9 +1132,12 @@ panelBody._fields=function(k,cur){
   switch(k){
     case 'mat': return `<p class="sh">${MAT_TYPES[cur.type]?.[0]||''}</p>${fld('E','E','E',cur.E)}${fld('ν','nu','nu',cur.nu)}${fld('α','alpha','alpha',cur.alpha)}`;
     case 'sec': { const P=secCalc(cur), T=SEC_TYPES[cur.type], ro=cur.type!=='integral';
-      let h=`<p class="sh">${T.label}</p>${shapeSVG(cur.type)}`;
-      h+=T.p.map(p=>fld(p,'p.'+p,'sec',cur.p[p])).join('');
-      if(cur.type==='I'||cur.type==='C') h+=fld('h','calc.h','sec',cur.p.d-2*cur.p.tf,true);
+      let h=`<p class="sh">${T.label}</p>${secSketch(cur)}`;
+      if(cur.type==='girder'){ // Ftool lays the girder's eight sizes out in two columns, the unit at the end of each row
+        const c=k=>`<label for="f_p.${k}">${k}:</label><input id="f_p.${k}" data-k="p.${k}" data-cat="sec" value="${fq('sec',cur.p[k])}">`;
+        h+=`<div class="fl2">${[['b1','b2'],['tw','d1'],['d2','d3'],['d4','d5']].map(([a,b])=>c(a)+c(b)+`<span class="u">${U('sec')}</span>`).join('')}</div>`; }
+      else h+=T.p.map(p=>fld(p,'p.'+p,'sec',cur.p[p])).join('');
+      if(cur.type==='I') h+=fld('h','calc.h','sec',cur.p.d-2*cur.p.tf,true);
       if(ro) h+=fld('ȳ','calc.yb','sec',P.yb,true)+fld('A','calc.A','area',P.A,true)+fld('As','calc.As','area',P.As,true)+fld('I','calc.I','inertia',P.I,true);
       else h+=fld('A','p.A','area',cur.p.A)+fld('As','p.As','area',cur.p.As)+fld('I','p.I','inertia',cur.p.I)+fld('d','p.d','sec',cur.p.d)+fld('ȳ','p.yb','sec',cur.p.yb);
       return h; }
@@ -1094,20 +1188,30 @@ function panelTrf(){ const t=ui.trf, has=!!ui.sel.t, on=has&&t.on, dis=on?'':'di
    <div class="btnrow" style="margin-top:6px"><button class="pb" data-act="t-fwd" ${dis}>Forward</button><button class="pb" data-act="t-back" ${dis}>Back</button></div>
    <div class="btnrow" style="margin-top:8px"><button class="pb" data-act="t-inv" ${ui.sel.t==='m'?'':'disabled'} style="width:176px">Invert member orientation</button></div>`; }
 /* Right-click reports, in the same text layout as Ftool */
-const SEC_INFO={integral:'Integral properties',rect:'Rectangle',I:'I shape',T:'T shape',C:'C shape',Z:'Z shape',angle:'Angle',dangle:'Double angle',circle:'Circle',ring:'Ring',box:'Box'};
+const SEC_INFO={integral:'Integral properties',rect:'Rectangle',I:'I shape',T:'T shape',C:'C shape',Z:'Z shape',angle:'Angle',dangle:'Double Angle',circle:'Circle',ring:'Ring',box:'Box',girder:'Girder section'};
+// Orientation line of the member report, worded as Ftool words it for each shape and code (rectangle, box, circle and ring print none)
+function secOrientName(sec){ const c=sec.orient|0;
+  switch(sec.type){
+    case 'I': return c&1?'Rotated orientation':'Normal orientation';
+    case 'Z': return ['Normal orientation','Rotated orientation'][c&1].replace(/^(Normal|Rotated) orientation$/,c&4?(c&1?'Rotated and Flipped orient.':'Flipped orientation'):'$&');
+    case 'angle': return [['Normal orientation','Horizontal flip orient.'],['Vertical flip orient.','Vert. and Horiz. flip orient.']][c&4?1:0][(c&3)?1:0];
+    case 'T': case 'C': case 'dangle': case 'girder': return ['Normal orientation','Rotated left','Rotated south','Rotated right'][c&3];
+  } return null; }
 function infoText(i){ const o=[], P2=(s='')=>o.push(s);
   const supW=v=>v===1?'Fixed':v===2?'Spring':'Free';
   if(i.t==='n'){ const n=nodeById(i.id); if(!n) return '';
     if(ui.res&&RES&&RES.ok){ const k=RES.idx.get(n.id), D=RES.D, R=RES.R, fx=RES.fixed; const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=fx[3*k+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*k+2];
-      P2('Node'); P2('Results'); P2(); P2('Support'); P2('Reactions:');
-      if(n.sup&&[n.sup.x,n.sup.y,n.sup.r].some(Boolean)){ P2(` Fx = ${fqu('force',R[3*k])}`); P2(` Fy = ${fqu('force',R[3*k+1])}`); P2(` Mz = ${fqu('moment',R[3*k+2])}`); } else P2(' None');
-      P2(); P2('Nodal'); P2('Displacements:'); P2(` Dx = ${fmtNum(toD('disp',D[3*k]),'e',3)} ${U('disp')}`); P2(` Dy = ${fmtNum(toD('disp',D[3*k+1]),'e',3)} ${U('disp')}`); P2(` Rz = ${fmtNum(toD('rot',rz),'e',3)} ${U('rot')}`); }
-    else { P2('Node'); P2('Attributes'); P2(); P2('Coordinates:'); P2(` x = ${fqu('len',n.x)}`); P2(` y = ${fqu('len',n.y)}`); P2(); P2('Support'); P2('Conditions:');
-      const s=n.sup||{x:0,y:0,r:0}; P2(` Dx:    ${supW(s.x)}`); P2(` Dy:    ${supW(s.y)}`); P2(` Rz:    ${supW(s.r)}`);
-      if(n.sup?.ang) P2(` Angle = ${fmtNum(n.sup.ang,'f',2)} deg`); if(s.x===2) P2(` Kx = ${fqu('spring',s.kx)}`); if(s.y===2) P2(` Ky = ${fqu('spring',s.ky)}`); if(s.r===2) P2(` Kz = ${fqu('rspring',s.kz)}`);
-      if(n.sup?.pr){ P2(' Prescribed:'); P2(`  Dx = ${fqu('disp',s.dx)}`); P2(`  Dy = ${fqu('disp',s.dy)}`); P2(`  Rz = ${fqu('rot',s.rz)}`); }
-      if(n.hinge){ P2(); P2('Rotation release (hinge).'); }
-      const ld=item('nodal',n.load); P2(); if(ld){ P2(`Nodal Forces: ${ld.name}`); P2(` Fx = ${fqu('force',ld.fx)}`); P2(` Fy = ${fqu('force',ld.fy)}`); P2(` Mz = ${fqu('moment',ld.mz)}`); } else P2('Nodal Forces: None.'); } }
+      P2(); P2(' Node'); P2(' Results'); P2(); P2(' Support'); P2(' Reactions:');
+      if(n.sup&&[n.sup.x,n.sup.y,n.sup.r].some(Boolean)){ P2(`  Fx = ${fqu('force',R[3*k])}`); P2(`  Fy = ${fqu('force',R[3*k+1])}`); P2(`  Mz = ${fqu('moment',R[3*k+2])}`); } else P2('  None');
+      P2(); P2(' Nodal'); P2(' Displacements:'); P2(`  Dx = ${fmtNum(toD('disp',D[3*k]),'e',3)} ${U('disp')}`); P2(`  Dy = ${fmtNum(toD('disp',D[3*k+1]),'e',3)} ${U('disp')}`); P2(`  Rz = ${fmtNum(toD('rot',rz),'e',3)} ${U('rot')}`); }
+    else { P2(' Node'); P2(' Attributes'); P2(); P2(' Coordinates:'); P2(`  x = ${fqu('len',n.x)}`); P2(`  y = ${fqu('len',n.y)}`); P2(); P2(' Support'); P2(' Conditions:');
+      const s=n.sup||{x:0,y:0,r:0}, sup=!!n.sup&&[s.x,s.y,s.r].some(Boolean); P2(`  Dx:    ${supW(s.x)}`); P2(`  Dy:    ${supW(s.y)}`); P2(`  Rz:    ${supW(s.r)}`);
+      if(sup){ P2(' Inclination'); P2(`  Angle: ${fmtNum(s.ang||0,'f',2)} deg`); P2();
+        if(s.pr&&[s.x,s.y,s.r].includes(1)){ const v=(d,val)=>[s.x,s.y,s.r][d]===1?val:0; P2(' Prescribed'); P2(' Displacements:'); P2(`  Dx = ${fmtNum(toD('disp',v(0,s.dx)),'e',3)} ${U('disp')}`); P2(`  Dy = ${fmtNum(toD('disp',v(1,s.dy)),'e',3)} ${U('disp')}`); P2(`  Rz = ${fmtNum(toD('rot',v(2,s.rz)),'e',3)} ${U('rot')}`); }
+        else { P2(' No Prescribed'); P2(' Displacement'); }
+        if([s.x,s.y,s.r].includes(2)){ const k=(d,val)=>[s.x,s.y,s.r][d]===2?val:0; P2(); P2(' Spring'); P2(' Stiffness:'); P2(`  KDx = ${fmtNum(toD('spring',k(0,s.kx)),'e',3)} ${U('spring')}`); P2(`  KDy = ${fmtNum(toD('spring',k(1,s.ky)),'e',3)} ${U('spring')}`); P2(`  KRz = ${fmtNum(toD('rspring',k(2,s.kz)),'e',3)} ${U('rspring')}`); } }
+      if(n.hinge){ P2(); P2(' Rotation release (hinge).'); }
+      const ld=item('nodal',n.load); P2(); if(ld){ P2(` Nodal Forces: ${ld.name}`); P2(`  Fx = ${fqu('force',ld.fx)}`); P2(`  Fy = ${fqu('force',ld.fy)}`); P2(`  Mz = ${fqu('moment',ld.mz)}`); } else { P2(' Nodal Forces:'); P2('  None.'); } } }
   if(i.t==='m'){ const m=memById(i.id); if(!m) return ''; const a=nodeById(m.i), b=nodeById(m.j), L=Math.hypot(b.x-a.x,b.y-a.y);
     if(ui.res&&RES&&RES.ok){ const r=RES.rm.get(m.id); if(!r) return '';
       if(ui.res==='diag'&&ui.q==='D'){ P2('Member'); P2(' Deformed'); P2(' Configuration'); P2(); P2(' Load Case:'); P2('  Load Case 01'); P2();
@@ -1119,21 +1223,23 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
         else { P2(); P2(' Define a reasonable'); P2(' step value to get'); P2(' results along member.'); } }
       else if(ui.res==='il'){ P2('Member'); P2(' Influence Line'); P2(); P2(' Select a section on a'); P2(' member to draw the'); P2(' influence line.'); } }
     else { const mat=item('mat',m.mat), sec=item('sec',m.sec);
-      P2('Member'); P2('Attributes'); P2(); P2(`Length = ${fqu('len',L)}`); P2();
-      if(mat){ P2(`Material: ${mat.name}`); P2(' Type: Isotropic'); P2(` E       = ${fqu('E',mat.E)}`); P2(` Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(` gama    = ${fqu('gamma',mat.gamma??0)}`); P2(` alpha   = ${fqu('alpha',mat.alpha)}`); } else P2('Material: None.');
+      /* layout copied from Ftool 4.01 (session 4). Ftool writes the inertia unit as mm^4 here. */
+      P2(' Member'); P2(' Attributes'); P2(); P2(` Length = ${fqu('len',L)}`); P2();
+      if(mat){ P2(` Material: ${mat.name}`); P2('  Type: Isotropic'); P2(`  E       = ${fqu('E',mat.E)}`); P2(`  Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(`  gama    = ${fqu('gamma',mat.gamma??0)}`); P2(`  alpha   = ${fqu('alpha',mat.alpha)}`); } else { P2(' Material:'); P2('  None.'); }
       P2();
-      if(sec){ const S=secCalc(sec); P2(`Section: ${sec.name}`); P2(` Type: ${SEC_INFO[sec.type]||sec.type}`); P2(' Normal orientation');
-        for(const p of SEC_TYPES[sec.type].p) P2(` ${p.padEnd(5)} = ${fqu('sec',sec.p[p])}`);
-        P2(` A     = ${fqu('area',S.A)}`); P2(` As    = ${fqu('area',S.As)}`); P2(` I     = ${fqu('inertia',S.I)}`); P2(` depth = ${fqu('sec',S.d)}`); P2(` ygc   = ${fqu('sec',S.yb)}`); } else P2('Section: None.');
-      P2(); if(m.rigid) P2('Rigid member.'); else { P2('Flexible member:'); P2(m.axial?' Axial deformation.':' No axial deformation.'); P2(m.shear?' Shear deformation.':' No shear deformation.'); }
-      if(m.hi||m.hj){ P2(); P2(`Hinges: ${m.hi&&m.hj?'both ends':m.hi?'initial end':'final end'}.`); }
-      P2(); P2('Load Case:'); P2(' Load Case 01'); P2();
+      if(sec){ const S=secCalc(sec), on=secOrientName(sec); P2(` Section: ${sec.name}`); P2(`  Type: ${SEC_INFO[sec.type]||sec.type}`); if(on) P2(`  ${on}`);
+        const keys=sec.type==='integral'?[]:SEC_TYPES[sec.type].p; for(const p of keys) P2(`  ${p.padEnd(5)} = ${fqu('sec',sec.p[p])}`);
+        P2(`  A     = ${fqu('area',S.A)}`); P2(`  As    = ${fqu('area',S.As)}`); P2(`  I     = ${fq('inertia',S.I)} ${U('inertia').replace('⁴','^4')}`); P2(`  depth = ${fqu('sec',S.d)}`); P2(`  ygc   = ${fqu('sec',S.yb)}`); } else { P2(' Section:'); P2('  None.'); }
+      P2(); if(m.rigid){ P2(' Rigid member.'); } else { P2(' Flexible member:'); P2(m.axial?'  Axial deformation.':'  No axial deformation.'); P2(m.shear?'  Shear deformation.':'  No shear deformation.'); }
+      if(m.hi||m.hj){ P2(); P2(` Hinges: ${m.hi&&m.hj?'both ends':m.hi?'initial end':'final end'}.`); }
+      P2(); P2(' Load Case:'); P2('  Load Case 01'); P2();
       const le=item('endm',m.ld.e), lu=item('unif',m.ld.u), ll=item('lin',m.ld.l), lt=item('therm',m.ld.t);
-      if(le){ P2(`End Moments: ${le.name}`); P2(` Ma = ${fqu('moment',le.ma)}`); P2(` Mb = ${fqu('moment',le.mb)}`); } else { P2('End Moments:'); P2(' None.'); } P2();
-      if(lu){ P2(`Uniform Load: ${lu.name}`); P2(` Dir: ${lu.dir==='local'?'Local':'Global'}`); P2(` Qx = ${fqu('dist',lu.qx)}`); P2(` Qy = ${fqu('dist',lu.qy)}`); } else { P2('Uniform Load:'); P2(' None.'); } P2();
-      if(ll){ P2(`Linear Load: ${ll.name}`); P2(` Dir: ${ll.dir==='local'?'Local':'Global'}`); for(const k of ['pxi','pyi','pxj','pyj']) P2(` ${k[0].toUpperCase()+k.slice(1)} = ${fqu('dist',ll[k])}`); } else { P2('Linear Load:'); P2(' None.'); } P2();
-      if(lt){ P2(`Thermal Load: ${lt.name}`); P2(` Ty+ = ${fqu('temp',lt.tt)}`); P2(` Ty- = ${fqu('temp',lt.tb)}`); } else { P2('Thermal Load:'); P2(' None.'); } } }
-  return `<pre class="ftxt">${esc(o.join('\n'))}</pre>`; }
+      if(le){ P2(` End Moments: ${le.name}`); P2(`  Ma = ${fqu('moment',le.ma)}`); P2(`  Mb = ${fqu('moment',le.mb)}`); } else { P2(' End Moments:'); P2('  None.'); } P2();
+      /* Ftool shows one distributed-load block: "Linear Load" when the member has one, otherwise "Uniform Load" */
+      if(lu||!ll){ if(lu){ P2(` Uniform Load: ${lu.name}`); P2(`  Dir: ${lu.dir==='local'?'Local':'Global'}`); P2(`  Qx = ${fqu('dist',lu.qx)}`); P2(`  Qy = ${fqu('dist',lu.qy)}`); } else { P2(' Uniform Load:'); P2('  None.'); } P2(); }
+      if(ll){ P2(` Linear Load: ${ll.name}`); P2(`  Dir: ${ll.dir==='local'?'Local':'Global'}`); for(const k of ['pxi','pyi','pxj','pyj']) P2(`  ${k[0].toUpperCase()+k.slice(1)} = ${fqu('dist',ll[k])}`); P2(); }
+      if(lt){ P2(` Thermal Load: ${lt.name}`); P2(`  Ty+ = ${fqu('temp',lt.tt)}`); P2(`  Ty- = ${fqu('temp',lt.tb)}`); } else { P2(' Thermal Load:'); P2('  None.'); } } }
+  return `<pre class="ftxt">\n${esc(o.join('\n'))}</pre>`; }   /* HTML drops the first newline after <pre>; the extra one keeps Ftool's leading empty line */
 function panelInfo(){ const i=ui.info; if(!i) return ''; let h=infoText(i);
   if(i.t==='n'&&RES&&RES.ok&&ui.res){ const n=nodeById(i.id); if(n) h+=jointEquilibrium(n); }
   return h; }
@@ -1177,6 +1283,7 @@ function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='l-del'){ const id=M.cur[P]; commit(()=>{ M.lists[P]=L_(P).filter(x=>x.id!==id); unassign(P,id); M.cur[P]=L_(P)[0]?.id??null; }); return; }
   if(cmd==='l-con'){ commit(()=>{ const used=usedIds(P); M.lists[P]=L_(P).filter(x=>used.has(x.id)||x.id===M.cur[P]); }); return; }
   if(cmd==='hinge'){ M.cur.hinge=arg; save(); renderSide(); return; }
+  if(cmd==='sec-or'){ const cur=item('sec',M.cur.sec); if(!cur) return; const c=orientOps(cur.type,cur.orient)[+arg]; if(c==null) return; commit(()=>{ cur.orient=c; }); return; }
   if(cmd==='ttab'){ ui.trf.tab=arg; renderSide(); return; }
   if(cmd==='t-fwd'||cmd==='t-back'){ transform(cmd==='t-back'); return; }
   if(cmd==='t-inv'){ if(!needSel('m')) return; commit(()=>selMembers().forEach(m=>{ [m.i,m.j]=[m.j,m.i]; [m.hi,m.hj]=[m.hj,m.hi]; })); return; }
@@ -1479,7 +1586,7 @@ function fileOpen(){ dlg('Open',`<p style="margin:0">Open an Ftool model (.ftl) 
 $('#fOpen').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const mode=e.target.dataset.mode; e.target.dataset.mode=''; const r=new FileReader(); r.onload=()=>mode==='import'?importProps(r.result):loadText(r.result); r.readAsText(f,'latin1'); e.target.value=''; };
 /* Ftool .ftl reader (format version 401, decoded from real files). Lists, sections, materials, dimension lines,
    supports and member attributes are read; anything not understood is reported instead of guessed silently. */
-const FTL_SEC={0:'integral',1:'rect',2:'I',3:'angle',4:'T',5:'C',6:'Z',7:'circle',8:'ring',9:'dangle',11:'box'};
+const FTL_SEC={0:'integral',1:'rect',2:'I',3:'angle',4:'T',5:'C',6:'Z',7:'circle',8:'ring',9:'dangle',10:'girder',11:'box'};
 const FTL_MAT={0:'generic',1:'steel',2:'concrete',3:'aluminium'};
 /* Units in .ftl (lines 10-13), decoded in session 3. A unit code is a base code for the quantity plus flags:
    force N 0x4000, tf 0x8000; length cm 0x10000, mm 0x20000; angle deg 0x40000.
@@ -1525,13 +1632,12 @@ function parseFtl(txt){
   lst('lin',v=>({dir:v[0]?'local':'global',pxi:v[1]||0,pyi:v[2]||0,pxj:v[3]||0,pyj:v[4]||0}));
   lst('therm',v=>({tt:v[0]||0,tb:v[1]||0}));
   const nMat=int(); for(let c=0;c<nMat;c++){ const h=tk(L[i++]), v=nums(L[i++]); Md.lists.mat.push({id:'i'+(Md.next.i++),name:h[0].q,type:FTL_MAT[+h[1]]||'generic',E:v[0],nu:v[1],gamma:v[2],alpha:v[3]}); }
-  const nSec=int(); for(let c=0;c<nSec;c++){ const h=tk(L[i++]), v=nums(L[i++]), t=FTL_SEC[+h[1]], nm=h[0].q; let p;
-    if(!t){ warn.push(`Section "${nm}" uses a type FOpenTool cannot read yet; it was replaced by a rectangle.`); p={b:.1,h:.1}; }
-    else if(t==='integral') p={A:v[0],As:v[1],I:v[2],d:v[3],yb:v[4]};
-    else if(t==='rect') p={h:v[0],b:v[1]};
-    else if(['I','T','C','Z','angle','dangle'].includes(t)) p={d:v[0],b:v[1],tw:v[2],tf:v[3]};
-    else if(t==='circle') p={D:v[0]}; else if(t==='ring') p={D:v[0],t:v[1]}; else if(t==='box') p={d:v[0],b:v[1],t:v[2]};
-    Md.lists.sec.push({id:'i'+(Md.next.i++),name:nm,type:t||'rect',p}); }
+  /* Section: 'name' type orientation / parameters in Ftool's order (SEC_TYPES[t].ftl or .p). Integral: A As I (unknown, kept) d ȳ. */
+  const nSec=int(); for(let c=0;c<nSec;c++){ const h=tk(L[i++]), v=nums(L[i++]), nm=h[0].q; let t=FTL_SEC[+h[1]], p;
+    if(!t){ warn.push(`Section "${nm}" uses a type FOpenTool cannot read yet; it was replaced by a rectangle.`); t='rect'; p={d:.1,b:.1}; }
+    else if(t==='integral') p={A:v[0]||0,As:v[1]||0,I:v[2]||0,x4:v[3]||0,d:v[4]||0,yb:v[5]||0};
+    else p=Object.fromEntries((SEC_TYPES[t].ftl||SEC_TYPES[t].p).map((k,j)=>[k,v[j]||0]));
+    Md.lists.sec.push({id:'i'+(Md.next.i++),name:nm,type:t,orient:+h[2]||0,p}); }
   const nTrain=int(); if(nTrain>0){ warn.push('Load trains in this file were skipped (not supported yet).'); throw new Error('load trains'); }
   const nDim=int(); for(let c=0;c<nDim;c++){ const v=nums(L[i++]); const d={id:Md.next.d++,ax:v[0],ay:v[1],bx:v[2],by:v[3],off:0}; const n=dimN(d); d.off=(v[4]-v[0])*n[0]+(v[5]-v[1])*n[1]; Md.dims.push(d); }
   const byId=(k,ix)=>ix>0?Md.lists[k][ix-1]?.id??null:null;
@@ -1591,8 +1697,8 @@ function writeFtl(Md){ const o=[], P=s=>o.push(s), U=Md.units, lists=Md.lists;
   P(String(lists.therm.length)); lists.therm.forEach(x=>P(`${q(x.name)} ${G(x.tt)} ${G(x.tb)}`));
   const MAT_C={generic:0,steel:1,concrete:2,aluminium:3}; P(String(lists.mat.length)); lists.mat.forEach(x=>{ P(`${q(x.name)} ${MAT_C[x.type]??0}`); P(` ${G(x.E)} ${G(x.nu)} ${G(x.gamma??0)} ${G(x.alpha)}`); });
   const SEC_C=Object.fromEntries(Object.entries(FTL_SEC).map(([k,v])=>[v,+k])); P(String(lists.sec.length));
-  lists.sec.forEach(x=>{ const p=x.p, t=x.type; P(`${q(x.name)} ${SEC_C[t]??0} 0`);
-    const v=t==='integral'?[p.A,p.As,p.I,p.d,p.yb]:t==='rect'?[p.h,p.b]:t==='circle'?[p.D]:t==='ring'?[p.D,p.t]:t==='box'?[p.d,p.b,p.t]:[p.d,p.b,p.tw,p.tf]; P(' '+v.map(G).join(' ')); });
+  lists.sec.forEach(x=>{ const p=x.p, t=x.type; P(`${q(x.name)} ${SEC_C[t]??0} ${x.orient|0}`);
+    const v=t==='integral'?[p.A,p.As,p.I,p.x4||0,p.d,p.yb]:(SEC_TYPES[t].ftl||SEC_TYPES[t].p).map(k=>p[k]); P(' '+v.map(G).join(' ')); });
   P('0');
   P(String(Md.dims.length)); Md.dims.forEach(d=>{ const n=dimN(d); P([d.ax,d.ay,d.bx,d.by,d.ax+n[0]*d.off,d.ay+n[1]*d.off,d.bx+n[0]*d.off,d.by+n[1]*d.off].map(G).join(' ')); });
   // node hinges are written as hinges at every member end there, as Ftool does
@@ -1640,7 +1746,13 @@ function writeFtl(Md){ const o=[], P=s=>o.push(s), U=Md.units, lists=Md.lists;
   if(firstV==null){ P('0 0 0 0 +0.00000000e+000'); P('0 0 0'); P('0'); P('0 0 0 0'); }
   o[H4]=`0 1 1 ${firstV?vid.get(firstV.id):1} ${nFaces} ${nodes.length} ${eid} 0 0 0 0`; o[H4+1]=firstV?`${pE(firstV.x)} ${pE(firstV.y)}`:'+0.00000e+000 +0.00000e+000';
   P(' 0'); return o.join('\r\n')+'\r\n'; }
-function migrate(o){ for(const [k,v] of Object.entries(UC)) if(!o.units[k]) o.units[k]={u:v[2],f:v[3][0],d:v[3][1]}; o.opt={...newModel().opt,...o.opt}; return o; }
+// Section parameters were renamed in session 4 to Ftool's (rectangle d b, circle/ring d, box tw tf, angle and Z t, double angle t e).
+function migrateSec(s){ const p=s.p||(s.p={}), mv=(a,b)=>{ if(p[a]!=null&&p[b]==null){ p[b]=p[a]; delete p[a]; } };
+  if(s.type==='rect') mv('h','d'); if(s.type==='circle'||s.type==='ring') mv('D','d');
+  if(s.type==='box'&&p.t!=null&&p.tw==null){ p.tw=p.tf=p.t; delete p.t; }
+  if((s.type==='angle'||s.type==='Z'||s.type==='dangle')&&p.tw!=null&&p.t==null){ p.t=p.tw; delete p.tw; delete p.tf; if(s.type==='dangle') p.e=0; }
+  if(s.orient==null) s.orient=0; return s; }
+function migrate(o){ for(const [k,v] of Object.entries(UC)) if(!o.units[k]) o.units[k]={u:v[2],f:v[3][0],d:v[3][1]}; o.opt={...newModel().opt,...o.opt}; (o.lists?.sec||[]).forEach(migrateSec); return o; }
 function readModel(t){ if(/^\s*\d+\s+\d+\s*\r?\n/.test(t)){ const r=parseFtl(t); return r; } const o=JSON.parse(t); if(!o||o.v!==2||!Array.isArray(o.nodes)||!Array.isArray(o.members)||!o.lists) throw 0; return {model:migrate(o),warn:[]}; }
 function fileImport(){ dlg('Import Properties',`<p style="margin:0;max-width:440px">Import the materials, sections and loads of another model (.ftl or .json). Items whose names already exist here are skipped.</p><div class="btnrow"><button class="pb def" id="imFile">Choose file...</button><button class="pb" data-close>Cancel</button></div><p id="imMsg" style="margin:0;color:var(--msg)"></p>`,b=>{ b.querySelector('#imFile').onclick=()=>{ const f=$('#fOpen'); f.dataset.mode='import'; f.click(); }; }); }
 function importProps(t){ try{ const {model}=readModel(t); let n=0; pushUndo();
@@ -1688,5 +1800,5 @@ function exportLines(mode){ if(!RES?.ok) return; const ms=selMembers(); const li
   if(!M) exampleModel();
   new ResizeObserver(resize).observe($('#stage')); resize(); renderAll();
 })();
-window.__fopentool={analyze,buildSystem,influence,secCalc,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
+window.__fopentool={analyze,buildSystem,influence,secCalc,secWidth,secBreaks,secGeom,orientOps,parseFtl,writeFtl,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
 </script>
