@@ -42,7 +42,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 ### Beyond Ftool
 
-- **Section stresses**: click a point on a member to cut it there. Shows N, V and M at the cut, normal stress σ = N/A − M·y/I at the upper and lower fibers, the neutral line y₀ = N·I/(M·A), the shear stress distribution τ = V·Q/(I·b), and the largest tension and compression along the member and in the whole structure. The Tension and Compression buttons move the cut straight to the most stressed fiber. A diagram draws the cross-section with both stress distributions.
+- **Section stresses**: click a point on a member to cut it there. Shows N, V and M at the cut, normal stress σ = N/A − M·y/I at the upper and lower fibers, the neutral line y₀ = N·I/(M·A), the shear stress distribution τ = V·Q/(I·b), and the largest tension and compression along the member and in the whole structure. The Tension and Compression buttons move the cut straight to the most stressed fiber. Cutting a member (or selecting one) also makes its section the current one in the Section panel, so the two always agree. A diagram draws the cross-section with both stress distributions.
 - **Truss analysis** (Options > Structure Type): every joint is pinned and members carry axial force only. A member-force table marks each member as tension, compression or zero-force, and right-clicking a joint shows its equilibrium (method of joints) with ΣFx = 0 and ΣFy = 0.
 - **Static determinacy**: classifies the structure as hypostatic, isostatic or hyperstatic, with its degree and the count shown (3m + r − 3j − c for frames, m + r − 2j for trusses).
 

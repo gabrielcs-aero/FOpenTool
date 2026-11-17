@@ -1153,7 +1153,12 @@ function renderTop(){
   $('#cv').style.cursor=ui.res?'default':ui.tool==='select'?'default':'crosshair';
 }
 function updateStatus(){ if(document.activeElement!==$('#vH')) $('#vH').value=fq('len',W/view.s); if(document.activeElement!==$('#vV')) $('#vV').value=fq('len',H/view.s); }
-function renderAll(){ renderTop(); renderSide(); renderKbd(); draw(); }
+// FOpenTool (not Ftool): the Material and Section panels follow the selection. When the selected members (or the member cut
+// for section stresses) all share a material or section, it becomes the current one, so the panel shows what the stresses use.
+function syncCurFromSel(){ const ms=ui.res==='diag'&&ui.q==='S'&&ui.cut?[memById(ui.cut.mid)].filter(Boolean):selMembers();
+  const key=ms.map(m=>m.id).join(','); if(key===ui._selKey) return; ui._selKey=key; if(!ms.length) return;
+  for(const k of ['mat','sec']){ const v=ms[0][k]; if(v!=null&&ms.every(m=>m[k]===v)&&item(k,v)) M.cur[k]=v; } }
+function renderAll(){ syncCurFromSel(); renderTop(); renderSide(); renderKbd(); draw(); }
 
 /* ---- load train panel (same fields as Ftool's) ---- */
 function panelTrain(){ const lst=L_('train'), cur=item('train',M.cur.train); let h=`<div class="pt">Load Train</div>`;
