@@ -753,6 +753,11 @@ function sectionStress(r,x){
 function memberStressRange(r){ let tMax=-Infinity,tx=0,cMin=Infinity,cx=0;
   for(const x of samplesX(r,0)){ const s=sectionStress(r,x), hi=Math.max(s.sTop,s.sBot), lo=Math.min(s.sTop,s.sBot); if(hi>tMax){tMax=hi;tx=x;} if(lo<cMin){cMin=lo;cx=x;} }
   return {tMax,tx,cMin,cx}; }
+// Largest normal stress over the whole structure: tension (kind 't') or compression ('c'), with member, position and fiber
+function maxStress(kind){ let best=null;
+  for(const r of RES.recs){ const g=memberStressRange(r), v=kind==='t'?g.tMax:g.cMin, x=kind==='t'?g.tx:g.cx;
+    if(!best||(kind==='t'?v>best.v:v<best.v)) best={r,v,x}; }
+  if(!best) return null; const st=sectionStress(best.r,best.x); best.fiber=(kind==='t'?st.sTop>=st.sBot:st.sTop<=st.sBot)?'upper':'lower'; return best; }
 
 /* Static determinacy: compare unknowns with independent equilibrium equations */
 function classify(Md,S){ const truss=!!Md.opt.truss, used=new Set(); Md.members.forEach(m=>{used.add(m.i);used.add(m.j);});
@@ -991,8 +996,8 @@ function drawSectionView(){ const ov=$('#ssv'), r=cutRec(), on=!!(ui.res==='diag
   else T(s.taus?'0':'average only',tx0+30,top+ph/2,'#555');
   g.strokeStyle='#000'; g.lineWidth=1; ln(tx0,top-4,tx0,bot+4); }
 function panelSection(){ const r=cutRec();
-  if(!r) return `<div class="pt">Section Stresses</div><p style="text-align:center;color:var(--muted)">Click a point on a member to cut it there. This panel shows the internal forces at the cut, the normal stress σ = N/A − M·y/I, the neutral line and the shear stress τ = V·Q/(I·b).</p>`;
-  return `<div class="pt">Section Stresses</div><label class="fl" style="grid-template-columns:1fr"><span>Cut position along member ${r.m.id} (start → end)</span></label><input type="range" id="cutX" min="0" max="1" step="0.0025" value="${ui.cut.xi}" style="width:100%" aria-label="Cut position"><div class="ssn" id="ssNums"></div>`; }
+  if(!r) return `<div class="pt">Section Stresses</div><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><span style="flex-basis:100%">Go to the largest normal stress:</span><button class="pb" style="flex:1;min-width:0;padding:0 4px;white-space:nowrap" data-act="smax:t" title="Move the cut to the largest tensile normal stress in the structure">Tension</button><button class="pb" style="flex:1;min-width:0;padding:0 4px;white-space:nowrap" data-act="smax:c" title="Move the cut to the largest compressive normal stress in the structure">Compression</button></div><p style="text-align:center;color:var(--muted)">Click a point on a member to cut it there. This panel shows the internal forces at the cut, the normal stress σ = N/A − M·y/I, the neutral line and the shear stress τ = V·Q/(I·b).</p>`;
+  return `<div class="pt">Section Stresses</div><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><span style="flex-basis:100%">Go to the largest normal stress:</span><button class="pb" style="flex:1;min-width:0;padding:0 4px;white-space:nowrap" data-act="smax:t" title="Move the cut to the largest tensile normal stress in the structure">Tension</button><button class="pb" style="flex:1;min-width:0;padding:0 4px;white-space:nowrap" data-act="smax:c" title="Move the cut to the largest compressive normal stress in the structure">Compression</button></div><label class="fl" style="grid-template-columns:1fr"><span>Cut position along member ${r.m.id} (start → end)</span></label><input type="range" id="cutX" min="0" max="1" step="0.0025" value="${ui.cut.xi}" style="width:100%" aria-label="Cut position"><div class="ssn" id="ssNums"></div>`; }
 function updateSectionView(){ const r=cutRec(), box=$('#ssNums'); drawSectionView(); if(!r||!box) return;
   const s=sectionStress(r,ui.cut.xi*r.L), rg=memberStressRange(r), sec=r.sec, f=v=>fq('stress',v), su=U('stress');
   const row=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
@@ -1008,7 +1013,9 @@ function updateSectionView(){ const r=cutRec(), box=$('#ssNums'); drawSectionVie
   h+=`<h5>Shear stress</h5>`;
   if(s.taus) h+=`<p class="f">τ(y) = V·Q(y)/(I·b(y))</p><table>${row('Maximum',`<b>${f(s.tauMax)} ${su}</b>`)}${row('At y',fqu('sec',s.tauAt))}</table>`;
   else h+=`<p style="margin:0">Integral-properties sections have no shape, so only the average is shown: τ = V/As = ${s.tauMax==null?'—':f(s.tauMax)+' '+su}.</p>`;
-  h+=`<h5>Along this member</h5><table>${row('Largest tension',`${f(rg.tMax)} ${su} at x = ${fqu('len',rg.tx)}`)}${row('Largest compression',`${f(rg.cMin)} ${su} at x = ${fqu('len',rg.cx)}`)}</table>`;
+  const go=(a,v,lbl)=>`<tr data-act="${a}" title="Move the cut here"><td>${lbl}</td><td>${v}</td></tr>`, mt=maxStress('t'), mc=maxStress('c');
+  h+=`<h5>Along this member</h5><table class="mt">${go('scut:'+rg.tx/r.L,`${f(rg.tMax)} ${su} at x = ${fqu('len',rg.tx)}`,'Largest tension')}${go('scut:'+rg.cx/r.L,`${f(rg.cMin)} ${su} at x = ${fqu('len',rg.cx)}`,'Largest compression')}</table>`;
+  h+=`<h5>In the whole structure</h5><table class="mt">${go('smax:t',`${f(mt.v)} ${su}, member ${mt.r.m.id}, x = ${fqu('len',mt.x)}, ${mt.fiber} fiber`,'Largest tension')}${go('smax:c',`${f(mc.v)} ${su}, member ${mc.r.m.id}, x = ${fqu('len',mc.x)}, ${mc.fiber} fiber`,'Largest compression')}</table>`;
   box.innerHTML=h; }
 function panelResults(){ const c=classify(M,RES); let h=`<div class="pt">Structure</div><p style="margin:0 0 4px"><b>${c.cls}</b></p><p class="f" style="font-family:'Cambria Math','Times New Roman',serif;margin:0">${c.formula}</p><p style="margin:2px 0 0;color:var(--muted)">${c.legend}. ${c.note}</p>`;
   if(!RES||!RES.ok) return h;
@@ -1445,6 +1452,10 @@ const MEMBER_LOAD={unif:'u',lin:'l',therm:'t',endm:'e'};
 function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='cancel'){ ui.creating=null; ui.renaming=null; renderSide(); return; }
   if(cmd==='info-close'){ ui.info=null; renderSide(); return; }
+  if(cmd==='scut'&&ui.cut){ ui.cut.xi=Math.min(1,Math.max(0,+arg)); renderAll(); return; }
+  if(cmd==='smax'&&RES&&RES.ok){ const b=maxStress(arg), nm=arg==='t'?'tension':'compression';
+    if(!b||(arg==='t'?b.v<=0:b.v>=0)){ ui.msg=`No fiber is in ${nm}.`; renderAll(); return; }
+    ui.cut={mid:b.r.m.id,xi:b.x/b.r.L}; ui.info=null; ui.msg=`Largest ${nm}: ${fqu('stress',b.v)} at the ${b.fiber} fiber of member ${b.r.m.id}, x = ${fqu('len',b.x)}`; renderAll(); return; }
   if(cmd==='minfo'||cmd==='ninfo'){ ui.info={t:cmd==='minfo'?'m':'n',id:+arg}; renderSide(); return; }
   if(cmd==='l-new'){ ui.creating=P; ui.renaming=null; ui.copyFrom=null; renderSide(); return; }
   if(cmd==='l-copy'){ ui.creating=P; ui.renaming=null; ui.copyFrom=M.cur[P]; renderSide(); return; }
