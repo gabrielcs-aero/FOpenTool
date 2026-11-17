@@ -27,7 +27,8 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Thermal loads (temperature change on the top and bottom fibers).
 
 **Results**
-- Axial, shear and bending moment diagrams, deformed configuration, support reactions.
+- Axial, shear and bending moment diagrams, deformed configuration (with DX, DY, DU, DV or RZ values at the nodes, as in Ftool), support reactions.
+- Zoom with the mouse wheel; pan by dragging with the middle or right button (or the left button on empty results, or with Space held).
 - Influence lines for axial force, shear and bending moment at any section.
 - Load trains (moving loads) as in Ftool: concentrated loads, single or full/empty car distributed loads, exterior and interior live loads, impact factor. Envelopes of N, V and M along a path of selected members, with Ftool's rules (train in both directions, critical position for every section, static results optionally added), point queries and the member envelope report.
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).

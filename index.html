@@ -598,7 +598,9 @@ function analyze(Md){
       const v=(1-3*xi*xi+2*xi**3)*ul[1]+L*(xi-2*xi*xi+xi**3)*ul[2]+(3*xi*xi-2*xi**3)*ul[4]+L*(-xi*xi+xi**3)*ul[5]
         +r.wi*x*x*(L-x)**2/(24*EI)+(r.wj-r.wi)*x*x*(L-x)**2*(L+x)/(120*L*EI);
       return [u*r.c-v*r.s,u*r.s+v*r.c]; };
-    r.rotAt=x=>{ const h=Math.max(L*1e-4,1e-7), a=Math.max(0,x-h), b=Math.min(L,x+h), da=r.defl(a), db=r.defl(b); const va=-da[0]*r.s+da[1]*r.c, vb=-db[0]*r.s+db[1]*r.c; return (vb-va)/(b-a); };
+    r.rotAt=x=>{ const xi=x/L, EI=r.EI;   // exact dv/dx of the transverse deflection used in defl
+      return (-6*xi+6*xi*xi)/L*ul[1]+(1-4*xi+3*xi*xi)*ul[2]+(6*xi-6*xi*xi)/L*ul[4]+(-2*xi+3*xi*xi)*ul[5]
+        +r.wi*2*x*(L-x)*(L-2*x)/(24*EI)+(r.wj-r.wi)*(2*x*(L-x)*(L-2*x)*(L+x)+x*x*(L-x)**2)/(120*L*EI); };
     r.val=(qn,x)=>qn==='N'?r.N(x):qn==='V'?r.sg*r.V(x):r.sg*r.Mf(x);
     S.rm.set(r.m.id,r); }
   S.ok=true; return S;
