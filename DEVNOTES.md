@@ -76,6 +76,15 @@ Copied from the real program on the owner's PC, November 2026. Keep these exact.
 - **Rotation Release** (3 buttons, then node hinge on/off and four member options) and **Deformation Constraints** (select and apply buttons; Flexible Member, Axial Deformation, Shear Deformation; Rigid Member) match.
 - Material panel shows E, ν, α only; specific weight (gama) is stored and shown only in reports.
 
+**Load trains (session 4, explored, not implemented yet)**. In Ftool 4.01 the Load Case and Load Cmb buttons are disabled (advanced edition); Load Train is the parity target.
+- Panel "Load Train": list and buttons (new, import, rename, copy, delete), Impact Factor (default 1.00), Length (m), "Concentrated Loads:" table x[m] P[kN] (5 rows), "Distrib. Loads [kN/m]:" with "Single load car (q)" (default) or "Full/empty car (q/q')" and a table xa xb q (q'), "Live Load [kN/m]:" Exterior / Interior. Loads typed positive are stored negative (downward). Typing in the live-load cells stores the value divided by 1000 (typed 5 shows -0.00, stored -0.005): looks like a Ftool bug.
+- Workflow: pick the train in the toolbar "Load Train:" box, select the members forming a continuous path (selection mode), press the envelope result button, then N, V or M. Query message: "Bending load-train envelopes at local pos.: x = 8.00 m  L = 16.00 m  -  Max. Val.: 480.0 kNm - Min. Val.: 80.0 kNm". With a step set, queries snap to step stations. The drawing shows the max and min envelope curves, the extreme of the max envelope labeled with an ordinate; default scale = max |envelope| / (0.1 × model size).
+- Envelope = static results + train when Options > "Add static load results to load-train envelope" is checked (default). Unchecked, the scale box is empty and the diagram is drawn off-screen (Ftool bug), though queries still work.
+- Rules confirmed against hand calculations: the train runs in both directions; the impact factor multiplies concentrated and distributed train loads; the train is placed at the critical position for each section (exact max/min over positions); loads can reach the end of a cantilever. At an envelope cusp Ftool's sampling can differ by a few tenths (500.5 vs exact 500).
+- Member report in envelope mode (template in Ftool.exe): " Member / Bending Moment / Envelope Results / Init: Max: / Min: / End: Max: / Min: / Envelope local max. abs. values: / In max. envelope: v / Local pos.: x / In min. envelope: v / Local pos.: x / Member length: L / Define a reasonable step value...". "In max. envelope" is the largest value of the max envelope, "In min. envelope" the smallest of the min envelope.
+- Still to find: how q' (empty car) is applied, how Exterior/Interior live loads are applied (expected: only where the influence line has the favorable sign, exterior outside the train length, interior inside), whether a train may stand partly off the path, the influence-line "critical positions" display, and the last line of the .ftl record. A good test structure is `%TEMP%ot\ov.ftl` (supports at 0 and 10 m, tip at 14 m; single 100 kN load gives max 248.0 / min -202.0 kNm at x = 5).
+- Ftool.exe contains the report templates and messages as printf strings (scan the file for strings containing '%'); useful for exact wording.
+
 Dialogs and modes compared in session 3 (all copied):
 - **Units & Number Formatting**: buttons SI / kN-m / US on top (US changes nothing in 4.01); frames [Length, Displacement, Rotation], [Section Sizes, Section Area, Section Inertia], [Force, Moment, Distrib. Load, Temperature], [Elastic Param., Specific Weight, Thermal Expan.], [Translat. Spring, Rotation Spring], [Force Infl. Line (unit "[  ]", disabled), Moment Infl. Line (follows Length, disabled)]; each row has a unit box ("meter [ m ]", "kilo-Newton [ kN ]", "[ kNm ]", "mega-Pascal [ MPa (N/mm²) ]"...) and a Format box (x, x.x … x.xxxxxx, x e±xx … x.xxxxxx e±xx). SI defaults: m x.xx; mm x.xxx e±xx; rad x.xxx e±xx; mm x; mm² x.xxxx e±xx; mm^4 x.xxxx e±xx; kN x.x; kNm x.x; kN/m x.xx; °C x; MPa x; kN/m³ x.x; 1/°C x.xxxxxx; springs x.xxx e±xx; influence lines x.xxxx. kN-m button: displacement m, section m x.xx, area m² x.xxxx, inertia m^4 x.xxxxxx, E kN/m² x.xxx e±xx. 1 tf = 9.81 kN (checked: E 205000 MPa shows 2.089704e+07 tf/m²). OK / Cancel.
 - **Sign Convention** (title "Internal Force Sign and Diagram Display Conventions"): heading, gable-frame sketch "Member bottom side", bar sketches for positive M, V, N; two check boxes for the moment side, fixed text for V and N ("Positive diagram values are plotted on the top side of member"), "Influence line display" with two check boxes; Apply and Accept (disabled until something changes) and Close.
@@ -124,7 +133,10 @@ Plain text, CRLF, Latin-1. Line numbers are 1-based. Internal units kN, m, rad. 
     nMat    'name' type / E nu gamma alpha   (type 0 generic, 1 steel; 2 concrete, 3 aluminium assumed)
     nSec    'name' type orientation / params: 0 integral A As I 0 d ȳ (6 values; the 4th is unknown, always 0), 1 rect d b, 2 I d b tw tf, 3 angle d b t,
             4 T d b tw tf, 5 C d b tw tf, 6 Z d b t, 7 circle d, 8 ring d t, 9 double angle d b t e, 10 girder d1 d2 d3 d4 d5 b1 b2 tw, 11 box d b tw tf
-    nTrains (load trains: not decoded yet, the reader stops)
+    nTrains, then per train (decoded in session 4, last line still unknown):
+            'name' / impact factor / "nConc " then nConc lines "x  P" / "nDist " then nDist lines "xa  xb  q' q" (single car: q' = q)
+            / live load exterior / live load interior / train length / car mode (0 single car, 1 full/empty car)
+            / one more line "0", present only when the train has distributed loads (meaning unknown). Loads are negative (downward).
     nDims   ax ay bx by cx cy dx dy         (c, d = ends of the dimension line)
 ```
 Unit code = base + flags. Bases: length 3, area 9, inertia 17, rotation 4, force 33, moment 65, distributed 129, E 513, specific weight 1025, spring 4097, rotational spring 8193 (temperature 2049, α 257 fixed). Flags: force N 0x4000, tf 0x8000; length cm 0x10000, mm 0x20000; degrees 0x40000. E.g. MPa = 513+0x4000+0x20000 = 147969. Format code = 2·digits, +1 for exponential (x.xxx e±xx = 7). Changing a unit in Ftool also resets that row's format.
@@ -156,7 +168,7 @@ member line: id hi hj rigid shear axial;  6 indices (1-based, 0 = none): materia
 2. Influence lines and step lines/values are done. Still to compare: thermal results, inclined-support reaction drawing and reports, hinge drawing (needs small models in Ftool).
 3. ~~Editing Mode "None" at startup~~ (done).
 4. ~~Decode the .ftl format and write .ftl~~ (done in session 3; only load trains remain, decode them together with item 5).
-5. Load cases and combinations, load trains and envelopes (Ftool's advanced features; large).
+5. Load trains and envelopes (in progress: format and main rules found in session 4, see "Load trains" above; next probe q', live loads, critical positions, then implement). Load cases and combinations are disabled in Ftool 4.01 free, so they come later as an improvement.
 6. Profile tables (needs the shape data). ~~Girder section, section parameters, mirror/rotate buttons~~ (done in session 4).
 7. Mouse-driven transformations, Maintain Topology, animated deformed shape.
 8. Export Model Screen formats (SVG and DXF are the most useful).
