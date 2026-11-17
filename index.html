@@ -1574,6 +1574,8 @@ cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setP
     if(ui.zoomStart){ ui.zoomStart=null; ui.zoomBox=null; draw(); return; }
     startPan(()=>rightClick(sx,sy)); return; }
   if(spaceDown){ startPan(null); cv.style.cursor='grabbing'; return; }
+  if(ui.res&&e.shiftKey){ startPan(()=>{ const hm=hitMember(sx,sy,8); if(!hm) return; const id=hm.m.id;   // Shift+click in results: add or remove members from the selection
+      if(ui.sel.t==='m'){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; } else ui.sel={t:'m',ids:new Set([id]),dims:new Set()}; renderAll(); }); return; }
   if(ui.res){ startPan(()=>resultClick(sx,sy)); return; }
   if(ui.tool==='none'){ startPan(()=>{}); return; }
   if(ui.tool==='zoom'){ if(!ui.zoomStart){ ui.zoomStart=[sx,sy]; ui.zoomBox={sx,sy,ex:sx,ey:sy}; } else { const [x0,y0]=ui.zoomStart; ui.zoomStart=null; ui.zoomBox=null;
@@ -1610,7 +1612,8 @@ cv.addEventListener('pointerup',e=>{ const [sx,sy]=sp(e); if(pan){ const p=pan; 
   else ui.sel={t:ids.length?t:null,ids:new Set(ids),dims:new Set(extra)};
   renderAll(); });
 function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy), hd=!hm&&!hn?hitDim(sx,sy):null;
-  const pick=hn?['n',hn.id]:hm?['m',hm.m.id]:hd?['d',hd.id]:null;
+  // Shift-adding to a member selection prefers the member over a node at its end, so clicks near the ends still add members
+  const pick=shift&&ui.sel.t==='m'&&hm?['m',hm.m.id]:hn?['n',hn.id]:hm?['m',hm.m.id]:hd?['d',hd.id]:null;
   if(!pick){ if(!shift) clearSel(); renderAll(); return; }
   const [t,id]=pick;
   if(shift&&ui.sel.t===t){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; }
