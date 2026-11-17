@@ -29,12 +29,13 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 **Results**
 - Axial, shear and bending moment diagrams, deformed configuration, support reactions.
 - Influence lines for axial force, shear and bending moment at any section.
+- Load trains (moving loads) as in Ftool: concentrated loads, single or full/empty car distributed loads, exterior and interior live loads, impact factor. Envelopes of N, V and M along a path of selected members, with Ftool's rules (train in both directions, critical position for every section, static results optionally added), point queries and the member envelope report.
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).
 - Result scale box and slider, step lines and step values (with Ftool's two step modes: equal parts per member, or steps from the member start), point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
 
 - Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
 
-**Files**: opens and saves Ftool `.ftl` files (format 401, Ftool 4.x), including supports, springs, settlements, hinges, units and display settings; Ftool opens files saved by FOpenTool. Also FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
+**Files**: opens and saves Ftool `.ftl` files (format 401, Ftool 4.x), including supports, springs, settlements, hinges, load trains, units and display settings; Ftool opens files saved by FOpenTool. Also FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
 
 **Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting with Ftool's unit lists and formats (SI and kN-m presets). The menus, dialogs (Units, Sign Convention, Transform, keyboard input, Totals, Window limits) and messages follow Ftool 4.01.
 
@@ -46,12 +47,11 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 ## Not yet implemented
 
-- Load trains (moving loads) and their envelopes
-- Load cases and combinations
+- Load cases and combinations (disabled in the free Ftool 4.01 as well)
+- The influence-line display of a load train's critical positions
 - Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills and Vallourec shapes)
 - Mouse-driven transformations
 - Export to CGM, DGN, DXF, EMF, EPS, PDF, PostScript and SVG
-- Load trains in `.ftl` files (not decoded yet)
 
 See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the content of Mechanics of Solids 1 and 2 at UnB (FGA0154 and FGA0179).
 

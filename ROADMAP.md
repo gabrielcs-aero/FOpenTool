@@ -9,7 +9,8 @@ Every new result should be traceable: show the formula used and the values that 
 Done: modeling, attributes, loads, diagrams, deformed shape, reactions and influence lines (see the README).
 
 Still to do:
-- [ ] Load trains (moving loads) and load-train envelopes
+- [x] Load trains (moving loads) and load-train envelopes
+- [ ] Influence-line display of the load train's critical positions
 - [ ] Load cases, load combinations and their envelopes
 - [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec)
 - [x] Section parameters as in Ftool (Angle d b t, Z d b t, Double Angle d b t e, Box d b tw tf, Girder Section) and their `.ftl` order
@@ -23,7 +24,7 @@ Still to do:
 - [x] Reading Ftool `.ftl` files (lists, sections, materials, dimension lines, supports, member attributes)
 - [x] Reading springs, prescribed displacements, node hinges, units and display sizes from `.ftl`
 - [x] Writing `.ftl` files (Ftool opens them)
-- [ ] Load trains in `.ftl`
+- [x] Load trains in `.ftl`
 - [x] Editing Mode "None" at startup, Ftool's reaction report (springs, inclined axes) and hinge drawing
 - [ ] Export Model Screen formats: DXF, SVG, PDF, EMF, EPS, PostScript, CGM, DGN
 
