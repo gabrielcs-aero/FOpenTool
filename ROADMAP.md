@@ -19,8 +19,8 @@ Still to do:
 - [x] "Maintain Topology" and Ftool's Transform panel
 - [x] Ftool's dialogs: Units & Number Formatting, Sign Convention, keyboard input, Totals, Window limits, Credits
 - [x] Step modes, step lines and values, influence-line display as in Ftool
-- [ ] Mouse-driven transformations
-- [ ] Animated deformed shape
+- [x] Mouse-driven transformations (Ftool manual 2.7)
+- [ ] Animated deformed shape (not in Ftool 4.01; an improvement for later)
 - [x] Reading Ftool `.ftl` files (lists, sections, materials, dimension lines, supports, member attributes)
 - [x] Reading springs, prescribed displacements, node hinges, units and display sizes from `.ftl`
 - [x] Writing `.ftl` files (Ftool opens them)

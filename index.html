@@ -914,7 +914,7 @@ function classify(Md,S){ const truss=!!Md.opt.truss, used=new Set(); Md.members.
   return {cls,formula,g,m,r,j,c,truss,note,legend:truss?'m = members, r = support reactions, j = joints':'m = members, r = support reactions, j = nodes, c = internal releases (hinges)'}; }
 
 /* ================= UI state ================= */
-const ui={tool:'none',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],hover:null,info:null,msg:'',
+const ui={tool:'none',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],trfPts:[],hover:null,info:null,msg:'',
   scaleVal:{},pot:0,il:null,ilPick:true,undo:[],redo:[],creating:null,renaming:false,trf:{tab:'move',on:false,keep:false,leave:false,desel:false,tol:.01,dx:0,dy:0,x:0,y:0,ang:0,f:0,x1:0,y1:0,x2:0,y2:0}};
 let RES=null;
 const cv=$('#cv'); let ctx=cv.getContext('2d');   /* let: the vector exports swap in a recording context */
@@ -1259,7 +1259,8 @@ function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=
       if(M.disp.reacVal) text(fqu('moment',Math.abs(R[3*k+2])),x-rr-8,y+rr+4,col,-Math.PI/2,'right','bottom'); }
   }); }
 function drawTool(){ const P=C(), h=ui.hover; if(!h) return;
-  if(['member','node','dim'].includes(ui.tool)&&h.snap){ const [sx,sy]=toS(h.snap.x,h.snap.y); ctx.strokeStyle=P.hint; ctx.lineWidth=1;
+  if(trfMouse()&&ui.trfPts.length&&h.snap) drawTrfFeedback(h.snap);
+  if((['member','node','dim'].includes(ui.tool)||trfMouse())&&h.snap){ const [sx,sy]=toS(h.snap.x,h.snap.y); ctx.strokeStyle=P.hint; ctx.lineWidth=1;
     if(h.snap.k==='node'||h.snap.k==='member') ctx.strokeRect(sx-5,sy-5,10,10); else { line(sx-6,sy,sx+6,sy); line(sx,sy-6,sx,sy+6); }
     if(ui.pts.length){ const p0=ui.pts[0], [x0,y0]=toS(p0.x,p0.y); ctx.strokeStyle=ui.tool==='member'?P.mem:P.dim; ctx.setLineDash(ui.tool==='member'?[]:[4,3]);
       if(ui.tool==='dim'&&ui.pts.length===2){ const d={ax:p0.x,ay:p0.y,bx:ui.pts[1].x,by:ui.pts[1].y,off:0}, n=dimN(d); d.off=(h.snap.x-p0.x)*n[0]+(h.snap.y-p0.y)*n[1];
@@ -1622,7 +1623,7 @@ side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) re
     else { const v=pnum(el.value); if(v!=null) s[f]=fromD(el.dataset.cat,v); }
     save(); renderSide(); return; }
   if(k.startsWith('dc.')){ const d=M.cur.dc, f=k.slice(3); if(f==='rigid') d.flex=!el.checked; else if(f==='flex') d.flex=el.checked; else d[f]=el.checked; save(); renderSide(); return; }
-  if(k.startsWith('t.')){ const f=k.slice(2); if(el.type==='checkbox'){ ui.trf[f]=el.checked; if(f==='on') renderSide(); } else { const v=pnum(el.value); if(v!=null) ui.trf[f]=v; } return; }
+  if(k.startsWith('t.')){ const f=k.slice(2); ui.trfPts=[]; if(el.type==='checkbox'){ ui.trf[f]=el.checked; if(f==='on') renderSide(); } else { const v=pnum(el.value); if(v!=null) ui.trf[f]=v; } return; }
   const cur=item(P,M.cur[P]); if(!cur) return;
   if(k.startsWith('prof.')){ profEdit(cur,k.slice(5),el); return; }
   if(k==='dir'){ commit(()=>{ cur.dir=el.value; }); return; }
@@ -1652,7 +1653,7 @@ function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='hinge'){ M.cur.hinge=arg; save(); renderSide(); return; }
   if(cmd==='sec-or'){ const cur=item('sec',M.cur.sec); if(!cur) return; const c=orientOps(cur.type,cur.orient,cur)[+arg]; if(c==null) return; commit(()=>{ cur.orient=c; }); return; }
   if(cmd==='pnav'){ profNav(+arg); return; }
-  if(cmd==='ttab'){ ui.trf.tab=arg; renderSide(); return; }
+  if(cmd==='ttab'){ ui.trfPts=[]; ui.trf.tab=arg; renderSide(); return; }
   if(cmd==='t-fwd'||cmd==='t-back'){ transform(cmd==='t-back'); return; }
   if(cmd==='t-inv'){ if(!needSel('m')) return; commit(()=>selMembers().forEach(m=>{ [m.i,m.j]=[m.j,m.i]; [m.hi,m.hj]=[m.hj,m.hi]; })); return; }
   if(cmd==='s-free'){ if(!needSel('n')) return; commit(()=>selNodes().forEach(n=>n.sup=null)); return; }
@@ -1690,9 +1691,10 @@ function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to tran
   else if(t.tab==='rotate'){ const ox=fromD('len',t.x),oy=fromD('len',t.y),a=s*t.ang*Math.PI/180,c=Math.cos(a),sn=Math.sin(a); fn=(x,y)=>[ox+(x-ox)*c-(y-oy)*sn,oy+(x-ox)*sn+(y-oy)*c]; }
   else if(t.tab==='scale'){ const ox=fromD('len',t.x),oy=fromD('len',t.y),f=back?1/t.f:t.f; if(!(f>0)) return; fn=(x,y)=>[ox+(x-ox)*f,oy+(y-oy)*f]; }
   else { const x1=fromD('len',t.x1),y1=fromD('len',t.y1),x2=fromD('len',t.x2),y2=fromD('len',t.y2),dx=x2-x1,dy=y2-y1,L2=dx*dx+dy*dy; if(!L2) return; fn=(x,y)=>{ const k=((x-x1)*dx+(y-y1)*dy)/L2, px=x1+k*dx, py=y1+k*dy; return [2*px-x,2*py-y]; }; }
-  const tol=Math.max(fromD('len',t.tol||0),tolG());
+  trfApply(fn,t.tab==='mirror',Math.max(fromD('len',t.tol||0),tolG())); }
+function trfApply(fn,mirror,tol){ const t=ui.trf;
   commit(()=>{
-    if(ui.sel.t==='d'){ M.dims.filter(d=>ui.sel.ids.has(d.id)).forEach(d=>{ const tgt=t.leave?(()=>{ const c={...d,id:M.next.d++}; M.dims.push(c); return c; })():d; [tgt.ax,tgt.ay]=fn(d.ax,d.ay); [tgt.bx,tgt.by]=fn(d.bx,d.by); if(t.tab==='mirror') tgt.off=-d.off; }); }
+    if(ui.sel.t==='d'){ M.dims.filter(d=>ui.sel.ids.has(d.id)).forEach(d=>{ const tgt=t.leave?(()=>{ const c={...d,id:M.next.d++}; M.dims.push(c); return c; })():d; [tgt.ax,tgt.ay]=fn(d.ax,d.ay); [tgt.bx,tgt.by]=fn(d.bx,d.by); if(mirror) tgt.off=-d.off; }); }
     else { const ms=ui.sel.t==='m'?selMembers():[], nodeIds=new Set(ui.sel.t==='n'?[...ui.sel.ids]:ms.flatMap(m=>[m.i,m.j]));
       if(t.leave){ const map=new Map();
         nodeIds.forEach(id=>{ const n=nodeById(id), [x,y]=fn(n.x,n.y); let e=M.nodes.find(o=>Math.hypot(o.x-x,o.y-y)<tol); if(!e){ e=addNode(x,y); e.sup=n.sup?JSON.parse(JSON.stringify(n.sup)):null; e.hinge=n.hinge; e.load=n.load; } map.set(id,e.id); });
@@ -1708,6 +1710,34 @@ function transform(back){ if(!ui.sel.t){ ui.msg='Select members or nodes to tran
     }
     if(t.desel) clearSel();
   }); }
+/* Transformations with the mouse (Ftool manual, section 2.7), while "Enable transform" is on: Move: origin, then end; Rotate: center,
+   start of the arc, end of the arc; Scale: origin, reference vector, transformed vector (factor = ratio of their lengths); Mirror: two
+   points of the line. A dashed feedback shows the result until the last click. The Tolerance box is ignored (8 pixels at the current zoom). */
+const TRF_CLICKS={move:2,rotate:3,scale:3,mirror:2};
+const trfMouse=()=>ui.panel==='trf'&&ui.trf.on&&!!ui.sel.t&&!ui.res;
+function trfMouseFn(pts){ const t=ui.trf.tab, [o,a,b]=pts, L=v=>toD('len',v); if(!a) return null;
+  if(t==='move'){ const dx=a.x-o.x, dy=a.y-o.y; return {fn:(x,y)=>[x+dx,y+dy],set:{dx:L(dx),dy:L(dy)}}; }
+  if(t==='mirror'){ const dx=a.x-o.x, dy=a.y-o.y, L2=dx*dx+dy*dy; if(!(L2>0)) return null;
+    return {fn:(x,y)=>{ const k=((x-o.x)*dx+(y-o.y)*dy)/L2, px=o.x+k*dx, py=o.y+k*dy; return [2*px-x,2*py-y]; },set:{x1:L(o.x),y1:L(o.y),x2:L(a.x),y2:L(a.y)}}; }
+  if(!b) return null;
+  if(t==='rotate'){ let an=Math.atan2(b.y-o.y,b.x-o.x)-Math.atan2(a.y-o.y,a.x-o.x); if(an>Math.PI) an-=2*Math.PI; if(an<=-Math.PI) an+=2*Math.PI; const c=Math.cos(an), s=Math.sin(an);
+    return {fn:(x,y)=>[o.x+(x-o.x)*c-(y-o.y)*s,o.y+(x-o.x)*s+(y-o.y)*c],set:{x:L(o.x),y:L(o.y),ang:an*180/Math.PI}}; }
+  const r0=Math.hypot(a.x-o.x,a.y-o.y), f=Math.hypot(b.x-o.x,b.y-o.y)/r0; if(!(r0>0)||!(f>0)) return null;
+  return {fn:(x,y)=>[o.x+(x-o.x)*f,o.y+(y-o.y)*f],set:{x:L(o.x),y:L(o.y),f}}; }
+function trfClick(p){ ui.trfPts.push(p); if(ui.trfPts.length<TRF_CLICKS[ui.trf.tab]){ draw(); return; }
+  const T=trfMouseFn(ui.trfPts); ui.trfPts=[]; if(!T){ draw(); return; } Object.assign(ui.trf,T.set); trfApply(T.fn,ui.trf.tab==='mirror',8/view.s); }
+// Feedback: construction lines from the picked points to the cursor, and the selection where it would go (members attached to moved
+// nodes stretch with them when "Maintain topology" is on).
+function drawTrfFeedback(cur){ const P=C(), pts=[...ui.trfPts,cur]; ctx.save(); ctx.strokeStyle=P.hint; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  for(let i=1;i<pts.length;i++){ const [a,b]=[toS(pts[i-1].x,pts[i-1].y),toS(pts[i].x,pts[i].y)]; line(...a,...b); }
+  const T=trfMouseFn(pts); if(T){ const moved=new Set(ui.sel.t==='n'?[...ui.sel.ids]:ui.sel.t==='m'?selMembers().flatMap(m=>[m.i,m.j]):[]), selM=new Set(ui.sel.t==='m'?[...ui.sel.ids]:[]);
+    const at=id=>{ const n=nodeById(id); return moved.has(id)?T.fn(n.x,n.y):[n.x,n.y]; };
+    ctx.setLineDash([6,3]); ctx.lineWidth=1.4;
+    for(const m of M.members){ const inSel=selM.has(m.id)||(ui.sel.t==='n'&&moved.has(m.i)&&moved.has(m.j)), touch=moved.has(m.i)||moved.has(m.j);
+      if(!inSel&&!(ui.trf.keep&&touch)) continue; const a=toS(...at(m.i)), b=toS(...at(m.j)); line(...a,...b); }
+    if(ui.sel.t==='n') for(const id of moved){ const [x,y]=toS(...at(id)); ctx.strokeRect(x-3,y-3,6,6); }
+    if(ui.sel.t==='d') for(const d of M.dims.filter(d=>ui.sel.ids.has(d.id))){ line(...toS(...T.fn(d.ax,d.ay)),...toS(...T.fn(d.bx,d.by))); } }
+  ctx.restore(); }
 
 /* ================= Keyboard mode dialog ================= */
 // Ftool's keyboard input dialogs: "Member input" (Absolute / Incremental tabs), "Node input" and "Dimension line input".
@@ -1752,6 +1782,7 @@ cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setP
   if(e.button===1){ startPan(null); cv.style.cursor='grabbing'; return; }
   if(e.button===2){ // right button: cancel input; a click shows info, a drag pans
     if(ui.pts.length){ ui.pts=[]; ui.msg=''; renderAll(); return; }
+    if(ui.trfPts.length){ ui.trfPts=[]; draw(); return; }
     if(ui.zoomStart){ ui.zoomStart=null; ui.zoomBox=null; draw(); return; }
     startPan(()=>rightClick(sx,sy)); return; }
   if(spaceDown){ startPan(null); cv.style.cursor='grabbing'; return; }
@@ -1766,12 +1797,13 @@ cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setP
     const need={member:2,node:1,dim:3}[ui.tool];
     if(ui.pts.length>=need){ const pts=ui.pts; ui.pts=[]; if(ui.tool==='member') insertMember(pts[0],pts[1]); else if(ui.tool==='node') insertNode(pts[0]); else insertDim(pts[0],pts[1],pts[2]); }
     draw(); return; }
+  if(trfMouse()){ trfClick(snapPt(sx,sy)); return; }   /* transformation with the mouse */
   // select mode
   drag={sx,sy,shift:e.shiftKey,moved:false};
 });
 cv.addEventListener('pointermove',e=>{ const [sx,sy]=sp(e);
   if(pan){ if(!pan.moved&&Math.hypot(sx-pan.sx,sy-pan.sy)>4){ pan.moved=true; cv.style.cursor='grabbing'; } if(pan.moved){ view.ox=pan.ox+sx-pan.sx; view.oy=pan.oy+sy-pan.sy; draw(); return; } }
-  const snap=['member','node','dim'].includes(ui.tool)&&!ui.res?snapPt(sx,sy):null; ui.hover={sx,sy,snap};
+  const snap=(['member','node','dim'].includes(ui.tool)||trfMouse())&&!ui.res?snapPt(sx,sy):null; ui.hover={sx,sy,snap};
   const [wx,wy]=snap?[snap.x,snap.y]:toW(sx,sy); $('#cX').textContent='X: '+fqu('len',wx); $('#cY').textContent='Y: '+fqu('len',wy);
   if(ui.zoomStart){ ui.zoomBox={sx:ui.zoomStart[0],sy:ui.zoomStart[1],ex:sx,ey:sy}; }
   if(ui.tool==='member'&&ui.pts.length&&snap){ const p=ui.pts[0], L=Math.hypot(snap.x-p.x,snap.y-p.y); ui.msg=`Member length: ${fqu('len',L)}`; $('#msg').textContent=ui.msg; }
@@ -1856,7 +1888,7 @@ window.addEventListener('keydown',e=>{ if(e.key===' '&&!/INPUT|SELECT|TEXTAREA|B
   if(mod&&k.toLowerCase()==='c'){ e.preventDefault(); exportClip(); return; }
   if(mod&&k.toLowerCase()==='n'){ e.preventDefault(); fileNew(); return; } if(mod&&k.toLowerCase()==='o'){ e.preventDefault(); fileOpen(); return; }
   if(mod&&k.toLowerCase()==='s'){ e.preventDefault(); fileSave(); return; } if(mod&&k.toLowerCase()==='p'){ e.preventDefault(); printModel(); return; } if(mod) return;
-  if(k==='Escape'){ closeMenu(); if(ui.pts.length||ui.zoomStart){ ui.pts=[]; ui.zoomStart=null; ui.zoomBox=null; ui.msg=''; renderAll(); } else setTool('select'); return; }
+  if(k==='Escape'){ closeMenu(); if(ui.trfPts.length){ ui.trfPts=[]; draw(); return; } if(ui.pts.length||ui.zoomStart){ ui.pts=[]; ui.zoomStart=null; ui.zoomBox=null; ui.msg=''; renderAll(); } else setTool('select'); return; }
   const map={m:'member',n:'node',d:'dim',z:'zoom'}; const l=k.toLowerCase();
   if(map[l]) setTool(map[l]); else if(l==='k') $('#bKbd').click(); else if(l==='t') $('#bTrf').click(); else if(l==='r') draw(); else if(l==='f') fit();
   else if(k==='+'||k==='=') zoomAt(W/2,H/2,1.25); else if(k==='-') zoomAt(W/2,H/2,.8); else if(k==='Delete'||k==='Backspace'){ e.preventDefault(); deleteSel(); }
