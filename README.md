@@ -17,6 +17,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 **Attributes** (named lists, applied to the current selection, as in Ftool)
 - Materials: generic, steel, concrete, aluminium (E, ν, α).
 - Sections: integral properties, rectangle, I, angle, T, C, Z, circle, ring, double angle, girder and box, with Ftool's parameters, its shear-area rules, and its mirror and rotate buttons (the sketch and the properties follow the orientation).
+- Profile tables, as in Ftool: Brazilian welded (VS, CS, CVS) and electro-welded (VE) shapes, Gerdau-Açominas W, HP and PEL shapes, AISC W, M and HP shapes, Mills formwork beams and Vallourec circular, square and rectangular tubes (with the preferential lists), chosen by type, nominal depth and position, with the same properties and rules as Ftool.
 - Supports: free, fixed or spring in X, Y and rotation; inclined supports; prescribed displacements (settlements).
 - Rotation releases at nodes and member ends.
 - Deformation constraints: axial deformation on or off, shear deformation (Timoshenko), rigid members.
@@ -49,7 +50,6 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 ## Not yet implemented
 
 - Load cases and combinations (disabled in the free Ftool 4.01 as well)
-- Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills and Vallourec shapes)
 - Mouse-driven transformations
 - Export to CGM, DGN, DXF, EMF, EPS, PDF, PostScript and SVG
 
