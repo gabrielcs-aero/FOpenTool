@@ -10,7 +10,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Insert members, nodes and dimension lines with the mouse (snapping to nodes, members and the grid) or in keyboard mode with typed coordinates.
 - Members that cross are split automatically, and a node placed on a member divides it.
 - Selection by click, Shift-click and fence (left to right selects what is fully inside, right to left selects what it touches).
-- Transformations: move, rotate, scale and mirror, with Maintain topology, Leave original and Invert member orientation.
+- Transformations: move, rotate, scale and mirror, typed or with the mouse (Move: origin and end; Rotate: center, start and end of the arc; Scale: origin, reference and transformed vectors; Mirror: two points), with a dashed preview, Maintain topology, Leave original and Invert member orientation.
 - Keyboard input dialogs for members (absolute or incremental coordinates), nodes and dimension lines.
 - Undo and redo. The model is saved in the browser automatically.
 
@@ -50,7 +50,6 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 ## Not yet implemented
 
 - Load cases and combinations (disabled in the free Ftool 4.01 as well)
-- Mouse-driven transformations
 - Export to CGM, DGN, EMF, EPS, PDF and PostScript
 
 See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the content of Mechanics of Solids 1 and 2 at UnB (FGA0154 and FGA0179).
