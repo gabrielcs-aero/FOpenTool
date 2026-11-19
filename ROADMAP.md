@@ -26,7 +26,8 @@ Still to do:
 - [x] Writing `.ftl` files (Ftool opens them)
 - [x] Load trains in `.ftl`
 - [x] Editing Mode "None" at startup, Ftool's reaction report (springs, inclined axes) and hinge drawing
-- [ ] Export Model Screen formats: DXF, SVG, PDF, EMF, EPS, PostScript, CGM, DGN
+- [x] Export Model Screen to DXF and SVG
+- [ ] Export Model Screen formats: PDF, EMF, EPS, PostScript, CGM, DGN
 
 ## Stage 2: Mechanics of Solids 1 (FGA0154)
 

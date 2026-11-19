@@ -44,6 +44,7 @@ Search for the `/* ===` banners. In order:
 | Drawing | `draw()` → grid, dims, model, then results (`drawDiagram`, `drawDeformed`, `drawIL`, `drawCut`, `drawReactions`), loads, tool feedback. `PAL` holds Ftool's colors per background. |
 | Side panel | `renderSide()` chooses: `panelInfo()` (Ftool-style text via `infoText()`), `panelSection()` (stresses), `panelResults()` (structure class, truss member table, reactions), attribute panels (`listHead`, `createForm`, `panelBody`, `panelSup`, `panelHinge`, `panelDC`, `panelTrf`). `act()` handles all panel buttons. |
 | Menus | `menuItems(name)` mirrors Ftool 4.01's tree: `[label, action, shortcut, disabled, mark, children]`. `menuClick()` dispatches. |
+| Vector export | `VecCtx` (records the canvas calls the drawing code makes: paths, fills, texts with their transforms), `vecRecord()` (runs `draw()` against it; `ctx` is a `let` for this), `toSVG()` (screen pixels), `toDXF()` (AutoCAD R12 text, model metres via `toW`, LINE / SOLID / TEXT in layers LINES, FILL, TEXT, colors mapped by `aciColor()`), `exportVector(fmt)`, `saveFile()` (claude.ai downloads capability, falling back to name + ".txt", or a browser download). |
 | Files | `parseFtl()` (Ftool reader), `readModel`, `loadText`, `fileImport/importProps`, `fileSave` (JSON text to copy; downloads are blocked inside claude.ai artifacts), `exportLines(mode)`, `printModel()`, `exportClip()`. |
 | Test hook | `window.__fopentool` exposes `analyze, buildSystem, influence, secCalc, sectionStress, classify, newModel, exampleModel, M, ui`. |
 
@@ -193,7 +194,7 @@ member line: id hi hj rigid shear axial;  6 indices (1-based, 0 = none): materia
 5. ~~Load trains and envelopes~~ (done in session 4), ~~influence-line display of critical train positions~~ (session 5). Load cases and combinations are disabled in Ftool 4.01 free, so they come later as an improvement.
 6. ~~Profile tables~~ (session 5). ~~Girder section, section parameters, mirror/rotate buttons~~ (done in session 4).
 7. Mouse-driven transformations, Maintain Topology, animated deformed shape.
-8. Export Model Screen formats (SVG and DXF are the most useful).
+8. Export Model Screen formats: ~~SVG and DXF~~ (session 5; FOpenTool's own writers, the content of Ftool's files was not compared). PDF, EPS/PostScript, EMF, CGM, DGN still disabled.
 
 **B. Mechanics of Solids (see `ROADMAP.md` for the full list)**
 1. Free-body diagrams and equilibrium equations with numbers substituted (MecSol 1, item 1).

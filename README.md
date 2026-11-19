@@ -37,7 +37,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 - Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
 
-**Files**: opens and saves Ftool `.ftl` files (format 401, Ftool 4.x), including supports, springs, settlements, hinges, load trains, units and display settings; Ftool opens files saved by FOpenTool. Also FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard.
+**Files**: opens and saves Ftool `.ftl` files (format 401, Ftool 4.x), including supports, springs, settlements, hinges, load trains, units and display settings; Ftool opens files saved by FOpenTool. Also FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard; Export Model Screen to SVG (vector image of the screen) and DXF (the drawing in model coordinates, metres, for CAD).
 
 **Display and options**: white, gray and black backgrounds; display toggles for loads, values, reactions, numbers and orientation; support/hinge, load and text sizes; units and number formatting with Ftool's unit lists and formats (SI and kN-m presets). The menus, dialogs (Units, Sign Convention, Transform, keyboard input, Totals, Window limits) and messages follow Ftool 4.01.
 
@@ -51,7 +51,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 
 - Load cases and combinations (disabled in the free Ftool 4.01 as well)
 - Mouse-driven transformations
-- Export to CGM, DGN, DXF, EMF, EPS, PDF, PostScript and SVG
+- Export to CGM, DGN, EMF, EPS, PDF and PostScript
 
 See [ROADMAP.md](ROADMAP.md) for the full plan, which also covers the content of Mechanics of Solids 1 and 2 at UnB (FGA0154 and FGA0179).
 

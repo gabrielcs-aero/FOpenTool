@@ -917,7 +917,7 @@ function classify(Md,S){ const truss=!!Md.opt.truss, used=new Set(); Md.members.
 const ui={tool:'none',kbd:false,panel:'mat',res:null,q:'M',defComp:'Dy',sel:{t:null,ids:new Set()},pts:[],hover:null,info:null,msg:'',
   scaleVal:{},pot:0,il:null,ilPick:true,undo:[],redo:[],creating:null,renaming:false,trf:{tab:'move',on:false,keep:false,leave:false,desel:false,tol:.01,dx:0,dy:0,x:0,y:0,ang:0,f:0,x1:0,y1:0,x2:0,y2:0}};
 let RES=null;
-const cv=$('#cv'), ctx=cv.getContext('2d');
+const cv=$('#cv'); let ctx=cv.getContext('2d');   /* let: the vector exports swap in a recording context */
 let view={ox:0,oy:0,s:60},W=0,H=0,dpr=1;
 const toS=(x,y)=>[view.ox+x*view.s,view.oy-y*view.s], toW=(sx,sy)=>[(sx-view.ox)/view.s,(view.oy-sy)/view.s];
 const PAL={
@@ -1871,7 +1871,7 @@ function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
   if(name==='file') return [['About FOpenTool','about'],['Upgrade...',null,'',true],['Sign Convention','sign'],'-',
     ['New...','new','Ctrl+N'],['Open...','open','Ctrl+O'],['Save','save','Ctrl+S'],['Save as...','save'],'-',['Import Properties...','import'],'-',
     ['Export Line Results',null,'',false,'',[['Step Values...','lines:step','',noRes||!(M.step>0)],['Display Resolution...','lines:disp','',noRes]]],'-',
-    ['Export Model Screen',null,'',false,'',[['Clipboard','clip','Ctrl+C'],['Print...','print','Ctrl+P'],...['CGM Metafile...','DGN...','DXF...','Enhanced Metafile (EMF)...','Encapsulated PostScript...','PDF...','PostScript...','SVG...'].map(l=>[l,null,'',true])]],
+    ['Export Model Screen',null,'',false,'',[['Clipboard','clip','Ctrl+C'],['Print...','print','Ctrl+P'],...['CGM Metafile...','DGN...','DXF...','Enhanced Metafile (EMF)...','Encapsulated PostScript...','PDF...','PostScript...','SVG...'].map(l=>l==='DXF...'?[l,'vexp:dxf']:l==='SVG...'?[l,'vexp:svg']:[l,null,'',true])]],
     ['Totals','totals'],['Model View Limits','limits'],'-',['Exit',null,'',true]];
   if(name==='options') return [['Analysis',null,'',false,'',[['Linear Elastic','noop','',true,'chk']]],'-',
     ['Support and Hinge Display Size',null,'',false,'',sizes('suphinge',o.sup)],['Load Display Size',null,'',false,'',sizes('load',o.load)],['Text Display Size',null,'',false,'',sizes('text',o.text)],'-',
@@ -1899,7 +1899,7 @@ function menuClick(e){ const b=e.target.closest('[data-mact]'); if(!b||b.disable
   else if(a==='import') fileImport(); else if(a==='print') printModel();
   else if(a==='struct'){ commit(()=>{ M.opt.truss=p==='truss'; }); ui.msg=M.opt.truss?'Truss analysis: every joint is pinned and members carry axial force only. Apply loads at the nodes.':'Frame analysis.'; renderTop(); }
   else if(a==='units') dlgUnits(); else if(a==='sign') dlgSign(); else if(a==='about') dlgAbout(); else if(a==='totals') dlgTotals(); else if(a==='limits') dlgLimits();
-  else if(a==='new') fileNew(); else if(a==='open') fileOpen(); else if(a==='save') fileSave(); else if(a==='clip') exportClip(); else if(a==='lines') exportLines(p); }
+  else if(a==='new') fileNew(); else if(a==='open') fileOpen(); else if(a==='save') fileSave(); else if(a==='clip') exportClip(); else if(a==='vexp') exportVector(p); else if(a==='lines') exportLines(p); }
 $('#menu').addEventListener('click',menuClick); $('#menu2').addEventListener('click',menuClick);
 
 /* ================= Dialogs & files ================= */
@@ -2177,6 +2177,70 @@ function copyText(t,btn,ta){ const ok=()=>{ btn.textContent='Copied'; setTimeout
   try{ navigator.clipboard.writeText(t).then(ok,fb); }catch(e){ fb(); } }
 function exportClip(){ try{ cv.toBlob(b=>{ navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(()=>{ ui.msg='Screen image copied to the clipboard.'; renderTop(); },()=>{ ui.msg='The browser did not allow copying the image.'; renderTop(); }); }); }catch(e){ ui.msg='The browser did not allow copying the image.'; renderTop(); } }
 function printModel(){ draw(); try{ window.print(); }catch(e){} }
+/* ================= Vector export (Export Model Screen > DXF..., SVG...) =================
+   The drawing code runs once more against a recording context that has the canvas API it uses, so the file holds exactly what the
+   screen shows. SVG keeps screen coordinates (pixels, the visible window); DXF converts back to model coordinates (metres, y up),
+   so it opens at true size in CAD: lines, filled triangles/quads (SOLID) and texts, colors mapped to AutoCAD's index colors. */
+class VecCtx{ constructor(){ Object.assign(this,{m:[1,0,0,1,0,0],st:[],items:[],path:[],strokeStyle:'#000',fillStyle:'#000',lineWidth:1,font:'10px sans-serif',textAlign:'start',textBaseline:'alphabetic',globalAlpha:1,dash:[]}); this.mc=document.createElement('canvas').getContext('2d'); }
+  setTransform(a,b,c,d,e,f){ this.m=[a,b,c,d,e,f]; }
+  tp(x,y){ const m=this.m; return [m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]]; }
+  translate(x,y){ const m=this.m; m[4]+=m[0]*x+m[2]*y; m[5]+=m[1]*x+m[3]*y; }
+  rotate(a){ const m=this.m, c=Math.cos(a), s=Math.sin(a); this.m=[m[0]*c+m[2]*s,m[1]*c+m[3]*s,-m[0]*s+m[2]*c,-m[1]*s+m[3]*c,m[4],m[5]]; }
+  save(){ this.st.push({m:this.m.slice(),strokeStyle:this.strokeStyle,fillStyle:this.fillStyle,lineWidth:this.lineWidth,font:this.font,textAlign:this.textAlign,textBaseline:this.textBaseline,globalAlpha:this.globalAlpha,dash:this.dash.slice()}); }
+  restore(){ const s=this.st.pop(); if(s) Object.assign(this,s); }
+  setLineDash(d){ this.dash=d.slice(); } clip(){}
+  beginPath(){ this.path=[]; }
+  moveTo(x,y){ this.path.push([this.tp(x,y)]); }
+  lineTo(x,y){ if(!this.path.length) this.path.push([]); this.path[this.path.length-1].push(this.tp(x,y)); }
+  closePath(){ const s=this.path[this.path.length-1]; if(s) s.closed=true; }
+  rect(x,y,w,h){ this.moveTo(x,y); this.lineTo(x+w,y); this.lineTo(x+w,y+h); this.lineTo(x,y+h); this.closePath(); }
+  arc(x,y,r,a0,a1,ccw){ const T=2*Math.PI; let da=a1-a0; if(ccw){ while(da>0) da-=T; } else { while(da<0) da+=T; } if(Math.abs(a1-a0)>=T) da=ccw?-T:T;
+    const n=Math.max(8,Math.ceil(Math.abs(da)/(Math.PI/18))); for(let i=0;i<=n;i++){ const a=a0+da*i/n; this.lineTo(x+r*Math.cos(a),y+r*Math.sin(a)); } }
+  snap(){ return this.path.filter(s=>s.length>1).map(s=>({pts:s.slice(),closed:!!s.closed})); }
+  stroke(){ this.items.push({k:'s',p:this.snap(),c:this.strokeStyle,w:this.lineWidth*Math.hypot(this.m[0],this.m[1]),dash:this.dash.slice(),a:this.globalAlpha}); }
+  fill(){ this.items.push({k:'f',p:this.snap(),c:this.fillStyle,a:this.globalAlpha}); }
+  fillRect(x,y,w,h){ const sv=this.path; this.beginPath(); this.rect(x,y,w,h); this.fill(); this.path=sv; }
+  strokeRect(x,y,w,h){ const sv=this.path; this.beginPath(); this.rect(x,y,w,h); this.stroke(); this.path=sv; }
+  measureText(t){ this.mc.font=this.font; return this.mc.measureText(t); }
+  fillText(t,x,y){ const [px,py]=this.tp(x,y); this.items.push({k:'t',t:String(t),x:px,y:py,ang:Math.atan2(this.m[1],this.m[0]),font:this.font,al:this.textAlign,bl:this.textBaseline,c:this.fillStyle,a:this.globalAlpha}); } }
+const fontPx=f=>{ const m=/(\d+(?:\.\d+)?)px/.exec(f||''); return m?+m[1]:11; };
+function vecRecord(){ const real=ctx, rd=dpr, rec=new VecCtx(); ctx=rec; dpr=1; try{ draw(); } finally{ ctx=real; dpr=rd; draw(); } return rec; }
+function toSVG(v){ const r=n=>Math.round(n*100)/100, out=[`<svg xmlns="http://www.w3.org/2000/svg" width="${r(W)}" height="${r(H)}" viewBox="0 0 ${r(W)} ${r(H)}">`];
+  for(const it of v.items){ const op=it.a<1?` opacity="${it.a}"`:'';
+    if(it.k==='t'){ const anc={center:'middle',left:'start',start:'start',right:'end',end:'end'}[it.al]||'start', bl={middle:'central',top:'hanging',hanging:'hanging',bottom:'text-after-edge'}[it.bl]||'alphabetic', bold=/bold/.test(it.font)?' font-weight="bold"':'';
+      out.push(`<text x="${r(it.x)}" y="${r(it.y)}" font-family="Arial, Helvetica, sans-serif" font-size="${fontPx(it.font)}"${bold} text-anchor="${anc}" dominant-baseline="${bl}" fill="${it.c}"${it.ang?` transform="rotate(${r(it.ang*180/Math.PI)} ${r(it.x)} ${r(it.y)})"`:''}${op}>${esc(it.t)}</text>`); continue; }
+    const d=it.p.map(s=>'M'+s.pts.map(p=>r(p[0])+' '+r(p[1])).join('L')+(s.closed?'Z':'')).join(''); if(!d) continue;
+    out.push(it.k==='f'?`<path d="${d}" fill="${it.c}"${op}/>`:`<path d="${d}" fill="none" stroke="${it.c}" stroke-width="${r(it.w)}"${it.dash.length?` stroke-dasharray="${it.dash.join(' ')}"`:''} stroke-linejoin="round" stroke-linecap="round"${op}/>`); }
+  out.push('</svg>'); return out.join('\n')+'\n'; }
+// AutoCAD index color nearest to a CSS color (1 red, 2 yellow, 3 green, 4 cyan, 5 blue, 6 magenta, 7 black/white, 8 and 9 grays, 30 orange, 52 olive)
+function aciColor(c){ const m=/^#([0-9a-f]{6})$/i.exec(c||''); if(!m) return 7; const v=parseInt(m[1],16), rgb=[v>>16,(v>>8)&255,v&255];
+  const pal={1:[255,0,0],2:[255,255,0],3:[0,255,0],4:[0,255,255],5:[0,0,255],6:[255,0,255],7:[0,0,0],8:[128,128,128],9:[192,192,192],30:[255,127,0],52:[128,128,0],12:[165,0,0],94:[0,128,0],150:[0,0,165]};
+  let best=7, bd=Infinity; for(const [k,p] of Object.entries(pal)){ const d=(p[0]-rgb[0])**2+(p[1]-rgb[1])**2+(p[2]-rgb[2])**2; if(d<bd){ bd=d; best=+k; } } return best; }
+function toDXF(v){ const o=[], P=(c,x)=>o.push(String(c),typeof x==='number'?(Math.round(x*1e6)/1e6).toString():String(x)), w=p=>toW(p[0],p[1]);
+  const big=W*H*.5, area=pts=>Math.abs(pts.reduce((s,p,i)=>{ const q=pts[(i+1)%pts.length]; return s+p[0]*q[1]-q[0]*p[1]; },0))/2;
+  P(0,'SECTION'); P(2,'HEADER'); P(9,'$ACADVER'); P(1,'AC1009'); P(9,'$INSUNITS'); P(70,6); P(0,'ENDSEC'); P(0,'SECTION'); P(2,'ENTITIES');
+  for(const it of v.items){ if(it.c&&/^#fff(fff)?$/i.test(it.c)&&it.k!=='t') continue;   /* white background and masks */
+    if(it.k==='t'){ const [x,y]=w([it.x,it.y]), h=.7*fontPx(it.font)/view.s, hz={center:1,right:2,end:2}[it.al]||0, vt={middle:2,top:3,hanging:3,bottom:1}[it.bl]||0;
+      P(0,'TEXT'); P(8,'TEXT'); P(62,aciColor(it.c)); P(10,x); P(20,y); P(30,0); P(40,h); P(1,it.t.replace(/−/g,'-').replace(/[^\x20-\xff]/g,'?')); if(it.ang) P(50,-it.ang*180/Math.PI); if(hz) P(72,hz); if(hz||vt){ P(11,x); P(21,y); P(31,0); } if(vt) P(73,vt); continue; }
+    const col=aciColor(it.c), lay=it.k==='f'?'FILL':'LINES';
+    for(const s of it.p){ if(it.k==='f'){ if(area(s.pts)>big) continue; const q=s.pts.map(w).filter((p,i,a)=>i===0||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>1e-12);
+        if(q.length>=3&&q.length<=4){ const c4=q.length===3?[q[0],q[1],q[2],q[2]]:[q[0],q[1],q[3],q[2]]; P(0,'SOLID'); P(8,lay); P(62,col); c4.forEach((p,i)=>{ P(10+i,p[0]); P(20+i,p[1]); P(30+i,0); }); continue; } }
+      const q=s.pts.map(w); if(s.closed) q.push(q[0]);
+      for(let i=1;i<q.length;i++){ P(0,'LINE'); P(8,lay); P(62,col); P(10,q[i-1][0]); P(20,q[i-1][1]); P(30,0); P(11,q[i][0]); P(21,q[i][1]); P(31,0); } } }
+  P(0,'ENDSEC'); P(0,'EOF'); return o.join('\r\n')+'\r\n'; }
+// Save a file: through the claude.ai downloads capability when the page runs there (its allowlist may refuse some extensions,
+// then the file gets ".txt" added), otherwise as a normal browser download.
+async function saveFile(name,data,mime){ const dl=window.claude&&window.claude.use?await window.claude.use('downloads').catch(()=>null):null;
+  if(dl){ try{ await dl.save({filename:name,data}); return 'Saved.'; } catch(e){ if(e&&e.code==='declined') return ''; try{ await dl.save({filename:name+'.txt',data}); return `Saved as ${name}.txt; rename it to ${name}.`; } catch(e2){ return e2&&e2.code==='declined'?'':'This page cannot save files here. Use Copy and save the text yourself.'; } } }
+  try{ const u=URL.createObjectURL(new Blob([data],{type:mime||'application/octet-stream'})), el=document.createElement('a'); el.href=u; el.download=name; document.body.appendChild(el); el.click(); el.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000); return 'Saved.'; }
+  catch(e){ return 'This page cannot download files here. Use Copy and save the text yourself.'; } }
+function exportVector(fmt){ if(!W) return; const text=fmt==='svg'?toSVG(vecRecord()):toDXF(vecRecord()), ext='.'+fmt;
+  dlg(fmt==='svg'?'Export Model Screen to SVG':'Export Model Screen to DXF',`<label style="display:flex;gap:6px;align-items:center">File name: <input id="vxName" value="${esc(fileName)}" style="flex:1;height:22px;border:1px solid var(--chrome-line);padding:0 4px"><span>${ext}</span></label>
+   <p style="margin:0;max-width:480px;color:var(--muted)">${fmt==='svg'?'The visible drawing, as on the screen (vector lines and text).':'The visible drawing in model coordinates (metres): lines, filled arrowheads and text, in layers LINES, FILL and TEXT.'}</p><textarea readonly id="vxTxt">${esc(text)}</textarea>
+   <div class="btnrow"><button class="pb def" id="vxDown">Download</button><button class="pb" id="vxCopy">Copy</button><button class="pb" data-close>Close</button></div>`,b=>{
+    const ta=b.querySelector('#vxTxt'); b.querySelector('#vxCopy').onclick=e=>copyText(ta.value,e.target,ta);
+    b.querySelector('#vxDown').onclick=async()=>{ fileName=(b.querySelector('#vxName').value.trim()||'model').replace(/\.(svg|dxf|ftl|json)$/i,'');
+      const data=fmt==='dxf'?Uint8Array.from(text,c=>{ const k=c.charCodeAt(0); return k<256?k:63; }):text; ui.msg=await saveFile(fileName+ext,data,fmt==='svg'?'image/svg+xml':'application/dxf'); renderTop(); }; }); }
 function exportLines(mode){ if(!RES?.ok) return; const ms=selMembers(); const list=ms.length?ms:M.members; const q=ui.q==='D'?'D':ui.q; const step=mode==='step'&&M.step>0?M.step:null;
   const rows=[['member','x_'+U('len'),...(q==='D'?['Dx_'+U('disp'),'Dy_'+U('disp')]:[QN[q][0].replace(' ','_')+'_'+U(QN[q][1])])]];
   list.forEach(m=>{ const r=RES.rm.get(m.id); if(!r) return; const xs=step?stepXs(r.L,step):samplesX(r,0);
@@ -2203,5 +2267,5 @@ mills:"Aluma Single:VA 140=140.72 2.79 85.09 63.5 82.56 1100.08 2.8207e+06 63|VA
   if(!M) exampleModel();
   new ResizeObserver(resize).observe($('#stage')); resize(); renderAll();
 })();
-window.__fopentool={profTables,profList,profRec,profProps,toS:(x,y)=>toS(x,y),computeEnv,envAt,envSetup,envTrain,envIL,trainPath,defaultTrainPath,trainLayout,ilTrainCalc,analyze,buildSystem,influence,secCalc,secWidth,secBreaks,secGeom,orientOps,parseFtl,writeFtl,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
+window.__fopentool={vecRecord,toSVG,toDXF,profTables,profList,profRec,profProps,toS:(x,y)=>toS(x,y),computeEnv,envAt,envSetup,envTrain,envIL,trainPath,defaultTrainPath,trainLayout,ilTrainCalc,analyze,buildSystem,influence,secCalc,secWidth,secBreaks,secGeom,orientOps,parseFtl,writeFtl,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
 </script>
