@@ -10,7 +10,7 @@ Done: modeling, attributes, loads, diagrams, deformed shape, reactions and influ
 
 Still to do:
 - [x] Load trains (moving loads) and load-train envelopes
-- [ ] Influence-line display of the load train's critical positions
+- [x] Influence-line display of the load train's critical positions
 - [ ] Load cases, load combinations and their envelopes
 - [ ] Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills, Vallourec)
 - [x] Section parameters as in Ftool (Angle d b t, Z d b t, Double Angle d b t e, Box d b tw tf, Girder Section) and their `.ftl` order

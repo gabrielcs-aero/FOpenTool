@@ -647,15 +647,21 @@ const maxLen=S=>S.recs.reduce((m,r)=>Math.max(m,r.L),0);
    - the impact factor multiplies every train load; the envelope adds the static results when "Add static load results to load-train envelope" is checked.
    Loads are stored as Ftool stores them (negative = downward) and act vertically. */
 const Z6=[0,0,0,0,0,0];
-// Order the selected members into one continuous path. Returns {segs:[{r,dir,s0}], Lp} or null.
+/* Order the selected members into one continuous path. As in Ftool, the path coordinate is the horizontal projection (an inclined
+   path of 8 m span is "Total path length: 8.00 m"), so the path must run left to right without turning back and with no vertical member.
+   Returns {segs:[{r,dir,s0}], Lp, x0, sOf(r,a)} or null. */
 function trainPath(S,ids){ const recs=ids.map(id=>S.rm.get(id)).filter(Boolean); if(!recs.length||recs.length!==ids.length) return null;
   const deg=new Map(); recs.forEach(r=>{ for(const n of [r.m.i,r.m.j]) deg.set(n,(deg.get(n)||0)+1); });
   if([...deg.values()].some(d=>d>2)) return null; const ends=[...deg.keys()].filter(n=>deg.get(n)===1); if(ends.length!==2) return null;
   const xy=id=>S.nodes[S.idx.get(id)]; ends.sort((a,b)=>xy(a).x-xy(b).x||xy(a).y-xy(b).y);
-  const segs=[], used=new Set(); let cur=ends[0], s0=0;
+  const segs=[], used=new Set(), x0=xy(ends[0]).x; let cur=ends[0];
   while(segs.length<recs.length){ const r=recs.find(r=>!used.has(r)&&(r.m.i===cur||r.m.j===cur)); if(!r) return null; used.add(r);
-    const dir=r.m.i===cur?1:-1; segs.push({r,dir,s0}); s0+=r.L; cur=dir>0?r.m.j:r.m.i; }
-  return {segs,Lp:s0}; }
+    const dir=r.m.i===cur?1:-1, dx=dir*r.c*r.L; if(!(dx>1e-9*r.L)) return null;   /* vertical, or turning back */
+    segs.push({r,dir,s0:xy(cur).x-x0}); cur=dir>0?r.m.j:r.m.i; }
+  const Lp=xy(cur).x-x0, sOf=(r,a)=>xy(r.m.i).x+r.c*a-x0;
+  return {segs,Lp,x0,sOf}; }
+// Default path of the influence-line mode when nothing is selected (Ftool): the horizontal members, if they form a path.
+function defaultTrainPath(S){ return trainPath(S,S.recs.filter(r=>Math.abs(r.s)<1e-9).map(r=>r.m.id)); }
 // Unit vertical downward load at local position a of member r (path coordinate s): solve once, keep each member's end forces.
 function unitLoad(S,r,a,s){ const L=r.L,b=L-a,Pa=-r.s,Pw=-r.c, nd=S.nd;
   const qf=[-Pa*b/L,-Pw*b*b*(3*a+b)/L**3,-Pw*a*b*b/L**2,-Pa*a/L,-Pw*a*a*(a+3*b)/L**3,Pw*a*a*b/L**2];
@@ -669,13 +675,13 @@ function unitLoad(S,r,a,s){ const L=r.L,b=L-a,Pa=-r.s,Pw=-r.c, nd=S.nd;
 function ilVal(ld,T,x,qn,left){ const q=ld.qs.get(T.m.id), own=ld.r===T, on=own&&(left?ld.a<=x+1e-12*T.L:ld.a<x-1e-12*T.L);
   if(qn==='N') return -q[0]-(on?ld.Pa:0); if(qn==='V') return T.sg*(q[1]+(on?ld.Pw:0)); return T.sg*(-q[2]+q[1]*x+(on?ld.Pw*(x-ld.a):0)); }
 // Unit-load solutions at points along the path (about 120 in all, every member end included).
-function envSetup(S,ids){ const path=trainPath(S,ids); if(!path) return null; const h=path.Lp/120, loads=[];
-  for(const g of path.segs){ const r=g.r, n=Math.max(4,Math.ceil(r.L/h-1e-9)); g.n=n; for(let k=0;k<=n;k++){ const a=r.L*k/n; loads.push(unitLoad(S,r,a,g.s0+(g.dir>0?a:r.L-a))); } }
+function envSetup(S,ids,path0){ const path=path0||trainPath(S,ids); if(!path) return null; const h=path.Lp/120, loads=[];
+  for(const g of path.segs){ const r=g.r, n=Math.max(4,Math.ceil(Math.abs(r.c)*r.L/h-1e-9)); g.n=n; for(let k=0;k<=n;k++){ const a=r.L*k/n; loads.push(unitLoad(S,r,a,path.sOf(r,a))); } }
   loads.sort((p,q)=>p.s-q.s); const out=[]; for(const ld of loads) if(!out.length||ld.s-out[out.length-1].s>1e-9*path.Lp) out.push(ld);
   return {S,path,loads}; }
 // Influence line of section (T,x) along the path: arrays s[], f[] (a jump appears as two points at the same s).
 function envIL(E,T,x,qn){ const seg=E.path.segs.find(g=>g.r===T), s=[], f=[]; let extra=null;
-  if(seg&&!E.loads.some(ld=>ld.r===T&&Math.abs(ld.a-x)<1e-9*T.L)) extra=unitLoad(E.S,T,x,seg.s0+(seg.dir>0?x:T.L-x));
+  if(seg&&!E.loads.some(ld=>ld.r===T&&Math.abs(ld.a-x)<1e-9*T.L)) extra=unitLoad(E.S,T,x,E.path.sOf(T,x));
   const lds=extra?[...E.loads,extra].sort((p,q)=>p.s-q.s):E.loads;
   for(const ld of lds){ if(ld.r===T&&Math.abs(ld.a-x)<1e-9*T.L&&seg){ const vl=ilVal(ld,T,x,qn,true), vr=ilVal(ld,T,x,qn,false), pair=seg.dir>0?[vl,vr]:[vr,vl]; s.push(ld.s,ld.s); f.push(...pair); }
     else { s.push(ld.s); f.push(ilVal(ld,T,x,qn,false)); } }
@@ -699,18 +705,47 @@ function envTrain(il,tr){ const {s:s0,f:f0}=il, n0=s0.length; if(n0<2) return {m
       if(!tr.full){ const w=q*I(u,v,0); gx+=w; gn+=w; } else { const ip=I(u,v,1), im=I(u,v,-1); gx+=q*ip+qp*im; gn+=q*im+qp*ip; } }
     if(ext||int){ const u=Math.min(t,t+d*Lt), v=Math.max(t,t+d*Lt), wp=I(u,v,1), wn=I(u,v,-1); gx+=int*wp+ext*(allP-wp); gn+=int*wn+ext*(allN-wn); }
     return [gx,gn]; };
-  let mx=ext*allP, mn=ext*allN;            // train off the path: only the exterior live load
+  // train off the path: only the exterior live load. Ftool reports that position as the train standing just before the path (left end at -length).
+  let mx=ext*allP, mn=ext*allN, px={t:s[0]-Lt,d:1}, pn={t:s[0]-Lt,d:1};
+  const eps=v=>1e-10*Math.max(1,Math.abs(v));
+  const upd=(t,d,g)=>{ if(g[0]>mx+eps(mx)){ mx=g[0]; px={t,d}; } if(g[1]<mn-eps(mn)){ mn=g[1]; pn={t,d}; } };
   const offs=[...new Set([0,Lt,...conc.map(c=>c[0]),...cars.flatMap(c=>[c[0],c[1]])])], quad=cars.length>0||!!(ext||int);
   const jumps=[]; for(let k=1;k<n;k++) if(s[k]===s[k-1]) jumps.push(s[k]);
+  // forward first, then reversed, each scanned left to right; ties keep the first position found (as Ftool does)
   for(const d of [1,-1]){ const ts=[]; for(const o of offs) for(let k=0;k<n;k++) ts.push(s[k]-d*o);
     for(const j of jumps) for(const [x] of conc){ const t=j-d*x, e=1e-9*Math.max(1,Lp); ts.push(t-e,t+e); }
     ts.sort((p,q)=>p-q); let prev=null, gp=null;
-    for(const t of ts){ if(prev!=null&&t-prev<1e-12*Math.max(1,Lp)) continue; const g=G(t,d); if(g[0]>mx) mx=g[0]; if(g[1]<mn) mn=g[1];
-      if(quad&&prev!=null){ const tm=(prev+t)/2, gm=G(tm,d); for(const j of [0,1]){ const a=gp[j], b=gm[j], c=g[j], den=a-2*b+c;
-          if(Math.abs(den)>1e-14*(Math.abs(a)+Math.abs(c)+1)){ const u=-(c-a)/(2*den); if(Math.abs(u)<1){ const gv=G(tm+u*(t-prev)/2,d); if(gv[0]>mx) mx=gv[0]; if(gv[1]<mn) mn=gv[1]; } }
-          if(gm[0]>mx) mx=gm[0]; if(gm[1]<mn) mn=gm[1]; } }
-      prev=t; gp=g; } }
-  return {max:imp*mx,min:imp*mn}; }
+    for(const t of ts){ if(prev!=null&&t-prev<1e-12*Math.max(1,Lp)) continue; const g=G(t,d);
+      if(quad&&prev!=null){ const tm=(prev+t)/2, gm=G(tm,d), cand=[];
+        for(const j of [0,1]){ const a=gp[j], b=gm[j], c=g[j], den=a-2*b+c;
+          if(Math.abs(den)>1e-14*(Math.abs(a)+Math.abs(c)+1)){ const u=-(c-a)/(2*den); if(Math.abs(u)<1) cand.push(tm+u*(t-prev)/2); } }
+        cand.push(tm); cand.sort((p,q)=>p-q).forEach(tc=>upd(tc,d,G(tc,d))); }
+      upd(t,d,g); prev=t; gp=g; } }
+  const left=p=>p.d>0?p.t:p.t-Lt;
+  return {max:imp*mx,min:imp*mn,pmax:{...px,loc:left(px)},pmin:{...pn,loc:left(pn)},Lp:Lp-s[0],
+    layout:(p,kind)=>trainLayout(tr,p.t,p.d,kind,fAt,s[0],Lp)}; }
+/* What the train applies at position t, direction d, for the max (kind 1) or min (kind -1) envelope, as Ftool draws it:
+   concentrated loads where they stand; distributed loads as pieces [u,v,q] (path coordinates), a full/empty car giving q where the
+   influence line has the favorable sign and q' elsewhere (also off the path), live loads only on the path where the sign is favorable. */
+function trainLayout(tr,t,d,kind,fAt,s0,s1){ const conc=(tr.conc||[]).map(([x,P])=>[t+d*x,-P]), pcs=[], Lt=tr.len||0;
+  const fav=u=>kind*fAt(u)>0;
+  const split=(u,v)=>{ const pts=new Set([u,v]); const N=200; for(let k=1;k<N;k++){ const a=u+(v-u)*(k-1)/N, b=u+(v-u)*k/N; if(fav(a)!==fav(b)){ let lo=a,hi=b; for(let it=0;it<40;it++){ const m=(lo+hi)/2; if(fav(m)===fav(lo)) lo=m; else hi=m; } pts.add((lo+hi)/2); } }
+    const xs=[...pts].sort((p,q)=>p-q), out=[]; for(let k=1;k<xs.length;k++) if(xs[k]-xs[k-1]>1e-12) out.push([xs[k-1],xs[k],fav((xs[k-1]+xs[k])/2)]); return out; };
+  for(const [xa,xb,q,qp] of (tr.dist||[])){ const u=Math.min(t+d*xa,t+d*xb), v=Math.max(t+d*xa,t+d*xb);
+    if(!tr.full) pcs.push([u,v,-q]); else split(u,v).forEach(([a,b,f])=>pcs.push([a,b,-(f?q:qp)])); }
+  const inner=[Math.min(t,t+d*Lt),Math.max(t,t+d*Lt)];
+  const live=(a,b,q)=>{ if(!q||b<=a) return; split(a,b).forEach(([u,v,f])=>{ if(f) pcs.push([u,v,-q]); }); };
+  live(Math.max(s0,inner[0]),Math.min(s1,inner[1]),tr.int||0); live(s0,Math.min(s1,inner[0]),tr.ext||0); live(Math.max(s0,inner[1]),s1,tr.ext||0);
+  return {conc,dist:pcs,span:[Math.min(t,t+d*Lt),Math.max(t,t+d*Lt)]}; }
+/* Influence-line mode with a load train (Ftool): after a section is picked, the train's critical positions on the path are drawn and
+   reported ("Max. value: ... at path loc.: ...  -  Min. value: ...  -  Total path length: ..."). The path is the selected members or,
+   with nothing selected, the horizontal members. Static loads are not added here. */
+const IL_TRAIN_ALERT='It is not possible to get load-train critical positions.\n\nSelect members forming a continuous load-train path.\nPress button (axial, shear, or bending) for target internal\nforce result.  Then select section to get influence line and\ncritical load-train positions.';
+function ilTrainPath(S){ return ui.ilPath&&ui.ilPath.length?trainPath(S,ui.ilPath):defaultTrainPath(S); }
+function ilTrainCalc(){ ui.ilTr=null; const tr=item('train',M.cur.train), il=ui.il; if(!tr||!il||!RES||!RES.ok) return;
+  const T=RES.rm.get(il.tid), path=ilTrainPath(RES); if(!T||!path) return;
+  const E=envSetup(RES,null,path), r=envTrain(envIL(E,T,il.xs,ui.q),tr); ui.ilTr={...r,path,tr:tr.id}; }
+function ilTrainMsg(){ const t=ui.ilTr, cat=QN[ui.q][1]; return `Max. value: ${fqu(cat,t.max)} at path loc.: ${fqu('len',t.pmax.loc)}  -  Min. value: ${fqu(cat,t.min)} at path loc.: ${fqu('len',t.pmin.loc)}  -  Total path length: ${fqu('len',t.Lp)}`; }
 // Envelope at one section: static (if the option is on) plus the train's max and min.
 function envAt(E,T,x,qn,tr){ const e=envTrain(envIL(E,T,x,qn),tr), st=M.opt.envStatic?T.val(qn,x):0; return {max:st+e.max,min:st+e.min}; }
 // Envelopes on every member: stations at the path's load points (exact at the peaks) or about 120 per model length elsewhere.
@@ -917,7 +952,7 @@ function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loa
 function drawModel(resMode){ const P=C();
   const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=4.5*sz('hinge');   /* as in Ftool: end hinges touch the node, node hinges circle it */
   for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
-    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=sel||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
+    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=(sel&&!(resMode&&ui.res==='il'))||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
     const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
     ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
     if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr,y1+uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
@@ -1067,6 +1102,37 @@ function drawIL(){ const P=C(), il=ui.il; if(!il) return; const f=curScale(), q=
       const put=p=>{ if(Math.abs(p.v)<=tol) return; const dx=p.o[0]-p.b[0], dy=p.o[1]-p.b[1], d=Math.hypot(dx,dy)||1; text(fmtIL(q,p.v),p.o[0]+dx/d*8,p.o[1]+dy/d*8,P.val,readAng(r.c,-r.s)); };
       if(Math.abs(p0.v-p1.v)<=tol) put(pc[Math.floor(pc.length/2)]); else { put(p0); put(p1); } } }
   const T=RES.rm.get(il.tid); if(T){ const a=nodeById(T.m.i), [sx,sy]=toS(a.x+T.c*il.xs,a.y+T.s*il.xs); ctx.fillStyle=P.sel; ctx.beginPath(); ctx.arc(sx,sy,3,0,7); ctx.fill(); } }
+/* A load train drawn standing on a horizontal screen line Ly, as Ftool draws it: concentrated loads as arrows ending on the line with the
+   value written vertically to their left, distributed loads as a comb of arrows (height proportional to the intensity) with the value
+   written vertically above the middle of each piece. X: world x of the path origin; lay: trainLayout() result (path coordinates). */
+function drawTrainOn(lay,X,Ly){ const P=C(), col=P.load, k=sz('load'), sx=u=>toS(X+u,0)[0];
+  ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,H); ctx.clip();
+  // distributed: sum overlapping pieces into intervals of constant intensity
+  const bp=[...new Set(lay.dist.flatMap(p=>[p[0],p[1]]))].sort((a,b)=>a-b), iv=[];
+  for(let i=1;i<bp.length;i++){ const a=bp[i-1], b=bp[i], m=(a+b)/2, q=lay.dist.reduce((s,p)=>s+(p[0]<=m&&m<=p[1]?p[2]:0),0);
+    if(Math.abs(q)<1e-12) continue; const l=iv[iv.length-1]; if(l&&Math.abs(l[1]-a)<1e-12&&Math.abs(l[2]-q)<1e-9*Math.abs(q)) l[1]=b; else iv.push([a,b,q]); }
+  const qm=Math.max(1e-12,...iv.map(v=>Math.abs(v[2])));
+  for(const [a,b,q] of iv){ const x1=sx(a), x2=sx(b), h=Math.max(4,22*k*Math.abs(q)/qm); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+    line(x1,Ly-h,x2,Ly-h); const n=Math.max(1,Math.round((x2-x1)/8)); for(let i=0;i<=n;i++){ const x=x1+(x2-x1)*i/n; line(x,Ly-h,x,Ly-2); head(x,Ly-1,0,1,4*k); }
+    if(M.disp.loadVal) text(fqu('dist',Math.abs(q)),(x1+x2)/2,Ly-h-3,col,-Math.PI/2,'left','top'); }
+  for(const [u,Pv] of lay.conc){ const x=sx(u); arrowTo(x,Ly-22*k,x,Ly-1,col,6*k); if(M.disp.loadVal) text(fqu('force',Math.abs(Pv)),x+1,Ly-22*k-2,col,-Math.PI/2,'left','bottom'); }
+  ctx.restore(); }
+// Influence-line mode with a load train: two lines along the path, the train at its maximum position on the side where positive
+// ordinates are drawn and at its minimum position on the other side (Ftool: 15 px beyond the largest ordinate on top, 84 px below).
+function drawILTrain(){ const t=ui.ilTr, il=ui.il; if(!t||!il||!RES) return; const P=C(), segs=t.path.segs, ys=[];
+  segs.forEach(g=>{ const a=nodeById(g.r.m.i), b=nodeById(g.r.m.j); ys.push(a.y,b.y); });
+  const X=t.path.x0, ext=il.ext*curScale()*view.s, yTop=toS(0,Math.max(...ys))[1]-ext-15, yBot=toS(0,Math.min(...ys))[1]+ext+15+69*sz('load');
+  const xa=toS(X,0)[0], xb=toS(X+t.Lp,0)[0]; ctx.strokeStyle=P.diag; ctx.lineWidth=1.2; line(xa,yTop,xb,yTop); line(xa,yBot,xb,yBot);
+  const posBelow=M.opt.ilPos==='lower'||(ui.q==='M'&&M.opt.mPos==='tension');
+  drawTrainOn(t.layout(t.pmax,1),X,posBelow?yBot:yTop); drawTrainOn(t.layout(t.pmin,-1),X,posBelow?yTop:yBot); }
+// Editing mode with a current load train (Ftool): the train drawn centered above the model, standing on a gray line, with its length dimensioned.
+function drawTrainPreview(){ const tr=item('train',M.cur.train), b=bbox(); if(!tr||!b||!M.nodes.length) return; const P=C(), Lt=tr.len||0;
+  const xs=M.nodes.map(n=>n.x), x0=Math.min(...xs), x1=Math.max(...xs), yTop=Math.min(...M.nodes.map(n=>toS(n.x,n.y)[1]));
+  const Y0=yTop-8, t=(x0+x1)/2-Lt/2, lay={conc:(tr.conc||[]).map(([x,Pv])=>[x,-Pv]),dist:(tr.dist||[]).map(([xa,xb,q])=>[Math.min(xa,xb),Math.max(xa,xb),-q])};
+  ctx.strokeStyle='#A0A0A0'; ctx.lineWidth=1; line(toS(x0,0)[0],Y0,toS(x1,0)[0],Y0);
+  if(Lt>0){ const a=toS(t,0)[0], c=toS(t+Lt,0)[0], y=Y0-6, lbl=fqu('len',Lt); ctx.strokeStyle=P.dim; ctx.fillStyle=P.dim; ctx.lineWidth=1; line(a,y-5,a,y+5); line(c,y-5,c,y+5);
+    ctx.font=FONT(); const w=ctx.measureText(lbl).width+8, m=(a+c)/2; if(c-a>w+12){ line(a,y,m-w/2,y); line(m+w/2,y,c,y); head(a,y,-1,0,5); head(c,y,1,0,5); } text(lbl,m,y,P.dim); }
+  drawTrainOn(lay,t,Y0-13); }
 // Point query marker, as in Ftool: a red ordinate from the member to the diagram (or to the deformed shape) with the value at its end
 function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+1e-9||ui.q==='S') return; const P=C(), a=nodeById(r.m.i), x=pq.x, bx=a.x+r.c*x, by=a.y+r.s*x, b=toS(bx,by); let o, lbl;
   if(ui.res==='il'){ const il=ui.il, ln=il&&il.lines.find(l=>l.r===r); if(!ln) return; let best=ln.pts[0]; ln.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
@@ -1101,27 +1167,32 @@ function draw(){ if(!W) return; ctx.setTransform(dpr,0,0,dpr,0,0); const P=C(); 
   $('#stage').style.background=P.bg; drawGrid(); drawDims();
   const res=ui.res&&RES&&RES.ok;
   drawModel(res);
-  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else drawDiagram(); } else if(ui.res==='il') drawIL(); else if(ui.res==='env') drawEnv(); if(ui.res==='env') drawEnvQuery(); else drawQuery(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
-  else if(M.disp.loadEdit) drawLoads();
+  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else drawDiagram(); } else if(ui.res==='il'){ drawIL(); drawILTrain(); } else if(ui.res==='env') drawEnv(); if(ui.res==='env') drawEnvQuery(); else drawQuery(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
+  else if(M.disp.loadEdit){ drawLoads(); drawTrainPreview(); }
   drawTool(); updateStatus(); }
 
 /* ================= Results control ================= */
-function recompute(){ RES=analyze(M); if(!RES.ok){ ui.msg=RES.error; return; } if(ui.res==='env'){ const tr=item('train',M.cur.train); ui.env=tr?computeEnv(RES,ui.envPath||[],tr,ui.q):null; if(!ui.env){ exitResults(); ui.tool='select'; return; } } if(ui.res==='il'&&ui.il){ const T=RES.rm.get(ui.il.tid); ui.il=T?influence(RES,ui.il.tid,Math.min(ui.il.xs,T.L),ui.q):null; } }
+function recompute(){ RES=analyze(M); if(!RES.ok){ ui.msg=RES.error; return; } if(ui.res==='env'){ const tr=item('train',M.cur.train); ui.env=tr?computeEnv(RES,ui.envPath||[],tr,ui.q):null; if(!ui.env){ exitResults(); ui.tool='select'; return; } } if(ui.res==='il'&&ui.il){ const T=RES.rm.get(ui.il.tid); ui.il=T?influence(RES,ui.il.tid,Math.min(ui.il.xs,T.L),ui.q):null; } if(ui.res==='il') ilTrainCalc(); }
 function enterResults(mode,q){
   if(mode==='env'){ // as in Ftool: a target load train and a continuous path of selected members are needed
     if(!item('train',M.cur.train)){ msgBox('It is not possible to get load-train envelopes.\n\nSelect target load-train.'); return; }
     const ids=selMembers().map(m=>m.id), S=buildSystem(M); if(S.error){ ui.msg=S.error; renderTop(); return; }
     if(!trainPath(analyze(M),ids)){ msgBox('It is not possible to get load-train envelopes.\n\nSelect members forming a continuous load-train path.\nThen press button (axial, shear, or bending)\nfor target load-train envelopes.'); return; }
     ui.envPath=ids; if(!q&&(ui.q==='D'||ui.q==='S')) ui.q='M'; }
+  if(mode==='il'){ const ids=selMembers().map(m=>m.id); ui.ilPath=ids;
+    if(item('train',M.cur.train)){ // as in Ftool: with a target train the influence line needs a load-train path
+      const S=analyze(M); if(!S.ok){ ui.msg=S.error; renderTop(); return; }
+      if(!(ids.length?trainPath(S,ids):defaultTrainPath(S))){ clearSel(); msgBox(IL_TRAIN_ALERT); renderAll(); return; } } }
   ui.pq=null; if(q) ui.q=q; ui.res=mode; if(mode==='il'&&(ui.q==='D'||ui.q==='S')) ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
   if(mode==='il'&&!ui.il){ ui.ilPick=true; } renderAll(); }
-function exitResults(){ ui.pq=null; ui.res=null; ui.il=null; ui.env=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
+function exitResults(){ ui.pq=null; ui.res=null; ui.il=null; ui.ilTr=null; ui.env=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
 function resMsg(){ if(!RES||!RES.ok) return RES?RES.error:''; const w=RES.warn&&RES.warn.length?RES.warn[0]+'  ':'';
   if(ui.res==='diag'&&ui.q==='S') return w+(ui.cut?'Section stresses shown. Click another point on a member to move the cut.':'Select a point on a member to see the stresses in its cross-section.');
   return w+resMsgBase(); }
 function resMsgBase(){ const nm={N:'axial force',V:'shear force',M:'bending moment',D:'deformed configuration'}[ui.q];
   if(ui.res==='env') return `Select a point on a member to get ${nm} envelope results.`;
   if(ui.res==='il'){ const il=ui.il, T=il&&RES.rm.get(il.tid);
+    if(T&&ui.ilTr) return ilTrainMsg();
     if(T&&ui.ilPick) return `${nm[0].toUpperCase()+nm.slice(1)} influence line for section at local pos.: x = ${fqu('len',il.xs)}  L = ${fqu('len',T.L)}`;
     return ui.ilPick?`Indicate a member section for which to display a ${nm} influence line.`:`Select a point on a member to get the ${nm} influence line value.`; }
   return `Select a point on a member to get ${nm} result.`; }
@@ -1134,7 +1205,7 @@ function renderTop(){
   $$('[data-rmode]').forEach(b=>b.setAttribute('aria-pressed',ui.res===b.dataset.rmode));
   $$('[data-q]').forEach(b=>{ b.setAttribute('aria-pressed',!!ui.res&&ui.q===b.dataset.q); b.disabled=(ui.res==='il'||ui.res==='env')&&(b.dataset.q==='D'||b.dataset.q==='S'); });
   $('#bIlPick').hidden=ui.res!=='il'; $('#bIlPick').setAttribute('aria-pressed',ui.ilPick);
-  { const ts=$('#trainSel'), opts=`<option value="">NONE</option>`+L_('train').map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); if(ts.dataset.o!==opts){ ts.innerHTML=opts; ts.dataset.o=opts; } ts.value=M.cur.train||''; ts.disabled=!!ui.res; $('#bTrain').setAttribute('aria-pressed',ui.panel==='train'); }
+  { const ts=$('#trainSel'), opts=`<option value="">NONE</option>`+L_('train').map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); if(ts.dataset.o!==opts){ ts.innerHTML=opts; ts.dataset.o=opts; } ts.value=M.cur.train||''; ts.disabled=!!ui.res&&ui.res!=='il'; $('#bTrain').setAttribute('aria-pressed',ui.panel==='train'); }
   $('#bKbd').setAttribute('aria-pressed',ui.kbd); $('#bTrf').setAttribute('aria-pressed',ui.panel==='trf');
   $('#bUndo').disabled=!ui.undo.length||!!ui.res; $('#bRedo').disabled=!ui.redo.length||!!ui.res;
   $('#bDel').disabled=!ui.sel.t||!!ui.res; $('#pot').disabled=!ui.res; $('#defComp').value=ui.defComp;
@@ -1620,7 +1691,7 @@ function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy),
   else ui.sel={t,ids:new Set([id])};
   renderAll(); }
 function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8); if(!hm){ ui.msg=''; ui.pq=null; renderTop(); draw(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
-  if(ui.res==='il'){ if(ui.ilPick){ ui.pq=null; ui.il=influence(RES,r.m.id,x,ui.q); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
+  if(ui.res==='il'){ if(ui.ilPick){ ui.pq=null; ui.il=influence(RES,r.m.id,x,ui.q); ilTrainCalc(); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
     pointQuery(hm); renderTop(); draw(); return; }
   if(ui.res==='env'){ envQuery(hm); renderTop(); draw(); return; }
   if(ui.q==='S'){ ui.cut={mid:r.m.id,xi:hm.t}; ui.info=null; ui.msg=''; renderAll(); return; }
@@ -1643,7 +1714,9 @@ $$('[data-panel]').forEach(b=>b.onclick=()=>{ ui.panel=b.dataset.panel; ui.creat
 $$('[data-rmode]').forEach(b=>b.onclick=()=>enterResults(b.dataset.rmode,ui.res==='il'&&b.dataset.rmode==='diag'?ui.q:null));
 $$('[data-q]').forEach(b=>b.onclick=()=>{ if(ui.res){ ui.q=b.dataset.q; ui.pq=null; if(ui.res==='il'){ ui.il=null; ui.ilPick=true; } if(ui.res==='env') recompute(); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); } else enterResults('diag',b.dataset.q); });
 $('#defComp').onchange=e=>{ ui.defComp=e.target.value; draw(); };
-$('#trainSel').onchange=e=>{ M.cur.train=e.target.value||null; save(); renderAll(); };
+$('#trainSel').onchange=e=>{ M.cur.train=e.target.value||null; save();
+  if(ui.res==='il'&&M.cur.train&&RES&&RES.ok&&!ilTrainPath(RES)){ msgBox(IL_TRAIN_ALERT); }
+  if(ui.res==='il'){ ilTrainCalc(); ui.msg=''; } renderAll(); };
 $('#bTrain').onclick=()=>{ ui.panel='train'; ui.creating=null; ui.renaming=null; ui.info=null; renderAll(); };
 $('#bIlPick').onclick=()=>{ ui.ilPick=!ui.ilPick; ui.msg=''; renderTop(); };
 $('#pot').oninput=e=>{ ui.pot=+e.target.value; renderTop(); draw(); };
@@ -2007,5 +2080,5 @@ function exportLines(mode){ if(!RES?.ok) return; const ms=selMembers(); const li
   if(!M) exampleModel();
   new ResizeObserver(resize).observe($('#stage')); resize(); renderAll();
 })();
-window.__fopentool={computeEnv,envAt,envSetup,envTrain,envIL,trainPath,analyze,buildSystem,influence,secCalc,secWidth,secBreaks,secGeom,orientOps,parseFtl,writeFtl,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
+window.__fopentool={toS:(x,y)=>toS(x,y),computeEnv,envAt,envSetup,envTrain,envIL,trainPath,defaultTrainPath,trainLayout,ilTrainCalc,analyze,buildSystem,influence,secCalc,secWidth,secBreaks,secGeom,orientOps,parseFtl,writeFtl,sectionStress,classify,newModel,exampleModel,get M(){return M;},set M(v){M=v;},ui};
 </script>

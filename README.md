@@ -30,7 +30,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Axial, shear and bending moment diagrams, deformed configuration (with DX, DY, DU, DV or RZ values at the nodes, as in Ftool), support reactions.
 - Zoom with the mouse wheel; pan by dragging with the middle or right button (or the left button on empty results, or with Space held).
 - Influence lines for axial force, shear and bending moment at any section.
-- Load trains (moving loads) as in Ftool: concentrated loads, single or full/empty car distributed loads, exterior and interior live loads, impact factor. Envelopes of N, V and M along a path of selected members, with Ftool's rules (train in both directions, critical position for every section, static results optionally added), point queries and the member envelope report.
+- Load trains (moving loads) as in Ftool: concentrated loads, single or full/empty car distributed loads, exterior and interior live loads, impact factor. Envelopes of N, V and M along a path of selected members, with Ftool's rules (train in both directions, critical position for every section, static results optionally added), point queries and the member envelope report. In influence-line mode the train is drawn at its critical positions (maximum and minimum) with their values and locations along the path, as in Ftool; FOpenTool finds the exact positions. Paths are measured along their horizontal projection, as in Ftool. In editing mode the current train is drawn above the model.
 - Ftool's sign conventions (lower fibers, moment drawn on the tension side, configurable).
 - Result scale box and slider, step lines and step values (with Ftool's two step modes: equal parts per member, or steps from the member start), point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
 
@@ -49,7 +49,6 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 ## Not yet implemented
 
 - Load cases and combinations (disabled in the free Ftool 4.01 as well)
-- The influence-line display of a load train's critical positions
 - Profile tables (welded, electro-welded, Gerdau-AcoMinas, AISC, Mills and Vallourec shapes)
 - Mouse-driven transformations
 - Export to CGM, DGN, DXF, EMF, EPS, PDF, PostScript and SVG
