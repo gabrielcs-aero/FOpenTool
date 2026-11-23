@@ -47,28 +47,28 @@ Follows the course content in order: rigid-body equilibrium, structural analysis
 - [x] Method of sections shown step by step for a chosen cut (frames: one cut; trusses: the members a section crosses)
 
 **3. Stresses and strains**
-- [ ] Concept of stress: normal and shear stress on a cut, σ = N/A and average τ = V/A
-- [ ] General state of stress and strain at a point
-- [ ] Plane stress and plane strain: transformation to any angle
-- [ ] Mohr's circle, with principal stresses, maximum shear stress and their directions
+- [x] Concept of stress: normal and shear stress on a cut, σ = N/A and average τ = V/A
+- [x] General state of stress and strain at a point (Tools > Stress Tensor; strain in Tools > Plane Stress)
+- [x] Plane stress and plane strain: transformation to any angle
+- [x] Mohr's circle, with principal stresses, maximum shear stress and their directions
 
 **4. Deformation under axial load**
-- [ ] Normal stress, strain and elongation of each member, δ = NL/(EA)
-- [ ] Statically determinate axial structures
-- [ ] Statically indeterminate axial structures, with the compatibility equation shown (the stiffness method already solves them)
-- [ ] Temperature effects: free thermal elongation and the stresses it causes when restrained (thermal loads already exist; show the stresses)
+- [x] Normal stress, strain and elongation of each member, δ = NL/(EA)
+- [x] Statically determinate axial structures
+- [x] Statically indeterminate axial structures: elongations checked against the displacements (compatibility); a written-out compatibility equation for a chosen chain is still to do
+- [x] Temperature effects: free thermal elongation and the stresses it causes when restrained
 
 **5. Geometry of masses**
-- [ ] Centroid of any section, including composite sections built from rectangles, circles and other shapes, with holes
-- [ ] Moments of inertia with the parallel-axis theorem steps shown
-- [ ] Product of inertia
+- [x] Centroid of any section, including composite sections built from rectangles, circles and other shapes, with holes
+- [x] Moments of inertia with the parallel-axis theorem steps shown
+- [x] Product of inertia, principal axes
 
 ## Stage 3: Mechanics of Solids 2 (FGA0179)
 
 Follows the course content in order: stress analysis, theory of elasticity, failure criteria and beam deflection.
 
 **1. Stress analysis**
-- [ ] Torsion: circular shafts, τ = T·r/J and angle of twist φ = TL/(GJ), stepped shafts, and thin-walled closed sections with shear flow q = T/(2A_m). A plane frame has no torque, so this is a separate shaft calculator inside the app.
+- [x] Torsion: circular shafts, τ = T·r/J and angle of twist φ = TL/(GJ), stepped shafts, and thin-walled closed sections with shear flow q = T/(2A_m). A plane frame has no torque, so this is a separate shaft calculator inside the app.
 - [x] Pure bending: normal stress at any point of a section, σ = M·y/I, chosen by clicking a member
 - [x] Normal stress diagram over the cross-section, with maximum tension and compression
 - [x] Neutral line position, y₀ = N·I/(M·A), drawn on the section
@@ -79,19 +79,19 @@ Follows the course content in order: stress analysis, theory of elasticity, fail
 - [ ] Core (kern) of the section; stress envelope diagrams along each member
 
 **2. Theory of elasticity**
-- [ ] Stress vector on a plane with normal n, t = σ·n, split into normal and shear parts
-- [ ] Cauchy stress tensor: enter a 3×3 tensor or take it from a point of the model
-- [ ] Invariants I₁, I₂, I₃
-- [ ] Principal stresses and directions as the eigenvalue/eigenvector problem, with the characteristic equation shown
-- [ ] Differential equilibrium equations: check whether a given stress field satisfies ∂σᵢⱼ/∂xⱼ + bᵢ = 0
+- [x] Stress vector on a plane with normal n, t = σ·n, split into normal and shear parts
+- [x] Cauchy stress tensor: enter a 3×3 tensor (a point of the model gives plane stress through Section Stresses > Mohr's circle)
+- [x] Invariants I₁, I₂, I₃
+- [x] Principal stresses and directions as the eigenvalue/eigenvector problem, with the characteristic equation shown
+- [x] Differential equilibrium equations: check whether a given stress field satisfies ∂σᵢⱼ/∂xⱼ + bᵢ = 0 (at a point, numerically)
 
 **3. Failure criteria**
-- [ ] von Mises and Tresca checks, with a utilization ratio per member and per point
-- [ ] Mohr-Coulomb criterion, drawn on Mohr's circle
+- [x] von Mises and Tresca checks, with a utilization ratio per member and per point
+- [x] Mohr-Coulomb criterion (envelope drawn in the σ1-σ2 plane; on Mohr's circle still to do)
 
 **4. Deflection of beams**
-- [ ] Deflection and slope diagrams with values (already computed; show them)
-- [ ] Double integration of EI·v'' = M(x), with the boundary conditions shown, and singularity functions for simple cases
+- [x] Deflection and slope with values (deformed shape, point queries, Tools > Deflection)
+- [x] Double integration of EI·v'' = M(x), with the boundary conditions shown (singularity functions still to do)
 - [ ] Superposition
 
 ## Beyond the courses

@@ -125,6 +125,11 @@ button,input,select{font:inherit;color:inherit}
 .fbt td,.fbt th{font-size:11.5px;vertical-align:top} .fbt td{white-space:nowrap}
 .feq{font-family:"Cambria Math","Times New Roman",serif;font-size:13px;margin:3px 0;display:flex;flex-direction:column;gap:2px;overflow-x:auto}
 .fbh{margin:8px 0 2px;font-size:12px} .tR{color:#800000} .tL{color:#0000A0}
+.dlg.wide{max-width:min(940px,100%)}
+.tcols{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start} .tin{min-width:0}
+.ti{display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0} .ti span:first-child{min-width:22px;text-align:right} .ti input{height:21px;border:1px solid var(--chrome-line);text-align:right;padding:0 3px} .tu{color:var(--muted)}
+.tg3{display:flex;flex-wrap:wrap} .tnote{margin:4px 0;color:var(--muted);font-size:11px} .tout{margin-top:4px} .tdet{margin-top:6px} .tdet summary{cursor:default}
+.dlg .mt input{height:20px;border:1px solid var(--chrome-line);text-align:right;padding:0 3px}
 .kd{position:absolute;left:8px;top:8px;background:var(--chrome);border:1px solid #888;box-shadow:0 4px 12px rgba(0,0,0,.25);padding:8px;z-index:5;display:flex;flex-direction:column;gap:6px}
 .kd .ttl{font-weight:700}
 .kd .g{display:grid;grid-template-columns:auto 76px auto auto 76px;gap:3px 4px;align-items:center}
@@ -159,6 +164,7 @@ button,input,select{font:inherit;color:inherit}
     <button data-menu="file" aria-haspopup="true" aria-expanded="false">File</button>
     <button data-menu="options" aria-haspopup="true" aria-expanded="false">Options</button>
     <button data-menu="display" aria-haspopup="true" aria-expanded="false">Display</button>
+    <button data-menu="tools" aria-haspopup="true" aria-expanded="false" title="Mechanics of Solids tools (FOpenTool)">Tools</button>
   </div>
   <div class="tb">
     <button class="ib" id="bNew" title="New"></button>
@@ -1212,9 +1218,10 @@ function updateSectionView(){ const r=cutRec(), box=$('#ssNums'); drawSectionVie
   else { const y0=s.y0, fromLow=s.cLow+y0; h+=`<p class="f">y₀ = N·I/(M·A) = ${fqu('sec',y0)}</p>`;
     h+=s.y0in?`<p style="margin:0">It crosses the section ${fqu('sec',fromLow)} above the lower fiber${Math.abs(s.N)<1e-12?' (through the centroid, since N = 0)':''}.</p>`:`<p style="margin:0">It falls outside the section, so the whole section is in ${s.sTop>0?'tension':'compression'}.</p>`; }
   h+=`<h5>Shear stress</h5>`;
-  if(s.taus) h+=`<p class="f">τ(y) = V·Q(y)/(I·b(y))</p><table>${row('Maximum',`<b>${f(s.tauMax)} ${su}</b>`)}${row('At y',fqu('sec',s.tauAt))}</table>`;
+  if(s.taus) h+=`<p class="f">τ(y) = V·Q(y)/(I·b(y))</p><table>${row('Maximum',`<b>${f(s.tauMax)} ${su}</b>`)}${row('At y',fqu('sec',s.tauAt))}${row('Average V/A',`${f(s.V/s.A)} ${su}`)}</table>`;
   else h+=`<p style="margin:0">Integral-properties sections have no shape, so only the average is shown: τ = V/As = ${s.tauMax==null?'—':f(s.tauMax)+' '+su}.</p>`;
   const go=(a,v,lbl)=>`<tr data-act="${a}" title="Move the cut here"><td>${lbl}</td><td>${v}</td></tr>`, mt=maxStress('t'), mc=maxStress('c');
+  h+=`<h5>Stress at a point</h5><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><label>y = <input id="mohrY" value="${fq('sec',0)}" style="width:60px;text-align:right"> ${U('sec')}</label><button class="pb" data-act="smohr" title="Plane stress (σx, τxy) at this fiber and its Mohr's circle">Mohr's circle</button></div><p style="margin:0;color:var(--muted)">y from the centroid toward the upper fibers (${fq('sec',-s.cLow)} to ${fq('sec',s.cUp)}).</p>`;
   h+=`<h5>Along this member</h5><table class="mt">${go('scut:'+rg.tx/r.L,`${f(rg.tMax)} ${su} at x = ${fqu('len',rg.tx)}`,'Largest tension')}${go('scut:'+rg.cx/r.L,`${f(rg.cMin)} ${su} at x = ${fqu('len',rg.cx)}`,'Largest compression')}</table>`;
   h+=`<h5>In the whole structure</h5><table class="mt">${go('smax:t',`${f(mt.v)} ${su}, member ${mt.r.m.id}, x = ${fqu('len',mt.x)}, ${mt.fiber} fiber`,'Largest tension')}${go('smax:c',`${f(mc.v)} ${su}, member ${mc.r.m.id}, x = ${fqu('len',mc.x)}, ${mc.fiber} fiber`,'Largest compression')}</table>`;
   box.innerHTML=h; }
@@ -1399,8 +1406,8 @@ function partsWithout(cutIds){ const used=new Set(), adj=new Map(); for(const r 
   const comp=new Map(); let k=0; for(const id of used){ if(comp.has(id)) continue; const st=[id]; comp.set(id,k); while(st.length){ const u=st.pop(); for(const v of adj.get(u)||[]) if(!comp.has(v)){ comp.set(v,k); st.push(v); } } k++; }
   return {comp,n:k}; }
 // Polynomial text "a + b·x − c·x²" from coefficients in internal units; cat = result category; x in display length units
-function polyText(cs,cat,L=1,ref=0){ const fl=fac('len'), fc=fac(cat), vals=cs.map((a,k)=>a*fl**k/fc), mx=Math.max(...vals.map(Math.abs),1e-300), parts=[];
-  vals.forEach((v,k)=>{ if(Math.abs(v)<=1e-9*mx||!isFinite(v)||Math.abs(cs[k])*L**k<=1e-9*ref) return;   /* ref: the member's force scale, so round-off is not printed */ const t=Number(Math.abs(v).toPrecision(4)).toString(), xs=k===0?'':k===1?'x':`x${'²³'[k-2]}`;
+function polyText(cs,cat,L=1,ref=0){ const fl=cat?fac('len'):1, fc=cat?fac(cat):1, vals=cs.map((a,k)=>a*fl**k/fc), mx=Math.max(...vals.map(Math.abs),1e-300), parts=[];
+  vals.forEach((v,k)=>{ if(Math.abs(v)<=1e-9*mx||!isFinite(v)||Math.abs(cs[k])*L**k<=1e-9*ref) return;   /* ref: the member's force scale, so round-off is not printed */ const t=Number(Math.abs(v).toPrecision(4)).toString(), xs=k===0?'':k===1?'x':`x${'²³⁴⁵⁶'[k-2]}`;
     parts.push([v<0,k===0?t:(t==='1'?xs:`${t}·${xs}`)]); });
   return parts.length?parts.map(([n,s],i)=>(i?(n?' − ':' + '):(n?'−':''))+s).join(''):'0'; }
 const polyD=cs=>cs.slice(1).map((a,k)=>a*(k+1));
@@ -1986,6 +1993,9 @@ function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='fbd'){ ui.fbd=null; renderAll(); return; }
   if(cmd==='fbdside'&&ui.fbd){ ui.fbd.side=arg; renderAll(); return; }
   if(cmd==='fbdtc'&&ui.fbd){ ui.fbd.side=+arg; renderAll(); return; }
+  if(cmd==='smohr'){ const r=cutRec(); if(!r) return; const s=sectionStress(r,ui.cut.xi*r.L), yv=pnum($('#mohrY')?.value), y=Math.max(-s.cLow,Math.min(s.cUp,fromD('sec',yv??0)));
+    let tau=0; if(s.taus){ let best=s.taus[0]; s.taus.forEach(p=>{ if(Math.abs(p.yf-y)<Math.abs(best.yf-y)) best=p; }); tau=-Math.sign(s.V)*Math.abs(best.tau); } else if(s.As>0) tau=-s.V/s.As*(Math.abs(y)<1e-12?1:0);
+    toolMohr({sx:s.sig(y),sy:0,txy:tau,th:0,note:`From member ${r.m.id} at x = ${fqu('len',s.x)}, fiber y = ${fqu('sec',y)}: σx = N/A − M·y/I along the member, σy = 0, τxy = −V·Q/(I·b) (x along the member from node ${r.m.i}, y toward the upper fibers).`}); return; }
   if(cmd==='scut'&&ui.cut){ ui.cut.xi=Math.min(1,Math.max(0,+arg)); renderAll(); return; }
   if(cmd==='smax'&&RES&&RES.ok){ const b=maxStress(arg), nm=arg==='t'?'tension':'compression';
     if(!b||(arg==='t'?b.v<=0:b.v>=0)){ ui.msg=`No fiber is in ${nm}.`; renderAll(); return; }
@@ -2260,6 +2270,7 @@ function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
     ['Export Line Results',null,'',false,'',[['Step Values...','lines:step','',noRes||!(M.step>0)],['Display Resolution...','lines:disp','',noRes]]],'-',
     ['Export Model Screen',null,'',false,'',[['Clipboard','clip','Ctrl+C'],['Print...','print','Ctrl+P'],...['CGM Metafile...','DGN...','DXF...','Enhanced Metafile (EMF)...','Encapsulated PostScript...','PDF...','PostScript...','SVG...'].map(l=>l==='DXF...'?[l,'vexp:dxf']:l==='SVG...'?[l,'vexp:svg']:[l,null,'',true])]],
     ['Totals','totals'],['Model View Limits','limits'],'-',['Exit',null,'',true]];
+  if(name==='tools') return [["Plane Stress and Mohr's Circle...",'tool:mohr'],['Stress Tensor (3D)...','tool:tensor'],['Failure Criteria...','tool:fail'],'-',['Composite Section...','tool:comp'],'-',['Axial Deformation...','tool:axial'],['Deflection by Double Integration...','tool:defl'],['Torsion...','tool:tors']];
   if(name==='options') return [['Analysis',null,'',false,'',[['Linear Elastic','noop','',true,'chk']]],'-',
     ['Support and Hinge Display Size',null,'',false,'',sizes('suphinge',o.sup)],['Load Display Size',null,'',false,'',sizes('load',o.load)],['Text Display Size',null,'',false,'',sizes('text',o.text)],'-',
     ['Add static load results to load-train envelope','opt:envStatic','',false,o.envStatic?'chk':''],'-',['Save analysis result neutral file',null,'',true],'-',
@@ -2285,12 +2296,299 @@ function menuClick(e){ const b=e.target.closest('[data-mact]'); if(!b||b.disable
   else if(a==='size'){ if(p==='suphinge'){ M.opt.sup=q; M.opt.hinge=q; } else M.opt[p]=q; save(); draw(); }
   else if(a==='import') fileImport(); else if(a==='print') printModel();
   else if(a==='struct'){ commit(()=>{ M.opt.truss=p==='truss'; }); ui.msg=M.opt.truss?'Truss analysis: every joint is pinned and members carry axial force only. Apply loads at the nodes.':'Frame analysis.'; renderTop(); }
+  else if(a==='tool') ({mohr:()=>toolMohr(),tensor:toolTensor,fail:toolFailure,comp:toolComposite,axial:toolAxial,defl:toolDeflection,tors:toolTorsion})[p]?.();
   else if(a==='units') dlgUnits(); else if(a==='sign') dlgSign(); else if(a==='about') dlgAbout(); else if(a==='totals') dlgTotals(); else if(a==='limits') dlgLimits();
   else if(a==='new') fileNew(); else if(a==='open') fileOpen(); else if(a==='save') fileSave(); else if(a==='clip') exportClip(); else if(a==='vexp') exportVector(p); else if(a==='lines') exportLines(p); }
 $('#menu').addEventListener('click',menuClick); $('#menu2').addEventListener('click',menuClick);
 
+/* ================= Tools menu: Mechanics of Solids calculators (beyond Ftool) =================
+   Each tool is a dialog that recomputes as you type and writes every formula with the numbers substituted. Inputs and outputs use the
+   units chosen in Units & Number Formatting (internal kN, m). Tools that need the model's results analyze it when they open. */
+function toolDlg(title,body,mount){ dlg(title,body,el=>{ $('.dlg').classList.add('wide'); if(mount) mount(el); }); }
+const TL={
+  inp:(k,lab,v,u,w=78)=>`<label class="ti"><span>${lab}</span><input data-k="${k}" value="${v}" style="width:${w}px"><span class="tu">${u||''}</span></label>`,
+  num:s=>pnum(s),
+  read:(el,k,cat)=>{ const i=el.querySelector(`[data-k="${k}"]`); const v=i?pnum(i.value):null; return v==null?0:(cat?fromD(cat,v):v); },
+  f:(cat,v)=>fqu(cat,v), sig:v=>fqu('stress',v), deg:v=>`${fmtNum(v*180/Math.PI,'f',2)}°`,
+  cv:(el,id)=>{ const c=el.querySelector('#'+id), w=c.clientWidth, h=c.clientHeight, dp=window.devicePixelRatio||1; c.width=Math.round(w*dp); c.height=Math.round(h*dp); const g=c.getContext('2d'); g.setTransform(dp,0,0,dp,0,0); g.clearRect(0,0,w,h); g.fillStyle='#fff'; g.fillRect(0,0,w,h); return [g,w,h]; },
+  arrow:(g,x1,y1,x2,y2,col,s=7)=>{ g.strokeStyle=col; g.fillStyle=col; g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L; g.beginPath(); g.moveTo(x2,y2); g.lineTo(x2-ux*s+uy*s*.4,y2-uy*s-ux*s*.4); g.lineTo(x2-ux*s-uy*s*.4,y2-uy*s+ux*s*.4); g.closePath(); g.fill(); },
+  txt:(g,t,x,y,col='#000',al='center',bl='middle',font='11px Arial')=>{ g.font=font; g.fillStyle=col; g.textAlign=al; g.textBaseline=bl; g.fillText(t,x,y); },
+};
+function ensureRes(){ if(RES&&RES.ok) return RES; const S=analyze(M); return S.ok?S:null; }
+
+/* ---- Plane stress / plane strain transformation and Mohr's circle ----
+   σx′ = (σx+σy)/2 + (σx−σy)/2·cos2θ + τxy·sin2θ, τx′y′ = −(σx−σy)/2·sin2θ + τxy·cos2θ; principal σ1,2 = (σx+σy)/2 ± R,
+   R = √(((σx−σy)/2)² + τxy²), tan2θp = 2τxy/(σx−σy). Mohr's circle with τ plotted positive downward, so a counterclockwise turn θ of the
+   element is a counterclockwise turn 2θ on the circle (the convention of Hibbeler's Mechanics of Materials). Strain: the same with γ/2. */
+function toolMohr(pre){ const p=pre||{}, su=U('stress'), strain=!!p.strain;
+  const body=`<div class="tcols"><div class="tin">
+    <div class="btnrow" style="justify-content:flex-start"><label class="ck"><input type="radio" name="mm" value="s" ${strain?'':'checked'}> Plane stress</label><label class="ck"><input type="radio" name="mm" value="e" ${strain?'checked':''}> Plane strain</label></div>
+    <div id="mIn"></div>${TL.inp('th','θ',fmtNum(p.th||30,'f',1),'deg')}
+    ${p.note?`<p class="tnote">${p.note}</p>`:''}<div id="mOut" class="tout"></div></div>
+    <div><canvas id="mCv" style="width:400px;height:330px;display:block"></canvas><canvas id="eCv" style="width:400px;height:170px;display:block"></canvas></div></div>`;
+  toolDlg("Plane Stress and Mohr's Circle",body,el=>{
+    const setIn=e=>{ el.querySelector('#mIn').innerHTML=e?TL.inp('sx','εx',fmtNum(p.ex??500,'f',1),'µε')+TL.inp('sy','εy',fmtNum(p.ey??-200,'f',1),'µε')+TL.inp('txy','γxy',fmtNum(p.gxy??300,'f',1),'µrad')
+      :TL.inp('sx','σx',fmtNum(toD('stress',p.sx??80e3),'f',3),su)+TL.inp('sy','σy',fmtNum(toD('stress',p.sy??-40e3),'f',3),su)+TL.inp('txy','τxy',fmtNum(toD('stress',p.txy??25e3),'f',3),su); };
+    let isE=strain; setIn(isE);
+    const run=()=>{ const g=k=>TL.read(el,k), th=g('th')*Math.PI/180;
+      const sx=isE?g('sx'):fromD('stress',g('sx')), sy=isE?g('sy'):fromD('stress',g('sy')), t=isE?g('txy')/2:fromD('stress',g('txy'));
+      const F=v=>isE?`${fmtNum(v,'f',1)} µε`:TL.sig(v), avg=(sx+sy)/2, a=(sx-sy)/2, R=Math.hypot(a,t), s1=avg+R, s2=avg-R, tp=.5*Math.atan2(2*t,sx-sy);
+      const c2=Math.cos(2*th), s2t=Math.sin(2*th), sxp=avg+a*c2+t*s2t, syp=avg-a*c2-t*s2t, txp=-a*s2t+t*c2;
+      const S=isE?'ε':'σ', T=isE?'γ/2':'τ', sh=isE?'γ':'τ';
+      el.querySelector('#mOut').innerHTML=`<h5 class="fbh">Transformation to θ = ${fmtNum(th*180/Math.PI,'f',1)}° (counterclockwise)</h5><div class="feq">
+        <div>${S}x′ = (${S}x+${S}y)/2 + (${S}x−${S}y)/2·cos2θ + ${T}xy·sin2θ</div><div style="padding-left:12px">= ${F(avg)} + ${F(a)}·${fmtNum(c2,'f',4)} + ${F(t)}·${fmtNum(s2t,'f',4)} = <b>${F(sxp)}</b></div>
+        <div>${S}y′ = (${S}x+${S}y)/2 − (${S}x−${S}y)/2·cos2θ − ${T}xy·sin2θ = <b>${F(syp)}</b></div>
+        <div>${T}x′y′ = −(${S}x−${S}y)/2·sin2θ + ${T}xy·cos2θ = <b>${F(txp)}</b>${isE?` (γx′y′ = ${F(2*txp)})`:''}</div></div>
+        <h5 class="fbh">Principal values</h5><div class="feq"><div>center C = (${S}x+${S}y)/2 = ${F(avg)}, radius R = √(((${S}x−${S}y)/2)² + ${T}xy²) = ${F(R)}</div>
+        <div>${S}1 = C + R = <b>${F(s1)}</b>, ${S}2 = C − R = <b>${F(s2)}</b></div>
+        <div>tan2θp = 2·${T}xy/(${S}x−${S}y) → θp1 = <b>${fmtNum(tp*180/Math.PI,'f',2)}°</b> (direction of ${S}1), θp2 = ${fmtNum(tp*180/Math.PI+90,'f',2)}°</div>
+        <div>${isE?'γmax in plane = 2R':'τmax in plane = R'} = <b>${F(isE?2*R:R)}</b> at θs = ${fmtNum(tp*180/Math.PI-45,'f',2)}° and ${fmtNum(tp*180/Math.PI+45,'f',2)}°, with ${S} = C</div>
+        ${isE?'':`<div>Absolute maximum shear (σ3 = 0 out of plane): τabs = ${TL.sig(Math.max(s1,0)-Math.min(s2,0))}/2 = <b>${TL.sig((Math.max(s1,0)-Math.min(s2,0))/2)}</b></div>`}</div>`;
+      // Mohr's circle
+      const [g2,w,h]=TL.cv(el,'mCv'), ext=Math.max(Math.abs(avg)+R,R,1e-12)*1.15, sc=Math.min((w-40)/(2*ext),(h-40)/(2*R*1.15||1)), ox=w/2-avg*sc, oy=h/2;
+      const X=v=>ox+v*sc, Y=v=>oy+v*sc;   /* τ positive downward */
+      g2.strokeStyle='#999'; g2.lineWidth=1; g2.beginPath(); g2.moveTo(8,oy); g2.lineTo(w-8,oy); g2.moveTo(X(0),8); g2.lineTo(X(0),h-8); g2.stroke();
+      TL.txt(g2,S,w-10,oy-8,'#555','right'); TL.txt(g2,`${sh} (+ down)`,X(0)+4,h-10,'#555','left');
+      g2.strokeStyle='#0000FF'; g2.lineWidth=1.5; g2.beginPath(); g2.arc(X(avg),oy,R*sc,0,7); g2.stroke();
+      const pt=(s,tt,lab,col)=>{ g2.fillStyle=col; g2.beginPath(); g2.arc(X(s),Y(tt),3.5,0,7); g2.fill(); TL.txt(g2,lab,X(s)+5,Y(tt)-7,col,'left','bottom'); };
+      g2.strokeStyle='#888'; g2.setLineDash([4,3]); g2.beginPath(); g2.moveTo(X(sx),Y(t)); g2.lineTo(X(sy),Y(-t)); g2.stroke(); g2.setLineDash([]);
+      g2.strokeStyle='#C000C0'; g2.beginPath(); g2.moveTo(X(sxp),Y(txp)); g2.lineTo(X(syp),Y(-txp)); g2.stroke();
+      pt(sx,t,'x',"#000"); pt(sy,-t,'y','#000'); pt(sxp,txp,"x′",'#C000C0'); pt(s1,0,`${S}1 = ${isE?fmtNum(s1,'f',1):fq('stress',s1)}`,'#D00000'); pt(s2,0,`${S}2 = ${isE?fmtNum(s2,'f',1):fq('stress',s2)}`,'#D00000');
+      pt(avg,-R,isE?'γmax/2':'τmax','#008000'); TL.txt(g2,'C',X(avg),oy+10,'#0000FF');
+      // element rotated by θ
+      const [g3,w3,h3]=TL.cv(el,'eCv'), ex=w3/4, ey=h3/2, ex2=3*w3/4, half=26;
+      const elem=(cx0,ang,sA,sB,tAB,lab)=>{ const c=Math.cos(ang), s=Math.sin(ang);
+        const Q=(u,v)=>[cx0+u*c-v*s, ey-(u*s+v*c)];
+        g3.strokeStyle='#000'; g3.lineWidth=1.3; g3.beginPath(); [[-half,-half],[half,-half],[half,half],[-half,half]].forEach(([u,v],i)=>{ const [a1,b1]=Q(u,v); i?g3.lineTo(a1,b1):g3.moveTo(a1,b1); }); g3.closePath(); g3.stroke();
+        const L=26, mx=Math.max(Math.abs(sA),Math.abs(sB),Math.abs(tAB),1e-12);
+        for(const sgn of [1,-1]){ if(Math.abs(sA)>1e-9*mx){ const [a1,b1]=Q(sgn*(half+(sA>0?2:L+2)),0), [a2,b2]=Q(sgn*(half+(sA>0?L+2:2)),0); TL.arrow(g3,a1,b1,a2,b2,'#D00000'); }
+          if(Math.abs(sB)>1e-9*mx){ const [a1,b1]=Q(0,sgn*(half+(sB>0?2:L+2))), [a2,b2]=Q(0,sgn*(half+(sB>0?L+2:2))); TL.arrow(g3,a1,b1,a2,b2,'#D00000'); }
+          if(Math.abs(tAB)>1e-9*mx){ const d=Math.sign(tAB)*sgn, [a1,b1]=Q(sgn*(half+5),-d*18), [a2,b2]=Q(sgn*(half+5),d*18); TL.arrow(g3,a1,b1,a2,b2,'#0000C0');
+            const [a3,b3]=Q(-d*18,sgn*(half+5)), [a4,b4]=Q(d*18,sgn*(half+5)); TL.arrow(g3,a3,b3,a4,b4,'#0000C0'); } }
+        TL.txt(g3,lab,cx0,h3-8,'#000'); };
+      elem(ex,0,sx,sy,t,`x, y: ${S}x ${isE?fmtNum(sx,'f',0):fq('stress',sx)}, ${S}y ${isE?fmtNum(sy,'f',0):fq('stress',sy)}, ${T}xy ${isE?fmtNum(t,'f',0):fq('stress',t)}`);
+      elem(ex2,th,sxp,syp,txp,`θ = ${fmtNum(th*180/Math.PI,'f',1)}°`); };
+    el.addEventListener('input',e=>{ if(e.target.name==='mm'){ isE=e.target.value==='e'; setIn(isE); } run(); }); el.addEventListener('change',e=>{ if(e.target.name==='mm'){ isE=e.target.value==='e'; setIn(isE); run(); } }); run(); }); }
+
+/* ---- Cauchy stress tensor (3D): stress vector on a plane, invariants, principal stresses and directions, Mohr's three circles,
+   octahedral and von Mises stresses, and the differential equilibrium check ∂σij/∂xj + bi = 0 for a stress field ---- */
+function eigSym3(S){ const [[a,b,c],[,d,e],[,,f]]=S, p1=b*b+c*c+e*e, q=(a+d+f)/3;
+  let ev; if(p1<=1e-30*Math.max(1,a*a+d*d+f*f)) ev=[a,d,f].sort((x,y)=>y-x);
+  else { const p2=(a-q)**2+(d-q)**2+(f-q)**2+2*p1, p=Math.sqrt(p2/6), B=[[a-q,b,c],[b,d-q,e],[c,e,f-q]].map(r=>r.map(v=>v/p));
+    const det=B[0][0]*(B[1][1]*B[2][2]-B[1][2]*B[2][1])-B[0][1]*(B[1][0]*B[2][2]-B[1][2]*B[2][0])+B[0][2]*(B[1][0]*B[2][1]-B[1][1]*B[2][0]);
+    const r=Math.max(-1,Math.min(1,det/2)), ph=Math.acos(r)/3, e1=q+2*p*Math.cos(ph), e3=q+2*p*Math.cos(ph+2*Math.PI/3); ev=[e1,3*q-e1-e3,e3]; }
+  const cr=(u,v)=>[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]], scale=Math.max(1,Math.abs(a),Math.abs(d),Math.abs(f),Math.abs(b),Math.abs(c),Math.abs(e));
+  const vec=l=>{ const A=[[a-l,b,c],[b,d-l,e],[c,e,f-l]], cs=[cr(A[0],A[1]),cr(A[0],A[2]),cr(A[1],A[2])];
+    let best=cs[0]; for(const v of cs) if(Math.hypot(...v)>Math.hypot(...best)) best=v; const n=Math.hypot(...best); return n>1e-9*scale*scale?best.map(v=>v/n):null; };
+  let vs=ev.map(vec);
+  if(vs.some(v=>!v)){ /* repeated roots: complete an orthonormal set */ const good=vs.filter(Boolean), ax=[[1,0,0],[0,1,0],[0,0,1]];
+    if(!good.length) vs=ax;
+    else { const u=good[0]; let w=good[1]; if(!w){ w=ax.find(x=>Math.abs(x[0]*u[0]+x[1]*u[1]+x[2]*u[2])<.9); const dt=w[0]*u[0]+w[1]*u[1]+w[2]*u[2]; w=w.map((x,i)=>x-dt*u[i]); const nw=Math.hypot(...w); w=w.map(x=>x/nw); }
+      const z=cr(u,w), pool=[w,z].filter(p=>!good.includes(p)); let k=0; vs=vs.map(v=>v||pool[k++]||z); } }
+  return {ev,vs}; }
+// A stress-field expression in x, y, z: numbers, operators and a few Math names only (it is the user's own input, run in their own page)
+function safeExpr(src){ const s=String(src).trim()||'0'; if(!/^[0-9xyz+\-*/^().,\s]*$/.test(s.replace(/\b(sin|cos|tan|exp|sqrt|log|abs|sinh|cosh|PI|E)\b/g,''))) return null;
+  const js=s.replace(/\^/g,'**').replace(/\b(sin|cos|tan|exp|sqrt|log|abs|sinh|cosh|PI|E)\b/g,'Math.$1');
+  try{ const f=new Function('x','y','z',`"use strict";return (${js});`); if(!isFinite(f(1.1,1.2,1.3))&&!isNaN(f(1.1,1.2,1.3))) return null; return f; }catch(e){ return null; } }
+function toolTensor(){ const su=U('stress');
+  const body=`<div class="tcols"><div class="tin"><div class="tg3">${['σx','σy','σz','τxy','τyz','τzx'].map((l,i)=>TL.inp('s'+i,l,['100','-50','30','40','0','-20'][i],su,64)).join('')}</div>
+    <p class="tnote" style="margin:4px 0 0">Plane (unit normal is normalized):</p><div class="tg3">${TL.inp('n0','nx','1','',54)}${TL.inp('n1','ny','1','',54)}${TL.inp('n2','nz','1','',54)}</div><div id="tOut" class="tout"></div></div>
+    <div><canvas id="tCv" style="width:380px;height:240px;display:block"></canvas>
+    <details class="tdet"><summary><b>Differential equilibrium of a stress field</b></summary><p class="tnote">Enter σ as functions of x, y, z (e.g. 3*x*y - y^2; ${su} with x, y, z in m) and the body force b (${su}/m). Derivatives by central differences at the point.</p>
+    <div class="tg3">${['σx','σy','σz','τxy','τyz','τzx'].map((l,i)=>`<label class="ti"><span>${l}</span><input data-k="f${i}" value="${['x^2*y','y^3/3','0','-x*y^2','0','0'][i]}" style="width:92px"></label>`).join('')}</div>
+    <div class="tg3">${['bx','by','bz'].map((l,i)=>`<label class="ti"><span>${l}</span><input data-k="b${i}" value="0" style="width:60px"></label>`).join('')}</div>
+    <div class="tg3">${TL.inp('px','x','1','m',50)}${TL.inp('py','y','2','m',50)}${TL.inp('pz','z','0','m',50)}</div><div id="tEq"></div></details></div></div>`;
+  toolDlg('Stress Tensor (3D)',body,el=>{ const run=()=>{ const s=[0,1,2,3,4,5].map(i=>fromD('stress',TL.read(el,'s'+i)));
+      const S=[[s[0],s[3],s[5]],[s[3],s[1],s[4]],[s[5],s[4],s[2]]], F=TL.sig;
+      const I1=s[0]+s[1]+s[2], I2=s[0]*s[1]+s[1]*s[2]+s[2]*s[0]-s[3]**2-s[4]**2-s[5]**2, I3=S[0][0]*(S[1][1]*S[2][2]-S[1][2]**2)-S[0][1]*(S[0][1]*S[2][2]-S[1][2]*S[0][2])+S[0][2]*(S[0][1]*S[1][2]-S[1][1]*S[0][2]);
+      const {ev,vs}=eigSym3(S), [p1,p2,p3]=ev, fu=fac('stress'), Iu=k=>`${su}${k>1?(k===2?'²':'³'):''}`;
+      let n=[0,1,2].map(i=>TL.read(el,'n'+i)); const nn=Math.hypot(...n)||1; n=n.map(v=>v/nn);
+      const t=S.map(r=>r[0]*n[0]+r[1]*n[1]+r[2]*n[2]), sn=t[0]*n[0]+t[1]*n[1]+t[2]*n[2], tn=Math.sqrt(Math.max(0,t.reduce((a,v)=>a+v*v,0)-sn*sn));
+      const vm=Math.sqrt(((p1-p2)**2+(p2-p3)**2+(p3-p1)**2)/2), toct=Math.sqrt((p1-p2)**2+(p2-p3)**2+(p3-p1)**2)/3, inv=(v,k)=>fmtNum(v/fu**k,'e',4);
+      el.querySelector('#tOut').innerHTML=`<h5 class="fbh">Stress vector on the plane n = (${n.map(v=>fmtNum(v,'f',4)).join(', ')})</h5><div class="feq"><div>t = σ·n = (${t.map(F).join(', ')})</div><div>σn = t·n = <b>${F(sn)}</b>, τn = √(|t|² − σn²) = <b>${F(tn)}</b></div></div>
+        <h5 class="fbh">Invariants and characteristic equation</h5><div class="feq"><div>I₁ = σx + σy + σz = ${inv(I1,1)} ${Iu(1)}</div><div>I₂ = σxσy + σyσz + σzσx − τxy² − τyz² − τzx² = ${inv(I2,2)} ${Iu(2)}</div><div>I₃ = det σ = ${inv(I3,3)} ${Iu(3)}</div>
+        <div>σ³ − I₁σ² + I₂σ − I₃ = 0</div></div>
+        <h5 class="fbh">Principal stresses (roots) and directions (eigenvectors)</h5><div class="feq">${ev.map((v,i)=>`<div>σ${i+1} = <b>${F(v)}</b>, n${i+1} = (${(vs[i]||[0,0,0]).map(x=>fmtNum(x,'f',4)).join(', ')})</div>`).join('')}
+        <div>τmax = (σ1 − σ3)/2 = <b>${F((p1-p3)/2)}</b>, on planes at 45° to n1 and n3</div><div>σoct = I₁/3 = ${F(I1/3)}, τoct = ⅓√((σ1−σ2)² + (σ2−σ3)² + (σ3−σ1)²) = ${F(toct)}</div><div>von Mises σv = √(½[(σ1−σ2)² + (σ2−σ3)² + (σ3−σ1)²]) = <b>${F(vm)}</b></div></div>`;
+      const [g,w,h]=TL.cv(el,'tCv'), lo=Math.min(p3,0), hi=Math.max(p1,0), span=Math.max(hi-lo,1e-12), sc=Math.min((w-30)/span,(h-30)/(span/2)*.5), ox=15-lo*sc, oy=h/2, X=v=>ox+v*sc;
+      g.strokeStyle='#999'; g.lineWidth=1; g.beginPath(); g.moveTo(5,oy); g.lineTo(w-5,oy); g.moveTo(X(0),5); g.lineTo(X(0),h-5); g.stroke(); TL.txt(g,'σ',w-8,oy-8,'#555'); TL.txt(g,'τ',X(0)+8,10,'#555');
+      g.fillStyle='rgba(0,0,255,.08)'; g.beginPath(); g.arc(X((p1+p3)/2),oy,(p1-p3)/2*sc,0,7); g.fill(); g.fillStyle='#fff'; for(const [a,b] of [[p1,p2],[p2,p3]]){ g.beginPath(); g.arc(X((a+b)/2),oy,(a-b)/2*sc,0,7); g.fill(); }
+      g.strokeStyle='#0000FF'; g.lineWidth=1.4; for(const [a,b] of [[p1,p3],[p1,p2],[p2,p3]]){ g.beginPath(); g.arc(X((a+b)/2),oy,Math.abs(a-b)/2*sc,0,7); g.stroke(); }
+      [[p1,'σ1'],[p2,'σ2'],[p3,'σ3']].forEach(([v,l],i)=>{ g.fillStyle='#D00000'; g.beginPath(); g.arc(X(v),oy,3,0,7); g.fill(); TL.txt(g,l,X(v),oy+(i===1?-10:12),'#D00000'); });
+      g.fillStyle='#C000C0'; g.beginPath(); g.arc(X(sn),oy-tn*sc,3.5,0,7); g.fill(); TL.txt(g,'(σn, τn)',X(sn)+6,oy-tn*sc-8,'#C000C0','left');
+      TL.txt(g,'Shaded: the possible (σn, τn) on all planes',w/2,h-8,'#555','center','middle','10px Arial');
+      const fs=[0,1,2,3,4,5].map(i=>safeExpr(el.querySelector(`[data-k="f${i}"]`).value)), bs=[0,1,2].map(i=>safeExpr(el.querySelector(`[data-k="b${i}"]`).value)), out=el.querySelector('#tEq');
+      if(fs.some(f=>!f)||bs.some(f=>!f)){ out.innerHTML='<p class="tnote">Only numbers, x, y, z, + − * / ^ ( ) and sin cos tan exp sqrt log abs PI are allowed.</p>'; return; }
+      const P=[TL.read(el,'px'),TL.read(el,'py'),TL.read(el,'pz')], hh=1e-4*Math.max(1,...P.map(Math.abs)), d=(f,k)=>{ const a=P.slice(), b=P.slice(); a[k]+=hh; b[k]-=hh; return (f(...a)-f(...b))/(2*hh); };
+      const idx=[[0,3,5],[3,1,4],[5,4,2]], nm=[['σx','τxy','τzx'],['τxy','σy','τyz'],['τzx','τyz','σz']], ax=['x','y','z'];
+      const rows=[0,1,2].map(i=>{ const terms=[0,1,2].map(j=>d(fs[idx[i][j]],j)), b=bs[i](...P), res=terms[0]+terms[1]+terms[2]+b; return {i,terms,b,res}; });
+      const scl=Math.max(1e-9,...rows.flatMap(r=>[...r.terms.map(Math.abs),Math.abs(r.b)])), z=v=>Math.abs(v)<1e-6*scl?0:v;
+      out.innerHTML=`<div class="feq">${rows.map(r=>`<div>∂${nm[r.i][0]}/∂x + ∂${nm[r.i][1]}/∂y + ∂${nm[r.i][2]}/∂z + b${ax[r.i]} = ${r.terms.map(v=>fmtNum(z(v),'f',4)).join(' + ')} + ${fmtNum(z(r.b),'f',4)} = <b>${fmtNum(z(r.res),'f',4)}</b></div>`).join('')}</div>
+        <p class="tnote">${rows.every(r=>!z(r.res))?'All three equations are satisfied at this point.':'Not satisfied at this point: this stress field is not in equilibrium with the body force.'}</p>`; };
+    el.addEventListener('input',run); run(); }); }
+
+/* ---- Failure criteria: von Mises, Tresca, Mohr-Coulomb and maximum normal stress for given principal stresses, the plane-stress
+   envelopes in the σ1-σ2 plane, and a check of the analyzed model (largest von Mises stress σv = √(σ² + 3τ²) in each member). ---- */
+function toolFailure(){ const su=U('stress');
+  const body=`<div class="tcols"><div class="tin"><div class="tg3">${TL.inp('s1','σ1',fmtNum(toD('stress',150e3),'f',2),su,64)}${TL.inp('s2','σ2',fmtNum(toD('stress',-60e3),'f',2),su,64)}${TL.inp('s3','σ3','0',su,64)}</div>
+    <div class="tg3">${TL.inp('sy','σY (yield)',fmtNum(toD('stress',250e3),'f',1),su,64)}${TL.inp('st','σt (brittle)',fmtNum(toD('stress',150e3),'f',1),su,64)}${TL.inp('sc','σc (brittle)',fmtNum(toD('stress',600e3),'f',1),su,64)}</div>
+    <p class="tnote">Principal stresses in any order (they are sorted). Ductile materials: von Mises and Tresca with the yield stress σY. Brittle materials: Mohr-Coulomb and maximum normal stress with the tensile and compressive strengths σt, σc (magnitudes).</p><div id="fOut" class="tout"></div></div>
+    <div><canvas id="fCv" style="width:360px;height:330px;display:block"></canvas><p class="tnote" style="text-align:center">Plane stress (σ3 = 0): von Mises ellipse (blue), Tresca hexagon (green), Mohr-Coulomb (orange).</p></div></div>
+    <h5 class="fbh">Check of the model (largest von Mises stress in each member)</h5><div id="fMod"></div>`;
+  toolDlg('Failure Criteria',body,el=>{ const run=()=>{ const g=k=>fromD('stress',TL.read(el,k)), ps=[g('s1'),g('s2'),g('s3')].sort((a,b)=>b-a), [s1,s2,s3]=ps, sY=Math.abs(g('sy')), st=Math.abs(g('st')), sc=Math.abs(g('sc')), F=TL.sig;
+      const vm=Math.sqrt(((s1-s2)**2+(s2-s3)**2+(s3-s1)**2)/2), tr=s1-s3, nv=sY/vm, nt=sY/tr;
+      const mc=s1>=0&&s3<=0?s1/st-s3/sc:s1>=0?s1/st:-s3/sc, nmc=1/mc, mn=Math.max(s1/st,-s3/sc), ok=n=>n>=1?'safe':'fails', fn=n=>isFinite(n)?fmtNum(n,'f',3):'∞';
+      el.querySelector('#fOut').innerHTML=`<div class="feq"><div>σ1 = ${F(s1)}, σ2 = ${F(s2)}, σ3 = ${F(s3)}</div></div>
+        <h5 class="fbh">von Mises (distortion energy)</h5><div class="feq"><div>σv = √(½[(σ1−σ2)² + (σ2−σ3)² + (σ3−σ1)²]) = <b>${F(vm)}</b></div><div>n = σY/σv = <b>${fn(nv)}</b> (${ok(nv)})</div></div>
+        <h5 class="fbh">Tresca (maximum shear stress)</h5><div class="feq"><div>τmax = (σ1 − σ3)/2 = ${F(tr/2)}; σ1 − σ3 = <b>${F(tr)}</b></div><div>n = σY/(σ1 − σ3) = <b>${fn(nt)}</b> (${ok(nt)})</div></div>
+        <h5 class="fbh">Mohr-Coulomb (brittle)</h5><div class="feq"><div>${s1>=0&&s3<=0?'σ1/σt − σ3/σc':s1>=0?'σ1/σt':'−σ3/σc'} = <b>${fmtNum(mc,'f',3)}</b> → n = <b>${fn(nmc)}</b> (${ok(nmc)})</div></div>
+        <h5 class="fbh">Maximum normal stress (Rankine)</h5><div class="feq"><div>max(σ1/σt, −σ3/σc) = ${fmtNum(mn,'f',3)} → n = <b>${fn(1/mn)}</b> (${ok(1/mn)})</div></div>`;
+      const [c,w,h]=TL.cv(el,'fCv'), R=Math.max(sY,st,sc,Math.abs(s1),Math.abs(s2))*1.15, k=Math.min(w,h)/(2*R), ox=w/2, oy=h/2, X=v=>ox+v*k, Y=v=>oy-v*k;
+      c.strokeStyle='#999'; c.lineWidth=1; c.beginPath(); c.moveTo(5,oy); c.lineTo(w-5,oy); c.moveTo(ox,5); c.lineTo(ox,h-5); c.stroke(); TL.txt(c,'σ1',w-12,oy-8,'#555'); TL.txt(c,'σ2',ox+12,10,'#555');
+      c.strokeStyle='#0000FF'; c.lineWidth=1.5; c.beginPath(); for(let i=0;i<=120;i++){ const t=i/120*2*Math.PI, a=Math.cos(t), b=Math.sin(t), r=sY/Math.sqrt(a*a-a*b+b*b); i?c.lineTo(X(r*a),Y(r*b)):c.moveTo(X(r*a),Y(r*b)); } c.stroke();
+      c.strokeStyle='#008000'; c.beginPath(); [[sY,0],[sY,sY],[0,sY],[-sY,0],[-sY,-sY],[0,-sY],[sY,0]].forEach(([a,b],i)=>i?c.lineTo(X(a),Y(b)):c.moveTo(X(a),Y(b))); c.stroke();
+      c.strokeStyle='#E07000'; c.beginPath(); [[st,0],[st,st],[0,st],[-sc,0],[-sc,-sc],[0,-sc],[st,0]].forEach(([a,b],i)=>i?c.lineTo(X(a),Y(b)):c.moveTo(X(a),Y(b))); c.stroke();
+      const pa=s3===0?[s1,s2]:ps.filter(v=>Math.abs(v)>0).slice(0,2); if(pa.length===2){ c.fillStyle='#D00000'; c.beginPath(); c.arc(X(pa[0]),Y(pa[1]),4,0,7); c.fill(); TL.txt(c,'(σ1, σ2)',X(pa[0])+6,Y(pa[1])-8,'#D00000','left'); }
+      // model check
+      const mo=el.querySelector('#fMod'), S=ensureRes(); if(!S){ mo.innerHTML='<p class="tnote">Analyze the model (it must be stable) to check its members.</p>'; return; }
+      const rows=[]; for(const r of S.recs){ let best={v:0,x:0,y:0}; const n=Math.max(8,Math.min(64,Math.ceil(r.L/.05)));
+        for(let i=0;i<=n;i++){ const x=r.L*i/n, s=sectionStress(r,x); const pts=s.taus||[{yf:s.cUp,tau:0},{yf:-s.cLow,tau:0},{yf:0,tau:s.As>0?r.V(x)/s.As:0}];
+          for(const p of pts){ const sg=s.sig(p.yf), v=Math.sqrt(sg*sg+3*p.tau*p.tau); if(v>best.v) best={v,x,y:p.yf,s:sg,t:p.tau}; } }
+        rows.push({r,...best}); }
+      rows.sort((a,b)=>b.v-a.v);
+      mo.innerHTML=`<table class="mt fbt"><tr><th>Member</th><th>σv max (${su})</th><th>at x</th><th>fiber y</th><th>σ, τ there</th><th>σv/σY</th></tr>${rows.map(o=>`<tr><td>${o.r.m.id}</td><td>${fq('stress',o.v)}</td><td>${fqu('len',o.x)}</td><td>${fqu('sec',o.y)}</td><td>${fq('stress',o.s||0)}, ${fq('stress',o.t||0)}</td><td class="${o.v>sY?'tT':''}">${fmtNum(o.v/sY,'f',3)}</td></tr>`).join('')}</table>
+        <p class="tnote">σ = N/A − M·y/I and τ = V·Q/(I·b) at each fiber of each section (every ${'≈'}5 cm along the member); σv = √(σ² + 3τ²) is the von Mises stress of that plane-stress state. Ratio above 1 (red): yields.</p>`; };
+    el.addEventListener('input',run); run(); }); }
+
+/* ---- Composite section (geometry of masses): parts with holes, centroid, Ix, Iy, Ixy by the parallel-axis theorem, principal axes ----
+   Parts: rectangle b×h (x, y = lower-left corner), circle d (x, y = center), right triangle b×h (right angle at x, y, legs along +x and +y),
+   semicircle d (flat side down, x, y = center of the flat side). Lengths in section units; a hole subtracts its area. */
+const CS_TYPES={rect:['Rectangle','b','h'],circ:['Circle','d',''],tri:['Right triangle','b','h'],semi:['Semicircle','d','']};
+function csProps(t,a,b){ switch(t){
+  case 'rect': return {A:a*b,cx:a/2,cy:b/2,Ix:a*b**3/12,Iy:b*a**3/12,Ixy:0};
+  case 'circ': return {A:Math.PI*a*a/4,cx:0,cy:0,Ix:Math.PI*a**4/64,Iy:Math.PI*a**4/64,Ixy:0};
+  case 'tri': return {A:a*b/2,cx:a/3,cy:b/3,Ix:a*b**3/36,Iy:b*a**3/36,Ixy:-a*a*b*b/72};
+  case 'semi': { const r=a/2; return {A:Math.PI*r*r/2,cx:0,cy:4*r/(3*Math.PI),Ix:(Math.PI/8-8/(9*Math.PI))*r**4,Iy:Math.PI*r**4/8,Ixy:0}; } } }
+function toolComposite(){ const lu=U('sec');
+  const parts=ui.csParts||(ui.csParts=[{t:'rect',a:200,b:20,x:-100,y:280,hole:false},{t:'rect',a:20,b:280,x:-10,y:0,hole:false},{t:'circ',a:10,b:0,x:0,y:140,hole:true}]);
+  const body=`<div class="tcols"><div class="tin"><table class="mt fbt" id="csT"></table><div class="btnrow" style="justify-content:flex-start;margin:4px 0"><select id="csAdd">${Object.entries(CS_TYPES).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')}</select><button class="pb" data-cs="add">Add part</button><button class="pb" data-cs="sec">Create section</button></div>
+    <p class="tnote">Dimensions and positions in ${lu}. Rectangle: (x, y) lower-left corner. Circle: center. Right triangle: the right-angle corner, legs b along +x and h along +y. Semicircle: center of the flat side, flat side down.</p><div id="csOut" class="tout"></div></div>
+    <div><canvas id="csCv" style="width:360px;height:360px;display:block"></canvas></div></div>`;
+  toolDlg('Composite Section',body,el=>{ const tab=()=>{ el.querySelector('#csT').innerHTML=`<tr><th>Part</th><th>${CS_TYPES.rect[1]}/d</th><th>h</th><th>x</th><th>y</th><th>Hole</th><th></th></tr>`+parts.map((p,i)=>`<tr><td>${i+1}. ${CS_TYPES[p.t][0]}</td>${['a','b','x','y'].map(k=>`<td>${k==='b'&&!CS_TYPES[p.t][2]?'':`<input data-ci="${i}" data-cf="${k}" value="${p[k]}" style="width:52px">`}</td>`).join('')}<td><input type="checkbox" data-ci="${i}" data-cf="hole" ${p.hole?'checked':''}></td><td><button class="pb" style="min-width:0;padding:0 6px" data-cs="del:${i}">✕</button></td></tr>`).join(''); };
+    const calc=()=>{ const f=fac('sec'), rows=parts.map((p,i)=>{ const q=csProps(p.t,p.a*f,p.b*f), s=p.hole?-1:1, x0=p.x*f, y0=p.y*f; return {i,p,s,A:s*q.A,xc:x0+q.cx,yc:y0+q.cy,Ix:s*q.Ix,Iy:s*q.Iy,Ixy:s*q.Ixy}; });
+      const A=rows.reduce((a,r)=>a+r.A,0), Sx=rows.reduce((a,r)=>a+r.A*r.yc,0), Sy=rows.reduce((a,r)=>a+r.A*r.xc,0), xb=A?Sy/A:0, yb=A?Sx/A:0;
+      rows.forEach(r=>{ r.dx=r.xc-xb; r.dy=r.yc-yb; });
+      const Ix=rows.reduce((a,r)=>a+r.Ix+r.A*r.dy**2,0), Iy=rows.reduce((a,r)=>a+r.Iy+r.A*r.dx**2,0), Ixy=rows.reduce((a,r)=>a+r.Ixy+r.A*r.dx*r.dy,0);
+      const C=(Ix+Iy)/2, R=Math.hypot((Ix-Iy)/2,Ixy), I1=C+R, I2=C-R, tp=.5*Math.atan2(-2*Ixy,Ix-Iy);
+      return {rows,A,Sx,Sy,xb,yb,Ix,Iy,Ixy,I1,I2,tp,f}; };
+    const run=()=>{ const c=calc(), L=v=>fq('sec',v), Ar=v=>fq('area',v), In=v=>fq('inertia',v), au=U('area'), iu=U('inertia');
+      el.querySelector('#csOut').innerHTML=`<table class="mt fbt"><tr><th>Part</th><th>A (${au})</th><th>x̄ᵢ</th><th>ȳᵢ</th><th>Ixᵢ (own)</th><th>dy</th><th>A·dy²</th><th>Iyᵢ (own)</th><th>dx</th><th>A·dx²</th></tr>
+        ${c.rows.map(r=>`<tr><td>${r.i+1}${r.p.hole?' (hole)':''}</td><td>${Ar(r.A)}</td><td>${L(r.xc)}</td><td>${L(r.yc)}</td><td>${In(r.Ix)}</td><td>${L(r.dy)}</td><td>${In(r.A*r.dy**2)}</td><td>${In(r.Iy)}</td><td>${L(r.dx)}</td><td>${In(r.A*r.dx**2)}</td></tr>`).join('')}
+        <tr><td><b>Σ</b></td><td><b>${Ar(c.A)}</b></td><td colspan="8"></td></tr></table>
+        <div class="feq"><div>x̄ = ΣAᵢx̄ᵢ/ΣAᵢ = ${fmtNum(c.Sy/c.f**3,'e',4)} ${lu}³ / ${fmtNum(c.A/c.f**2,'e',4)} ${lu}² = <b>${L(c.xb)} ${lu}</b>, ȳ = ΣAᵢȳᵢ/ΣAᵢ = <b>${L(c.yb)} ${lu}</b></div>
+        <div>Ix = Σ(Ixᵢ + Aᵢ·dyᵢ²) = <b>${In(c.Ix)} ${iu}</b></div><div>Iy = Σ(Iyᵢ + Aᵢ·dxᵢ²) = <b>${In(c.Iy)} ${iu}</b></div><div>Ixy = Σ(Ixyᵢ + Aᵢ·dxᵢ·dyᵢ) = <b>${In(c.Ixy)} ${iu}</b></div>
+        <div>I1,2 = (Ix+Iy)/2 ± √(((Ix−Iy)/2)² + Ixy²) = <b>${In(c.I1)}</b>, <b>${In(c.I2)}</b> ${iu}</div><div>tan2θp = −2Ixy/(Ix − Iy) → θp = <b>${fmtNum(c.tp*180/Math.PI,'f',2)}°</b> (axis of I1 from x, counterclockwise)</div></div>
+        <p class="tnote">Axes through the centroid: x horizontal, y up. dy = ȳᵢ − ȳ, dx = x̄ᵢ − x̄. Own moments of inertia about each part's centroid (a hole is negative).</p>`;
+      const [g,w,h]=TL.cv(el,'csCv'); let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity; const box=(a,b)=>{ x0=Math.min(x0,a); x1=Math.max(x1,a); y0=Math.min(y0,b); y1=Math.max(y1,b); };
+      const shp=p=>{ const f=c.f, a=p.a*f, b=p.b*f, x=p.x*f, y=p.y*f; switch(p.t){ case 'rect': return [[x,y],[x+a,y],[x+a,y+b],[x,y+b]]; case 'tri': return [[x,y],[x+a,y],[x,y+b]];
+        case 'circ': return [...Array(48)].map((_,k)=>[x+a/2*Math.cos(k/48*2*Math.PI),y+a/2*Math.sin(k/48*2*Math.PI)]); case 'semi': return [...Array(25)].map((_,k)=>[x+a/2*Math.cos(k/24*Math.PI),y+a/2*Math.sin(k/24*Math.PI)]); } };
+      const polys=parts.map(p=>({p,pts:shp(p)})); polys.forEach(o=>o.pts.forEach(q=>box(...q))); const span=Math.max(x1-x0,y1-y0)||1, k=(Math.min(w,h)-50)/span, ox=w/2-(x0+x1)/2*k, oy=h/2+(y0+y1)/2*k, X=v=>ox+v*k, Y=v=>oy-v*k;
+      for(const o of polys){ g.beginPath(); o.pts.forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))); g.closePath(); g.fillStyle=o.p.hole?'#FFFFFF':'rgba(0,0,255,.18)'; g.fill(); g.strokeStyle=o.p.hole?'#D00000':'#0000FF'; g.lineWidth=1.2; g.stroke(); }
+      polys.forEach((o,i)=>{ const r=c.rows[i]; TL.txt(g,String(i+1),X(r.xc),Y(r.yc),'#333'); });
+      g.strokeStyle='#C000C0'; g.setLineDash([5,3]); g.beginPath(); g.moveTo(5,Y(c.yb)); g.lineTo(w-5,Y(c.yb)); g.moveTo(X(c.xb),5); g.lineTo(X(c.xb),h-5); g.stroke(); g.setLineDash([]);
+      const L2=Math.min(w,h)*.42, ct=Math.cos(c.tp), st=Math.sin(c.tp); g.strokeStyle='#E07000'; g.beginPath(); g.moveTo(X(c.xb)-ct*L2,Y(c.yb)+st*L2); g.lineTo(X(c.xb)+ct*L2,Y(c.yb)-st*L2); g.moveTo(X(c.xb)+st*L2,Y(c.yb)+ct*L2); g.lineTo(X(c.xb)-st*L2,Y(c.yb)-ct*L2); g.stroke();
+      g.fillStyle='#C000C0'; g.beginPath(); g.arc(X(c.xb),Y(c.yb),4,0,7); g.fill(); TL.txt(g,'C',X(c.xb)+8,Y(c.yb)+10,'#C000C0','left'); TL.txt(g,'1',X(c.xb)+ct*L2+8,Y(c.yb)-st*L2,'#E07000');
+      el._cs=c; };
+    tab(); run();
+    el.addEventListener('input',e=>{ const i=e.target.dataset.ci; if(i==null) return; const p=parts[+i], k=e.target.dataset.cf; if(k==='hole') p.hole=e.target.checked; else { const v=pnum(e.target.value); if(v==null) return; p[k]=v; } run(); });
+    el.addEventListener('change',e=>{ if(e.target.dataset.cf==='hole'){ parts[+e.target.dataset.ci].hole=e.target.checked; run(); } });
+    el.addEventListener('click',e=>{ const b=e.target.closest('[data-cs]'); if(!b) return; const [a,i]=b.dataset.cs.split(':');
+      if(a==='add'){ const t=el.querySelector('#csAdd').value; parts.push({t,a:t==='rect'||t==='tri'?100:100,b:t==='rect'||t==='tri'?50:0,x:0,y:0,hole:false}); tab(); run(); }
+      if(a==='del'){ parts.splice(+i,1); tab(); run(); }
+      if(a==='sec'){ const c=el._cs; if(!(c&&c.A>0&&c.Ix>0)) return; let y0=Infinity,y1=-Infinity; parts.forEach(p=>{ const f=c.f, b=p.b*f, a=p.a*f, y=p.y*f; const lo=p.t==='circ'?y-a/2:y, hi=p.t==='circ'?y+a/2:p.t==='semi'?y+a/2:y+b; if(!p.hole){ y0=Math.min(y0,lo); y1=Math.max(y1,hi); } });
+        commit(()=>{ const it=newItem('sec',{name:`Composite ${L_('sec').length+1}`,type:'integral',orient:0,p:{A:c.A,As:c.A,I:c.Ix,d:y1-y0,yb:c.yb-y0}}); M.cur.sec=it.id; ui.panel='sec'; });
+        closeDlg(); ui.msg=`Section "${item('sec',M.cur.sec).name}" created with A, I about the horizontal centroidal axis, d and ȳ; As = A (edit it in the Section panel).`; renderAll(); } }); }); }
+
+/* ---- Axial deformation of each member: σ = N/A, ε = σ/E + α·ΔT, δ = ∫N/(EA)dx + α·ΔT·L, compared with the elongation u_j − u_i from the
+   analysis (statically indeterminate cases included: the stiffness method enforces compatibility). ΔT is the temperature change at the
+   centroid of a thermal load. ---- */
+function toolAxial(){ const S=ensureRes(); if(!S){ msgBox('Axial Deformation\n\nThe model must be analyzed first (it is unstable or incomplete).'); return; }
+  const su=U('stress'), du=U('disp');
+  const rows=S.recs.map(r=>{ const m=r.m, lt=item('therm',m.ld.t), al=r.mat.alpha||0, Tcg=lt?(lt.tb||0)+((lt.tt||0)-(lt.tb||0))*(r.P.yb/r.P.d||0):0;
+    const Ni=r.N(0), Nj=r.N(r.L), NL=r.L/6*(Ni+4*r.N(r.L/2)+Nj);   /* Simpson: exact, N(x) is at most quadratic */
+    const EA=r.mat.E*r.P.A, dM=NL/EA, dT=al*Tcg*r.L, dU=r.ul[3]-r.ul[0], sig=Ni/r.P.A;
+    const ref=Math.max(Math.abs(dM),Math.abs(dT),Math.abs(dU),1e-300), z=v=>Math.abs(v)<1e-9*ref?0:v;   /* round-off of a restrained elongation prints as 0 */
+    return {r,Ni,Nj,sig,eps:z(sig/r.mat.E+al*Tcg),Tcg,al,EA,dM,dT,dU,z,rigid:m.rigid||!m.axial}; });
+  const body=`<p style="margin:0">δ is the change in length of each member. N(x) varies only under an axial distributed load; then ∫N dx is used instead of N·L.</p>
+    <table class="mt fbt"><tr><th>Member</th><th>N (${U('force')})</th><th>σ = N/A (${su})</th><th>ε</th><th>N·L/(E·A) (${du})</th><th>α·ΔT·L (${du})</th><th>δ (${du})</th><th>u<sub>j</sub> − u<sub>i</sub> (${du})</th></tr>
+    ${rows.map(o=>`<tr><td>${o.r.m.id}${o.rigid?'*':''}</td><td>${fq('force',o.Ni)}${Math.abs(o.Ni-o.Nj)>1e-9*Math.max(1,Math.abs(o.Ni))?` → ${fq('force',o.Nj)}`:''}</td><td class="${o.sig>1e-9?'tT':o.sig<-1e-9?'tC':''}">${fq('stress',o.sig)}</td><td>${fmtNum(o.eps,'e',3)}</td><td>${fq('disp',o.dM)}</td><td>${fq('disp',o.dT)}</td><td><b>${fq('disp',o.z(o.dM+o.dT))}</b></td><td>${fq('disp',o.z(o.dU))}</td></tr>`).join('')}</table>
+    <p class="tnote">ε = σ/E + α·ΔT (ΔT at the centroid). The last column comes from the nodal displacements of the analysis; it equals δ, which is the compatibility condition the stiffness method enforces (in statically indeterminate structures the restrained thermal elongation becomes stress: σ = N/A ≠ 0 with δ smaller than α·ΔT·L).${rows.some(o=>o.rigid)?' * Rigid member or axial deformation off: its EA is made very large, so δ ≈ 0.':''}</p>
+    <h5 class="fbh">Detail</h5><select id="axSel">${rows.map((o,i)=>`<option value="${i}">Member ${o.r.m.id}</option>`).join('')}</select><div id="axD" class="feq"></div>`;
+  toolDlg('Axial Deformation',body,el=>{ const show=()=>{ const o=rows[+el.querySelector('#axSel').value]; if(!o) return; const r=o.r;
+      el.querySelector('#axD').innerHTML=`<div>A = ${fqu('area',r.P.A)}, E = ${fqu('E',r.mat.E)}, L = ${fqu('len',r.L)}, EA = ${fmtNum(o.EA,'e',4)} kN</div>
+        <div>σ = N/A = ${fqu('force',o.Ni)} / ${fqu('area',r.P.A)} = <b>${fqu('stress',o.sig)}</b></div>
+        <div>δ<sub>N</sub> = N·L/(E·A) = ${fqu('force',o.Ni)}·${fqu('len',r.L)} / ${fmtNum(o.EA,'e',4)} kN = <b>${fqu('disp',o.dM)}</b></div>
+        <div>δ<sub>T</sub> = α·ΔT·L = ${fmtNum(o.al,'e',3)}·${fmtNum(o.Tcg,'f',2)} °C·${fqu('len',r.L)} = <b>${fqu('disp',o.dT)}</b></div>
+        <div>δ = δ<sub>N</sub> + δ<sub>T</sub> = <b>${fqu('disp',o.dM+o.dT)}</b>; from the displacements: u<sub>j</sub> − u<sub>i</sub> = ${fqu('disp',o.dU)}</div>
+        <div>ε = δ/L = ${fmtNum((o.dM+o.dT)/r.L,'e',4)}${o.Tcg?`; restrained thermal stress part: E·(ε − α·ΔT) = ${fqu('stress',r.mat.E*((o.dM+o.dT)/r.L-o.al*o.Tcg))}`:''}</div>`; };
+    el.querySelector('#axSel').onchange=show; show(); }); }
+
+/* ---- Deflection by double integration: EI·v″(x) = M(x) along a member (Euler-Bernoulli), v toward the upper fibers, x from node i.
+   M(x) is the member's cubic; integrating twice gives v(x) up to C1·x + C2, found from the end deflections v(0) and v(L) of the analysis
+   (for a simply supported span both are zero). The slope at the start then follows and is checked against the analysis. ---- */
+function toolDeflection(){ const S=ensureRes(); if(!S){ msgBox('Deflection\n\nThe model must be analyzed first (it is unstable or incomplete).'); return; }
+  const pre=ui.pq&&S.rm.get(ui.pq.mid)?ui.pq.mid:(ui.fbd&&ui.fbd.t==='m'?ui.fbd.id:S.recs[0].m.id);
+  const body=`<label class="ck">Member <select id="dfSel">${S.recs.map(r=>`<option value="${r.m.id}"${r.m.id===pre?' selected':''}>${r.m.id} (node ${r.m.i} → ${r.m.j})</option>`).join('')}</select></label><div id="dfOut"></div><canvas id="dfCv" style="width:100%;height:200px;display:block;margin-top:6px"></canvas>`;
+  toolDlg('Deflection by Double Integration',body,el=>{ const run=()=>{ const r=S.rm.get(+el.querySelector('#dfSel').value); if(!r) return; const L=r.L, EI=r.EI, sg=r.sg, P=memPolys(r), c=P.M;
+      const vi=sg*r.ul[1], vj=sg*r.ul[4], thi=sg*r.ul[2], thj=sg*r.ul[5];   /* toward the upper fibers; rotations of the member ends */
+      const I1=[0,c[0],c[1]/2,c[2]/3,c[3]/4], I2=[0,0,c[0]/2,c[1]/6,c[2]/12,c[3]/20], ev=(p,x)=>p.reduce((a,k,i)=>a+k*x**i,0);
+      const C2=EI*vi, C1=(EI*vj-ev(I2,L)-C2)/L, v=x=>(ev(I2,x)+C1*x+C2)/EI, th=x=>(ev(I1,x)+C1)/EI;
+      const ref=Math.max(...r.q.map(Math.abs),1e-12), pt=(cs,cat)=>polyText(cs,null,L,ref*L**2), fm=v=>fqu('disp',v), fr=v=>`${fmtNum(toD('rot',v),'e',3)} ${U('rot')}`;
+      let xm=null, vm=0; for(let k=0;k<=400;k++){ const x=L*k/400, vv=v(x); if(Math.abs(vv)>Math.abs(vm)){ vm=vv; xm=x; } }
+      const sh=r.phi>1e-9, warn=(m=>m.rigid?'Rigid member: EI is made very large, so the deflection is that of a rigid body.':'')(r.m);
+      el.querySelector('#dfOut').innerHTML=`<div class="feq"><div>EI = E·I = ${fmtNum(EI,'e',4)} kN·m², L = ${fqu('len',L)}</div>
+        <div>EI·v″(x) = M(x) = ${pt(c)}</div>
+        <div>EI·v′(x) = ${pt(I1,'force')} + C₁</div><div>EI·v(x) = ${pt(I2,'force')} + C₁·x + C₂ &nbsp; (coefficients in kN·m units, x in m)</div>
+        <div>v(0) = ${fm(vi)} → C₂ = EI·v(0) = ${fmtNum(C2,'e',4)} kN·m³</div>
+        <div>v(L) = ${fm(vj)} → C₁ = [EI·v(L) − (EI·v(L) without C) − C₂]/L = ${fmtNum(C1,'e',4)} kN·m²</div>
+        <div>Slope at the start: v′(0) = C₁/EI = <b>${fr(th(0))}</b> (analysis: ${fr(thi)}); at the end: v′(L) = <b>${fr(th(L))}</b> (analysis: ${fr(thj)})</div>
+        <div>Largest deflection in the member: <b>${fm(vm)}</b> at x = ${fqu('len',xm)}${Math.abs(v(L/2))>0?`; at midspan v(L/2) = ${fm(v(L/2))}`:''}</div></div>
+        <p class="tnote">v is measured toward the member's upper fibers (Ftool's convention); the polynomial terms use x in metres and kN. Displacements of the ends come from the analysis (axial shortening and rigid-body rotation of the member included).${sh?' This member includes shear deformation (Timoshenko), which double integration of M/EI leaves out, so the slopes differ slightly.':''} ${warn}</p>`;
+      const [g,w,h]=TL.cv(el,'dfCv'), n=200, ys=[...Array(n+1)].map((_,k)=>v(L*k/n)), mx=Math.max(...ys.map(Math.abs),1e-30), X=x=>20+x/L*(w-40), Y=y=>h/2-y/mx*(h/2-24);
+      g.strokeStyle='#666600'; g.lineWidth=2; g.beginPath(); g.moveTo(X(0),h/2); g.lineTo(X(L),h/2); g.stroke();
+      g.strokeStyle='#0000FF'; g.lineWidth=1.5; g.beginPath(); ys.forEach((y,k)=>k?g.lineTo(X(L*k/n),Y(y)):g.moveTo(X(0),Y(y))); g.stroke();
+      if(xm!=null){ g.fillStyle='#D00000'; g.beginPath(); g.arc(X(xm),Y(vm),3.5,0,7); g.fill(); TL.txt(g,fm(vm),X(xm),Y(vm)+(vm>0?-10:12),'#D00000'); }
+      TL.txt(g,`node ${r.m.i}`,X(0),h-8,'#555','left'); TL.txt(g,`node ${r.m.j}`,X(L),h-8,'#555','right'); TL.txt(g,'v(x), scaled',w/2,10,'#555'); };
+    el.querySelector('#dfSel').onchange=run; run(); }); }
+
+/* ---- Torsion: circular shafts in segments (solid or hollow), τmax = T·c/J, φ = T·L/(G·J), J = π(d⁴ − di⁴)/32; and thin-walled closed
+   sections: q = T/(2·Am), τ = q/t, φ = T·L/(4·Am²·G)·Σ(s/t) ---- */
+function toolTorsion(){ const tu=U('moment'), lu=U('len'), su=U('sec'), gu=U('E');
+  const segs=ui.tsSegs||(ui.tsSegs=[{T:2,L:1,d:60,di:0,G:80e6},{T:-1,L:.8,d:40,di:0,G:80e6}]);
+  const body=`<div class="tcols"><div class="tin"><h5 class="fbh" style="margin-top:0">Circular shaft (segments from end A)</h5><table class="mt fbt" id="tsT"></table><div class="btnrow" style="justify-content:flex-start;margin:4px 0"><button class="pb" data-ts="add">Add segment</button></div>
+    <p class="tnote">T: internal torque in the segment (${tu}), positive by the right-hand rule along the shaft axis. di = 0 for a solid shaft.</p><div id="tsOut" class="tout"></div></div>
+    <div><canvas id="tsCv" style="width:360px;height:220px;display:block"></canvas>
+    <h5 class="fbh">Thin-walled closed section</h5><div class="tg3">${TL.inp('tT','T','2',tu,60)}${TL.inp('tA','Am','0.02','m²',60)}${TL.inp('tL','L','1',lu,60)}${TL.inp('tG','G',fmtNum(toD('E',80e6),'f',0),gu,70)}</div>
+    <p class="tnote">Walls: length s (mm) and thickness t (mm), one pair per line, e.g. 200 10. Am: area enclosed by the wall mid-line.</p><textarea id="twW" style="width:100%;height:60px;font:12px Consolas,monospace">200 10\n100 6\n200 10\n100 6</textarea><div id="twOut" class="feq"></div></div></div>`;
+  toolDlg('Torsion',body,el=>{ const tab=()=>{ el.querySelector('#tsT').innerHTML=`<tr><th>Seg.</th><th>T (${tu})</th><th>L (${lu})</th><th>d (${su})</th><th>di (${su})</th><th>G (${gu})</th><th></th></tr>`+segs.map((s,i)=>`<tr><td>${i+1}</td>${[['T','moment'],['L','len'],['d','sec'],['di','sec'],['G','E']].map(([k,cat])=>`<td><input data-ti="${i}" data-tf="${k}" data-tc="${cat}" value="${fmtNum(toD(cat,k==='d'||k==='di'?s[k]/1000:s[k]),'f',k==='G'?0:3).replace(/\.?0+$/,'')||'0'}" style="width:58px"></td>`).join('')}<td><button class="pb" style="min-width:0;padding:0 6px" data-ts="del:${i}">✕</button></td></tr>`).join(''); };
+    const run=()=>{ let tot=0; const out=segs.map((s,i)=>{ const d=s.d/1000, di=s.di/1000, J=Math.PI*(d**4-di**4)/32, tau=s.T*(d/2)/J, phi=s.T*s.L/(s.G*J); tot+=phi; return {i,s,d,di,J,tau,phi,tauIn:di>0?s.T*(di/2)/J:0}; });
+      el.querySelector('#tsOut').innerHTML=out.map(o=>`<div class="feq"><div><b>Segment ${o.i+1}</b>: J = π(d⁴ − di⁴)/32 = ${fqu('inertia',o.J)}</div><div>τmax = T·(d/2)/J = ${fqu('moment',o.s.T)}·${fqu('sec',o.d/2)}/J = <b>${fqu('stress',o.tau)}</b>${o.di>0?`, at the inner wall ${fqu('stress',o.tauIn)}`:''}</div><div>φ = T·L/(G·J) = <b>${fmtNum(o.phi,'e',4)} rad</b> (${fmtNum(o.phi*180/Math.PI,'f',3)}°)</div></div>`).join('')+`<div class="feq"><div>Angle of twist of the end B relative to A: φ = Σφᵢ = <b>${fmtNum(tot,'e',4)} rad</b> (${fmtNum(tot*180/Math.PI,'f',3)}°)</div><div>Largest shear stress: <b>${fqu('stress',Math.max(...out.map(o=>Math.abs(o.tau))))}</b></div></div>`;
+      const [g,w,h]=TL.cv(el,'tsCv'), Lt=segs.reduce((a,s)=>a+s.L,0)||1, Tm=Math.max(...segs.map(s=>Math.abs(s.T)),1e-12), X=x=>20+x/Lt*(w-40), Y=t=>h/2-t/Tm*(h/2-30);
+      g.strokeStyle='#999'; g.beginPath(); g.moveTo(X(0),h/2); g.lineTo(X(Lt),h/2); g.stroke(); let x=0; g.fillStyle='rgba(0,0,255,.15)'; g.strokeStyle='#0000FF';
+      segs.forEach((s,i)=>{ g.beginPath(); g.rect(X(x),Math.min(Y(s.T),h/2),X(x+s.L)-X(x),Math.abs(Y(s.T)-h/2)); g.fill(); g.stroke(); TL.txt(g,fq('moment',s.T),(X(x)+X(x+s.L))/2,Y(s.T)+(s.T>=0?-9:11),'#0000FF'); x+=s.L; });
+      TL.txt(g,`Torque diagram (${tu})`,w/2,12,'#555'); TL.txt(g,'A',X(0),h-10,'#555'); TL.txt(g,'B',X(Lt),h-10,'#555');
+      const T=fromD('moment',TL.read(el,'tT')), Am=TL.read(el,'tA'), Lw=fromD('len',TL.read(el,'tL')), G=fromD('E',TL.read(el,'tG')), walls=el.querySelector('#twW').value.split(/\n/).map(l=>l.trim().split(/[\s;,]+/).map(Number)).filter(a=>a.length>=2&&a[0]>0&&a[1]>0).map(([s,t])=>({s:s/1000,t:t/1000}));
+      if(!walls.length||!(Am>0)){ el.querySelector('#twOut').innerHTML='<div>Enter Am and at least one wall.</div>'; return; }
+      const q=T/(2*Am), sst=walls.reduce((a,w2)=>a+w2.s/w2.t,0), phi=T*Lw/(4*Am*Am*G)*sst, tmin=Math.min(...walls.map(w2=>w2.t));
+      el.querySelector('#twOut').innerHTML=`<div>q = T/(2·Am) = ${fqu('moment',T)}/(2·${fmtNum(Am,'f',4)} m²) = <b>${fmtNum(toD('force',q)/toD('len',1),'f',2)} ${U('force')}/${lu}</b></div>${walls.map((w2,i)=>`<div>wall ${i+1}: τ = q/t = <b>${fqu('stress',q/w2.t)}</b></div>`).join('')}
+        <div>Σ s/t = ${fmtNum(sst,'f',2)}; φ = T·L/(4·Am²·G)·Σ s/t = <b>${fmtNum(phi,'e',4)} rad</b> (${fmtNum(phi*180/Math.PI,'f',3)}°); largest τ in the thinnest wall: ${fqu('stress',q/tmin)}</div>`; };
+    tab(); run();
+    el.addEventListener('input',e=>{ const i=e.target.dataset.ti; if(i!=null){ const v=pnum(e.target.value); if(v==null) return; const k=e.target.dataset.tf, cat=e.target.dataset.tc; let val=fromD(cat,v); if(k==='d'||k==='di') val*=1000; segs[+i][k]=val; } run(); });
+    el.addEventListener('click',e=>{ const b=e.target.closest('[data-ts]'); if(!b) return; const [a,i]=b.dataset.ts.split(':'); if(a==='add') segs.push({...segs[segs.length-1]||{T:1,L:1,d:50,di:0,G:80e6}}); if(a==='del'&&segs.length>1) segs.splice(+i,1); tab(); run(); }); }); }
+
+
 /* ================= Dialogs & files ================= */
-function dlg(title,body,onMount){ $('#dlgT').textContent=title; $('#dlgB').innerHTML=body; $('#ov').hidden=false; if(onMount) onMount($('#dlgB')); const f=$('#dlgB').querySelector('input,select,textarea,button'); if(f) f.focus(); }
+function dlg(title,body,onMount){ $('.dlg').classList.remove('wide'); $('#dlgT').textContent=title; $('#dlgB').innerHTML=body; $('#ov').hidden=false; if(onMount) onMount($('#dlgB')); const f=$('#dlgB').querySelector('input,select,textarea,button'); if(f) f.focus(); }
 function closeDlg(){ $('#ov').hidden=true; }
 $('#ov').addEventListener('click',e=>{ if(e.target===$('#ov')||e.target.closest('[data-close]')) closeDlg(); });
 // Credits, laid out like Ftool's: name, version, credits, link, date, disclaimer; Close and a language button.
