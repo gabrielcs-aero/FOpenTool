@@ -195,7 +195,7 @@ member line: id hi hj rigid shear axial;  6 indices (1-based, 0 = none): materia
 4. ~~Decode the .ftl format and write .ftl~~ (done in session 3; only load trains remain, decode them together with item 5).
 5. ~~Load trains and envelopes~~ (done in session 4), ~~influence-line display of critical train positions~~ (session 5). Load cases and combinations are disabled in Ftool 4.01 free, so they come later as an improvement.
 6. ~~Profile tables~~ (session 5). ~~Girder section, section parameters, mirror/rotate buttons~~ (done in session 4).
-7. ~~Mouse-driven transformations~~ (session 5, from the manual). Left: transformations in results modes (Ftool allows them in diagram, deformed and influence-line modes, with Maintain topology forced, results updated live; not in envelope mode). The animated deformed shape is not in Ftool 4.01 (the manual never mentions it): an improvement for later.
+7. ~~Mouse-driven transformations~~ (session 5, from the manual). ~~Transformations in results modes~~ (session 5: in diagram, deformed and influence-line modes the Transform panel opens without leaving the results, clicks select, Maintain topology is forced and Leave original disabled, results are recomputed after each transformation; not in envelope mode, as in Ftool). The animated deformed shape is not in Ftool 4.01 (the manual never mentions it): an improvement for later.
 8. Export Model Screen formats: ~~SVG and DXF~~ (session 5; FOpenTool's own writers, the content of Ftool's files was not compared). PDF, EPS/PostScript, EMF, CGM, DGN still disabled.
 
 **B. Mechanics of Solids (see `ROADMAP.md` for the full list)**

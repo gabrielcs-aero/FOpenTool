@@ -1056,7 +1056,7 @@ function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loa
 function drawModel(resMode){ const P=C();
   const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=4.5*sz('hinge');   /* as in Ftool: end hinges touch the node, node hinges circle it */
   for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
-    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=(sel&&!(resMode&&ui.res==='il'))||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
+    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=(sel&&!(resMode&&ui.res==='il'&&ui.panel!=='trf'))||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
     const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
     ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
     if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr,y1+uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
@@ -1539,7 +1539,7 @@ function panelTrf(){ const t=ui.trf, has=!!ui.sel.t, on=has&&t.on, dis=on?'':'di
   const ctr=`<p style="margin:2px 0 4px 12px">Center coordinates:</p>`;
   const body={move:f('DX','dx',L)+f('DY','dy',L),rotate:ctr+f('X','x',L)+f('Y','y',L)+f('Angle','ang','deg'),scale:ctr+f('X','x',L)+f('Y','y',L)+f('Factor','f',''),mirror:f('X1','x1',L)+f('Y1','y1',L)+f('X2','x2',L)+f('Y2','y2',L)}[t.tab];
   return `<div class="pt">Transform</div><label class="ck" style="justify-content:center;margin:6px 0"><input type="checkbox" data-k="t.on" ${on?'checked':''} ${has?'':'disabled'}> Enable transform</label>
-   <fieldset class="fs" style="width:fit-content;margin:4px auto" ${dis}><legend>Options</legend><label class="ck"><input type="checkbox" data-k="t.keep" ${t.keep?'checked':''}> Maintain topology</label><label class="ck"><input type="checkbox" data-k="t.leave" ${t.leave?'checked':''}> Leave original</label><hr style="width:100%;border:0;border-top:1px solid var(--chrome-dark);margin:2px 0"><label class="ck"><input type="checkbox" data-k="t.desel" ${t.desel?'checked':''}> Deselect after transform</label></fieldset>
+   <fieldset class="fs" style="width:fit-content;margin:4px auto" ${dis}><legend>Options</legend><label class="ck"><input type="checkbox" data-k="t.keep" ${t.keep||trfInRes()?'checked':''} ${trfInRes()?'disabled':''}> Maintain topology</label><label class="ck"><input type="checkbox" data-k="t.leave" ${t.leave&&!trfInRes()?'checked':''} ${trfInRes()?'disabled':''}> Leave original</label><hr style="width:100%;border:0;border-top:1px solid var(--chrome-dark);margin:2px 0"><label class="ck"><input type="checkbox" data-k="t.desel" ${t.desel?'checked':''}> Deselect after transform</label></fieldset>
    <div class="tabs" role="tablist" style="margin-top:8px">${tab('move','Move')}${tab('rotate','Rotate')}${tab('scale','Scale')}${tab('mirror','Mirror')}</div><div style="min-height:118px;background:var(--field);padding:4px 0">${body}</div>
    <div style="margin-top:8px">${f('Tolerance','tol',L)}</div>
    <div class="btnrow" style="margin-top:6px"><button class="pb" data-act="t-fwd" ${dis}>Forward</button><button class="pb" data-act="t-back" ${dis}>Back</button></div>
@@ -1696,12 +1696,12 @@ function trfApply(fn,mirror,tol){ const t=ui.trf;
   commit(()=>{
     if(ui.sel.t==='d'){ M.dims.filter(d=>ui.sel.ids.has(d.id)).forEach(d=>{ const tgt=t.leave?(()=>{ const c={...d,id:M.next.d++}; M.dims.push(c); return c; })():d; [tgt.ax,tgt.ay]=fn(d.ax,d.ay); [tgt.bx,tgt.by]=fn(d.bx,d.by); if(mirror) tgt.off=-d.off; }); }
     else { const ms=ui.sel.t==='m'?selMembers():[], nodeIds=new Set(ui.sel.t==='n'?[...ui.sel.ids]:ms.flatMap(m=>[m.i,m.j]));
-      if(t.leave){ const map=new Map();
+      if(t.leave&&!trfInRes()){ const map=new Map();
         nodeIds.forEach(id=>{ const n=nodeById(id), [x,y]=fn(n.x,n.y); let e=M.nodes.find(o=>Math.hypot(o.x-x,o.y-y)<tol); if(!e){ e=addNode(x,y); e.sup=n.sup?JSON.parse(JSON.stringify(n.sup)):null; e.hinge=n.hinge; e.load=n.load; } map.set(id,e.id); });
         const newIds=[]; ms.forEach(m=>{ const i=map.get(m.i), j=map.get(m.j); if(i===j||M.members.some(o=>(o.i===i&&o.j===j)||(o.i===j&&o.j===i))) return; const c=addMember(i,j,m); c.hi=m.hi; c.hj=m.hj; c.ld={...m.ld}; newIds.push(c.id); });
         if(!t.desel) ui.sel={t:ui.sel.t,ids:new Set(ui.sel.t==='m'?newIds:[...map.values()])}; }
       else { // Without "Maintain topology" the selected members are detached from the members that stay: shared nodes are duplicated.
-        if(ui.sel.t==='m'&&!t.keep){ const selIds=new Set(ms.map(m=>m.id));
+        if(ui.sel.t==='m'&&!t.keep&&!trfInRes()){ const selIds=new Set(ms.map(m=>m.id));
           for(const id of [...nodeIds]){ if(!M.members.some(m=>!selIds.has(m.id)&&(m.i===id||m.j===id))) continue; const n=nodeById(id), c=addNode(n.x,n.y); c.hinge=n.hinge;
             ms.forEach(m=>{ if(m.i===id) m.i=c.id; if(m.j===id) m.j=c.id; }); nodeIds.delete(id); nodeIds.add(c.id); } }
         nodeIds.forEach(id=>{ const n=nodeById(id); [n.x,n.y]=fn(n.x,n.y); });
@@ -1714,7 +1714,10 @@ function trfApply(fn,mirror,tol){ const t=ui.trf;
    start of the arc, end of the arc; Scale: origin, reference vector, transformed vector (factor = ratio of their lengths); Mirror: two
    points of the line. A dashed feedback shows the result until the last click. The Tolerance box is ignored (8 pixels at the current zoom). */
 const TRF_CLICKS={move:2,rotate:3,scale:3,mirror:2};
-const trfMouse=()=>ui.panel==='trf'&&ui.trf.on&&!!ui.sel.t&&!ui.res;
+/* Ftool also allows transformations while showing diagrams, the deformed shape or influence lines (not envelopes); there the
+   topology is always kept and the results follow at once. */
+const trfInRes=()=>ui.res==='diag'||ui.res==='il';
+const trfMouse=()=>ui.panel==='trf'&&ui.trf.on&&!!ui.sel.t&&(!ui.res||trfInRes());
 function trfMouseFn(pts){ const t=ui.trf.tab, [o,a,b]=pts, L=v=>toD('len',v); if(!a) return null;
   if(t==='move'){ const dx=a.x-o.x, dy=a.y-o.y; return {fn:(x,y)=>[x+dx,y+dy],set:{dx:L(dx),dy:L(dy)}}; }
   if(t==='mirror'){ const dx=a.x-o.x, dy=a.y-o.y, L2=dx*dx+dy*dy; if(!(L2>0)) return null;
@@ -1788,6 +1791,7 @@ cv.addEventListener('pointerdown',e=>{ closeMenu(); const [sx,sy]=sp(e); cv.setP
   if(spaceDown){ startPan(null); cv.style.cursor='grabbing'; return; }
   if(ui.res&&e.shiftKey){ startPan(()=>{ const hm=hitMember(sx,sy,8); if(!hm) return; const id=hm.m.id;   // Shift+click in results: add or remove members from the selection
       if(ui.sel.t==='m'){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; } else ui.sel={t:'m',ids:new Set([id]),dims:new Set()}; renderAll(); }); return; }
+  if(ui.res&&ui.panel==='trf'&&trfInRes()){ if(trfMouse()){ trfClick(snapPt(sx,sy)); return; } startPan(()=>clickSelect(sx,sy,e.shiftKey)); return; }   /* transform panel open: clicks select */
   if(ui.res){ startPan(()=>resultClick(sx,sy)); return; }
   if(ui.tool==='none'){ startPan(()=>{}); return; }
   if(ui.tool==='zoom'){ if(!ui.zoomStart){ ui.zoomStart=[sx,sy]; ui.zoomBox={sx,sy,ex:sx,ey:sy}; } else { const [x0,y0]=ui.zoomStart; ui.zoomStart=null; ui.zoomBox=null;
@@ -1865,7 +1869,7 @@ $('#pot').oninput=e=>{ ui.pot=+e.target.value; renderTop(); draw(); };
 $('#modeBox').addEventListener('change',e=>{ if(e.target.id!=='scaleIn') return; const v=pnum(e.target.value); if(v>0){ const k=ui.res==='il'?'IL'+ui.q:ui.res==='env'?'E'+ui.q:ui.q; ui.scaleVal[k]=v; ui.pot=0; $('#pot').value=0; draw(); renderTop(); } });
 $('#bKbd').onclick=()=>{ ui.kbd=!ui.kbd; if(ui.res) exitResults(); renderAll(); if(ui.kbd){ const f=$('#kd [data-kv]'); if(f){ f.focus(); f.select(); } } };
 $('#bDel').onclick=deleteSel;
-$('#bTrf').onclick=()=>{ if(ui.res&&ui.res!=='diag') return; ui.panel=ui.panel==='trf'?'mat':'trf'; ui.info=null; if(ui.res) exitResults(); ui.tool='select'; renderAll(); };
+$('#bTrf').onclick=()=>{ if(ui.res&&!trfInRes()) return; ui.panel=ui.panel==='trf'?'mat':'trf'; ui.info=null; ui.trfPts=[]; if(!ui.res) ui.tool='select'; renderAll(); };
 $('#bRedraw').onclick=()=>draw(); $('#bFit').onclick=fit; $('#bZin').onclick=()=>zoomAt(W/2,H/2,1.25); $('#bZout').onclick=()=>zoomAt(W/2,H/2,.8);
 $('#bUndo').onclick=undo; $('#bRedo').onclick=redo;
 $('#bNew').onclick=()=>fileNew(); $('#bOpen').onclick=()=>fileOpen(); $('#bSave').onclick=()=>fileSave(); $('#bClip').onclick=()=>exportClip();
