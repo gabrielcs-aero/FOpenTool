@@ -27,6 +27,7 @@ Still to do:
 - [x] Load trains in `.ftl`
 - [x] Editing Mode "None" at startup, Ftool's reaction report (springs, inclined axes) and hinge drawing
 - [x] Export Model Screen to DXF and SVG
+- [x] Support, spring, hinge, rigid-member, thermal-load and reaction drawing as in Ftool; report wording for rigid members and members without loads
 - [ ] Export Model Screen formats: PDF, EMF, EPS, PostScript, CGM, DGN
 
 ## Stage 2: Mechanics of Solids 1 (FGA0154)

@@ -921,10 +921,10 @@ const cv=$('#cv'); let ctx=cv.getContext('2d');   /* let: the vector exports swa
 let view={ox:0,oy:0,s:60},W=0,H=0,dpr=1;
 const toS=(x,y)=>[view.ox+x*view.s,view.oy-y*view.s], toW=(sx,sy)=>[(sx-view.ox)/view.s,(view.oy-sy)/view.s];
 const PAL={
-  white:{bg:'#FFFFFF',grid:'#6F6F6F',mem:'#808000',node:'#3C3C00',sel:'#FF0000',load:'#0000A0',sup:'#007A00',dim:'#000000',diag:'#0000FF',rmem:'#666600',val:'#E00000',react:'#800000',fence:'#FF0000',cross:'#00A000',hint:'#FF8000'},
-  gray:{bg:'#C8C8C8',grid:'#5A5A5A',mem:'#5A5A00',node:'#2A2A00',sel:'#D00000',load:'#00007A',sup:'#005A00',dim:'#000000',diag:'#0000C8',rmem:'#4A4A00',val:'#B00000',react:'#600000',fence:'#D00000',cross:'#007000',hint:'#B05000'},
-  black:{bg:'#000000',grid:'#8C8C8C',mem:'#FFFF00',node:'#FFFF9A',sel:'#FF5050',load:'#00FFFF',sup:'#00FF00',dim:'#FFFFFF',diag:'#8C8CFF',rmem:'#CCCC00',val:'#FF6A6A',react:'#FF8C8C',fence:'#FF5050',cross:'#50FF50',hint:'#FFA040'},
-  mono:{bg:'#FFFFFF',grid:'#7A7A7A',mem:'#000000',node:'#000000',sel:'#FF0000',load:'#000000',sup:'#000000',dim:'#000000',diag:'#000000',rmem:'#000000',val:'#000000',react:'#000000',fence:'#FF0000',cross:'#00A000',hint:'#000000'}};
+  white:{bg:'#FFFFFF',grid:'#6F6F6F',mem:'#666600',node:'#3C3C00',sel:'#FF0000',load:'#0000A0',sup:'#006600',therm:'#00007B',dim:'#000000',diag:'#0000FF',rmem:'#666600',val:'#E00000',react:'#660000',fence:'#FF0000',cross:'#00A000',hint:'#FF8000'},
+  gray:{bg:'#C8C8C8',therm:'#00007B',grid:'#5A5A5A',mem:'#5A5A00',node:'#2A2A00',sel:'#D00000',load:'#00007A',sup:'#005A00',dim:'#000000',diag:'#0000C8',rmem:'#4A4A00',val:'#B00000',react:'#600000',fence:'#D00000',cross:'#007000',hint:'#B05000'},
+  black:{bg:'#000000',therm:'#8080FF',grid:'#8C8C8C',mem:'#FFFF00',node:'#FFFF9A',sel:'#FF5050',load:'#00FFFF',sup:'#00FF00',dim:'#FFFFFF',diag:'#8C8CFF',rmem:'#CCCC00',val:'#FF6A6A',react:'#FF8C8C',fence:'#FF5050',cross:'#50FF50',hint:'#FFA040'},
+  mono:{bg:'#FFFFFF',therm:'#000000',grid:'#7A7A7A',mem:'#000000',node:'#000000',sel:'#FF0000',load:'#000000',sup:'#000000',dim:'#000000',diag:'#000000',rmem:'#000000',val:'#000000',react:'#000000',fence:'#FF0000',cross:'#00A000',hint:'#000000'}};
 const C=()=>PAL[M.disp.bg]||PAL.white;
 const SZ={S:.75,M:1,L:1.35}, sz=k=>SZ[M.opt[k]]||1;
 const FONT=()=>`${Math.round(11*sz('text'))}px Arial, Helvetica, sans-serif`;
@@ -1016,19 +1016,70 @@ function drawDims(){ if(!M.disp.dims) return; const P=C();
     const mx=(cx+ex)/2, my=(cy+ey)/2;
     if(len>tw+16){ line(cx,cy,mx-ux*tw/2,my-uy*tw/2); line(mx+ux*tw/2,my+uy*tw/2,ex,ey); } else line(cx,cy,ex,ey);
     ctx.fillStyle=col; head(cx,cy,-ux,-uy,6); head(ex,ey,ux,uy,6); text(t,mx,my,col,readAng(ux,uy)); } }
-function drawSupport(n){ const P=C(), sp=n.sup; if(!sp||!M.disp.sups) return; const [x,y]=toS(n.x,n.y), k=12*sz('sup'), col=P.sup;
-  ctx.save(); ctx.translate(x,y); ctx.rotate(-(sp.ang||0)*Math.PI/180); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2;
-  const hat=(x1,y1,x2,y2,dx,dy)=>{ line(x1,y1,x2,y2); for(let i=0;i<=5;i++){ const t=i/5,px=x1+(x2-x1)*t,py=y1+(y2-y1)*t; line(px,py,px+dx,py+dy); } };
-  const spring=(dx,dy)=>{ ctx.beginPath(); ctx.moveTo(0,0); const L=k*1.6; for(let i=1;i<=6;i++){ const t=i/7*L, o=(i%2?1:-1)*k*.3; ctx.lineTo(dx*t-dy*o,dy*t+dx*o); } ctx.lineTo(dx*L,dy*L); ctx.stroke(); };
-  const s=[sp.x,sp.y,sp.r];
-  if(s[0]===1&&s[1]===1&&s[2]===1){ // as in Ftool: a ground line through the node, hatched below; the support angle turns it (-90 = wall on the left)
-    ctx.lineWidth=1.6; line(-k,0,k,0); ctx.lineWidth=1; for(let i=0;i<=5;i++){ const xx=-k+2*k*i/5; line(xx,0,xx-k*.4,k*.55); } }
-  else if(s[0]===1&&s[1]===1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); hat(-k,k*1.1,k,k*1.1,-k*.4,k*.45); }
-  else if(s[1]===1&&s[0]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*.7,k*1.1); ctx.lineTo(k*.7,k*1.1); ctx.closePath(); ctx.stroke(); line(-k,k*1.45,k,k*1.45); hat(-k,k*1.75,k,k*1.75,-k*.4,k*.45); }
-  else if(s[0]===1&&s[1]!==1){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-k*1.1,-k*.7); ctx.lineTo(-k*1.1,k*.7); ctx.closePath(); ctx.stroke(); line(-k*1.45,-k,-k*1.45,k); hat(-k*1.75,-k,-k*1.75,k,-k*.45,k*.4); }
-  if(s[2]===1&&!(s[0]===1&&s[1]===1)){ ctx.strokeRect(-k*.4,-k*.4,k*.8,k*.8); }
-  if(s[0]===2) spring(-1,0); if(s[1]===2) spring(0,1); if(s[2]===2){ ctx.beginPath(); for(let i=0;i<=40;i++){ const a=i/40*Math.PI*3, r=3+i/40*k*.7; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); } ctx.stroke(); }
-  ctx.restore(); }
+/* Support glyphs exactly as Ftool 4.01 draws them (read from Ftool's own SVG export, session 6). Sizes are screen pixels at the Medium
+   support size, in the glyph frame of a vertical (Y) restraint: y points to the ground. An X restraint is the same glyph turned +90°
+   (on the left of the node); the support angle turns everything. Fixed: ground line ±11 hatched. Pinned: legs to (±7.3, 12.7), hatched base.
+   Roller: legs, base and a second line 4.4 below. Y and rotation fixed (guide): two lines 5.5 apart with two rollers between, hatched.
+   Rotation fixed alone: a square ±8.3 (springs then start at 8.5). Spring: zigzag 22 long with a hatched base. Rotation spring: a spiral of
+   half-circles (radii 2.75 to 11) ending in a small hatched base. Spring values (Load/Spring Values) are written just past the base. */
+function supSq(n){ const s=n&&n.sup; return !!(s&&M.disp.sups&&s.r===1&&s.x!==1&&s.y!==1); }
+function sqReach(n,ux,uy){ if(!supSq(n)) return 0; const a=-(n.sup.ang||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a), lx=ux*c+uy*s, ly=-ux*s+uy*c;
+  return 8.5*sz('sup')/Math.max(Math.abs(lx),Math.abs(ly),1e-9); }
+// Visible part of a member, as Ftool draws it: it stops at a member-end hinge (circle of diameter 8 touching the node), a node hinge (radius 5.5)
+// and the square of a support that fixes only the rotation. Thermal symbols use the same part. Returns the cut-backs [at i, at j] in pixels.
+// Segment p0-p1 clipped to a convex polygon (Cyrus-Beck), or null. Used instead of ctx.clip(), which the vector export cannot record.
+function clipSeg(p0,p1,poly){ let t0=0,t1=1; const dx=p1[0]-p0[0], dy=p1[1]-p0[1]; let ar=0; for(let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length]; ar+=a[0]*b[1]-b[0]*a[1]; }
+  for(let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length], nx=(b[1]-a[1])*Math.sign(ar), ny=-(b[0]-a[0])*Math.sign(ar);   /* outward normal */
+    const num=nx*(p0[0]-a[0])+ny*(p0[1]-a[1]), den=nx*dx+ny*dy; if(Math.abs(den)<1e-12){ if(num>0) return null; continue; }
+    const t=-num/den; if(den<0) t0=Math.max(t0,t); else t1=Math.min(t1,t); if(t0>t1) return null; }
+  return [[p0[0]+dx*t0,p0[1]+dy*t0],[p0[0]+dx*t1,p0[1]+dy*t1]]; }
+function memTrim(m,ux,uy,nh){ if(M.opt.truss) return [0,0]; const hr=4*sz('hinge');
+  const t=(n,h,dx,dy)=>sqReach(n,dx,dy)+(nh.has(n.id)?5.5*sz('hinge'):h?2*hr:0);
+  return [t(nodeById(m.i),m.hi,ux,uy),t(nodeById(m.j),m.hj,-ux,-uy)]; }
+function drawSupport(n){ const P=C(), sp=n.sup; if(!sp||!M.disp.sups) return; const [x,y]=toS(n.x,n.y), k=sz('sup'), col=P.sup, base=-(sp.ang||0)*Math.PI/180;
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+  const F=r=>{ const c=Math.cos(r), s=Math.sin(r); return (a,b)=>[x+k*(a*c-b*s),y+k*(a*s+b*c)]; };
+  const fy=F(base), fx=F(base+Math.PI/2);
+  const pl=(f,pts)=>{ ctx.beginPath(); pts.forEach(([a,b],i)=>{ const [u,v]=f(a,b); i?ctx.lineTo(u,v):ctx.moveTo(u,v); }); ctx.stroke(); };
+  const circ=(f,a,b,r)=>{ const [u,v]=f(a,b); ctx.beginPath(); ctx.arc(u,v,r*k,0,7); ctx.stroke(); };
+  const hatch=(f,y0)=>{ pl(f,[[-11,y0],[11,y0]]); for(let i=1;i<=5;i++){ const a=-11+4.4*i; pl(f,[[a,y0],[a-4.4,y0+4.4]]); } };
+  const legs=f=>pl(f,[[-7.3,12.7],[0,0],[7.3,12.7]]);
+  const label=(f,t,a0,top)=>{ if(!M.disp.loadVal||!(ui.res&&RES&&RES.ok?M.disp.loadRes:M.disp.loadEdit)) return;   /* spring values follow the load display, as in Ftool */ ctx.font=FONT(); const w=ctx.measureText(t).width/k, h=5.5;   /* box after a0 along the glyph's x, top at "top" */
+    const [cx,cy]=f(a0+w/2,top+h/2), [ex,ey]=f(1,0), [ox,oy]=f(0,0); text(t,cx,cy,col,readAng(ex-ox,ey-oy),'center','middle'); };
+  const spring=(f,o,kv)=>{ const z=[[0,o],[0,o+2.2]]; for(let i=0;i<8;i++) z.push([i%2?-4.4:4.4,o+3.3+2.2*i]); z.push([0,o+19.8],[0,o+22]); pl(f,z); hatch(f,o+22);
+    label(f,fqu('spring',kv),12.5,o+24.7); };
+  const {x:sx,y:sy,r:sr}=sp, sq=supSq(n), off=sq?8.5:0;
+  if(sx===1&&sy===1&&sr===1) hatch(fy,0);
+  else if(sx===1&&sy===1){ legs(fy); hatch(fy,12.7); }
+  else if(sr===1&&(sx===1||sy===1)){ const f=sy===1?fy:fx; pl(f,[[-11,0],[11,0]]); circ(f,-5.5,2.75,2.75); circ(f,5.5,2.75,2.75); hatch(f,5.5); }
+  else { const roller=f=>{ legs(f); pl(f,[[-11,12.7],[11,12.7]]); pl(f,[[-11,17.1],[11,17.1]]); };
+    if(sy===1) roller(fy); if(sx===1) roller(fx);
+    if(sq) pl(fy,[[-8.3,-8.3],[8.3,-8.3],[8.3,8.3],[-8.3,8.3],[-8.3,-8.3]]); }
+  if(sy===2) spring(fy,off,sp.ky||0); if(sx===2) spring(fx,off,sp.kx||0);
+  if(sr===2){ const arcs=[[0,2.75,.5,1],[2.75,5.5,1,2],[0,8.25,0,1],[2.75,11,1,2]];   /* half-circles about (0|2.75, -2.75), angles in units of pi */
+    ctx.beginPath(); for(const [c,r,a0,a1] of arcs){ const [u,v]=fy(c,-2.75); ctx.arc(u,v,r*k,base+a0*Math.PI,base+a1*Math.PI); } ctx.stroke();
+    pl(fy,[[13.75,-2.75],[13.75,5.5]]); pl(fy,[[6.9,5.5],[20.6,5.5]]); for(let i=0;i<4;i++){ const a=10.2+3.3*i; pl(fy,[[a,5.5],[a-3.3,8.8]]); }
+    label(fy,fqu('rspring',sp.kz||0),21.3,5.0); }
+}
+/* Thermal load as Ftool draws it (from its SVG export): on each side with a nonzero temperature change, flames (heating) or snowflakes
+   (cooling) standing on a line 6 px from the member, spread evenly over the member's visible part (between hinges and support squares):
+   n symbols at pitch len/(n+1), n = floor(len/c) - 1 with c = 17.7 px (flames) or 21 px (snowflakes); the line runs from half a pitch
+   to half a pitch from the ends. The value ("20 °C") is right-aligned 27 px before the middle of that part, 27 px from the member. */
+const FLAME_O=[[-5.19,0],[-5.73,2.51],[-6.43,3.68],[-6.59,6.19],[-5.19,8.94],[-3.69,11.69],[-1.96,13.88],[.22,16.06],[2.34,18.03],[3.59,16.53],[4.62,14.96],[5.62,12.31],[6.49,9.56],[6.56,6.68],[5.32,4.01],[4.22,2.11],[2.49,0]],
+  FLAME_I=[[-4.32,0],[-4.56,2.58],[-4.25,5.18],[-2.75,7.38],[-1.02,9.49],[.78,11.45],[2.42,13.02],[3.21,10.98],[3.91,9.02],[3.82,6.44],[2.49,4.24],[1.64,2.04],[0,0]],
+  SNOW=[[-4.69,6.32,-4.69,-6.29],[-7.81,-.89,3.11,-7.19],[-3.13,-7.19,7.79,-.89],[4.67,-6.29,4.67,6.32],[7.79,.92,-3.13,7.22],[3.11,7.22,-7.81,.92],
+    [-7.81,-4.49,-4.69,-2.69],[0,-8.99,0,-5.39],[7.79,-4.49,4.67,-2.69],[7.79,4.52,4.67,2.72],[0,9.03,0,5.42],[-7.81,4.52,-4.69,2.72]];
+function drawThermal(m,x1,y1,ux,uy,L,lt,vals){ const P=C(), col=P.therm, k=sz('load'), nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), [ta,tb]=memTrim(m,ux,uy,nh), len=L-ta-tb;
+  if(len<4) return;
+  for(const [T,side] of [[lt.tt||0,1],[lt.tb||0,-1]]){ if(!T) continue;
+    const dx=uy*side, dy=-ux*side;   /* away from the member: local +y (upper side) or -y */
+    const P_=(s,v)=>[x1+ux*s+dx*v,y1+uy*s+dy*v], hot=T>0, c=(hot?17.7:21)*k, n=Math.max(1,Math.floor(len/c)-1), p=len/(n+1);
+    ctx.strokeStyle=col; ctx.lineWidth=1;
+    line(...P_(ta+p/2,6*k),...P_(ta+len-p/2,6*k));
+    for(let i=1;i<=n;i++){ const s=ta+i*p;
+      if(hot){ for(const [pts,fill] of [[FLAME_O,'#FFFF00'],[FLAME_I,'#FF0000']]){ ctx.beginPath(); pts.forEach(([a,v],j)=>{ const q=P_(s+a*k,(6+v)*k); j?ctx.lineTo(...q):ctx.moveTo(...q); }); ctx.closePath(); ctx.fillStyle=fill; ctx.fill(); ctx.stroke(); } }
+      else for(const [a1,v1,a2,v2] of SNOW) line(...P_(s+a1*k,(15+v1)*k),...P_(s+a2*k,(15+v2)*k)); }
+    if(vals){ ctx.font=FONT(); const t=fqu('temp',T), w=ctx.measureText(t).width, h=5.5*sz('text')/.75; const [cx,cy]=P_(ta+len/2-28*k-w/2,27*k+h/2); text(t,cx,cy,col,readAng(ux,uy),'center','middle'); } } }
 function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loadVal;
   for(const n of M.nodes){ const ld=item('nodal',n.load); if(!ld) continue; const [x,y]=toS(n.x,n.y);
     if(ld.fy){ const d=Math.sign(ld.fy); arrowTo(x,y+d*Lz,x,y+d*2,col); if(vals) text(fqu('force',Math.abs(ld.fy)),x-4,y+d*(Lz*.55),col,-Math.PI/2,'center','bottom'); }
@@ -1049,24 +1100,29 @@ function drawLoads(){ const P=C(), col=P.load, Lz=34*sz('load'), vals=M.disp.loa
         else { text(label1,tails[0][0]-dx*6,tails[0][1]-dy*6,col,ang,'left','bottom'); text(label2,tails[tails.length-1][0]-dx*6,tails[tails.length-1][1]-dy*6,col,ang,'right','bottom'); } } };
     if(lu) drawDist([lu.qx||0,lu.qy||0],[lu.qx||0,lu.qy||0],lu.dir,fqu('dist',Math.hypot(lu.qx||0,lu.qy||0)));
     if(ll) drawDist([ll.pxi||0,ll.pyi||0],[ll.pxj||0,ll.pyj||0],ll.dir,fqu('dist',Math.hypot(ll.pxi||0,ll.pyi||0)),fqu('dist',Math.hypot(ll.pxj||0,ll.pyj||0)));
-    if(lt&&vals){ const mx=(x1+x2)/2,my=(y1+y2)/2, ang=readAng(ux,uy); text(`Ty+ ${fqu('temp',lt.tt||0)}`,mx-nl[0]*8,my-nl[1]*8,col,ang,'center','bottom'); text(`Ty− ${fqu('temp',lt.tb||0)}`,mx+nl[0]*8,my+nl[1]*8,col,ang,'center','top'); }
+    if(lt) drawThermal(m,x1,y1,ux,uy,L,lt,vals);
     if(le){ const r=12*sz('load'); if(le.ma){ arc(x1+ux*r*1.4,y1+uy*r*1.4,r,le.ma,col); if(vals) text(fqu('moment',Math.abs(le.ma)),x1+ux*r*1.4,y1+uy*r*1.4-r-4,col,0,'center','bottom'); }
       if(le.mb){ arc(x2-ux*r*1.4,y2-uy*r*1.4,r,le.mb,col); if(vals) text(fqu('moment',Math.abs(le.mb)),x2-ux*r*1.4,y2-uy*r*1.4-r-4,col,0,'center','bottom'); } }
   } }
 function drawModel(resMode){ const P=C();
-  const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=4.5*sz('hinge');   /* as in Ftool: end hinges touch the node, node hinges circle it */
+  const nh=new Set(M.nodes.filter(n=>n.hinge).map(n=>n.id)), hr=4*sz('hinge');   /* as in Ftool: end hinges (r 4) touch the node or the support square, node hinges (r 5.5) circle it; neither is filled */
   for(const m of M.members){ const a=nodeById(m.i),b=nodeById(m.j),[x1,y1]=toS(a.x,a.y),[x2,y2]=toS(b.x,b.y), sel=ui.sel.t==='m'&&ui.sel.ids.has(m.id);
-    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=(sel&&!(resMode&&ui.res==='il'&&ui.panel!=='trf'))||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4; line(x1,y1,x2,y2);
-    const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L;
-    ctx.fillStyle=P.bg; ctx.lineWidth=1.2;
-    if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x1+ux*hr,y1+uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
-    if(m.hj&&!nh.has(m.j)&&!M.opt.truss){ ctx.beginPath(); ctx.arc(x2-ux*hr,y2-uy*hr,hr,0,7); ctx.fill(); ctx.stroke(); }
+    const L=Math.hypot(x2-x1,y2-y1)||1, ux=(x2-x1)/L, uy=(y2-y1)/L, [ta,tb]=L>1?memTrim(m,ux,uy,nh):[0,0], ok=ta+tb<L;
+    const bad=RES&&RES.bad===m.id&&!RES.ok, pq=resMode&&ui.pq&&ui.pq.mid===m.id; ctx.strokeStyle=(sel&&!(resMode&&ui.res==='il'&&ui.panel!=='trf'))||bad||pq?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=resMode?1:1.4;
+    const ax=x1+ux*ta, ay=y1+uy*ta, bx=x2-ux*tb, by=y2-uy*tb;
+    if(m.rigid&&!resMode&&ok){ /* Ftool: a rectangle 5 px wide, outlined twice as thick, hatched at 45° every 7 px */ const w=2.5, nx=-uy*w, ny=ux*w;
+      const q=[[ax+nx,ay+ny],[bx+nx,by+ny],[bx-nx,by-ny],[ax-nx,ay-ny]]; ctx.beginPath(); q.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p)); ctx.closePath(); ctx.lineWidth=2; ctx.stroke();
+      const x0=Math.min(ax,bx)-w, x1b=Math.max(ax,bx)+w, y0=Math.min(ay,by)-w, y1b=Math.max(ay,by)+w; ctx.lineWidth=1;
+      for(let c=Math.floor((x0+y0)/7)*7;c<=x1b+y1b;c+=7){ const s=clipSeg([c-y0,y0],[c-y1b,y1b],q); if(s) line(...s[0],...s[1]); } }
+    else if(ok) line(ax,ay,bx,by);
+    ctx.lineWidth=1.2;
+    if(m.hi&&!nh.has(m.i)&&!M.opt.truss){ const r=sqReach(a,ux,uy)+hr; ctx.beginPath(); ctx.arc(x1+ux*r,y1+uy*r,hr,0,7); ctx.stroke(); }
+    if(m.hj&&!nh.has(m.j)&&!M.opt.truss){ const r=sqReach(b,-ux,-uy)+hr; ctx.beginPath(); ctx.arc(x2-ux*r,y2-uy*r,hr,0,7); ctx.stroke(); }
     if(M.disp.orient){ const mx=(x1+x2)/2,my=(y1+y2)/2; ctx.fillStyle=ctx.strokeStyle; head(mx+ux*5,my+uy*5,ux,uy,8); }
-    if(M.disp.memNum){ text(String(m.id),(x1+x2)/2+uy*9,(y1+y2)/2-ux*9,P.dim,0,'center','middle',P.bg); }
-    if(m.rigid&&!resMode){ ctx.strokeStyle=ctx.strokeStyle; ctx.lineWidth=3.5; ctx.globalAlpha=.35; line(x1,y1,x2,y2); ctx.globalAlpha=1; } }
+    if(M.disp.memNum){ text(String(m.id),(x1+x2)/2+uy*9,(y1+y2)/2-ux*9,P.dim,0,'center','middle',P.bg); } }
   for(const n of M.nodes){ const [x,y]=toS(n.x,n.y), sel=ui.sel.t==='n'&&ui.sel.ids.has(n.id), bad=RES&&!RES.ok&&RES.badNode===n.id;
     if(M.opt.truss){ ctx.strokeStyle=sel||bad?P.sel:P.node; ctx.fillStyle=P.bg; ctx.lineWidth=1.3; ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.stroke(); }
-    else { if(n.hinge){ ctx.strokeStyle=sel?P.sel:P.mem; ctx.fillStyle=P.bg; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,hr*1.15,0,7); ctx.fill(); ctx.stroke(); } ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
+    else { if(n.hinge){ ctx.strokeStyle=sel?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,5.5*sz('hinge'),0,7); ctx.stroke(); } ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
     if(M.disp.nodeNum) text(String(n.id),x+6,y-6,P.dim,0,'left','bottom'); }
   M.nodes.forEach(drawSupport);
 }
@@ -1161,7 +1217,7 @@ function panelResults(){ const c=classify(M,RES); let h=`<div class="pt">Structu
   if(M.opt.truss){ let mx=0; RES.recs.forEach(r=>mx=Math.max(mx,Math.abs(r.N(0)))); const tol=1e-9*Math.max(mx,1e-9);
     h+=`<div class="pt" style="margin-top:10px">Member Forces</div><table class="mt"><tr><th>Member</th><th>N (${U('force')})</th><th>State</th></tr>${RES.recs.map(r=>{ const N=r.N(r.L/2), st=Math.abs(N)<=tol?['zero','tZ']:N>0?['tension','tT']:['compression','tC']; return `<tr data-act="minfo:${r.m.id}"><td>${r.m.id}</td><td class="${st[1]}">${Math.abs(N)<=tol?fq('force',0):fq('force',N)}</td><td class="${st[1]}">${st[0]}</td></tr>`; }).join('')}</table>
     <p style="margin:4px 0 0;color:var(--muted)">Right-click a node to see its equilibrium (method of joints).</p>`; }
-  const rows=M.nodes.filter(n=>n.sup&&RES.idx.has(n.id)&&RES.used[RES.idx.get(n.id)]).map(n=>{ const k=RES.idx.get(n.id), R=RES.R, fx=RES.fixed; const v=d=>RES.hasR(3*k+d)?fq(d===2?'moment':'force',R[3*k+d]):'—'; return `<tr data-act="ninfo:${n.id}"><td>${n.id}</td><td>${v(0)}</td><td>${v(1)}</td>${M.opt.truss?'':`<td>${v(2)}</td>`}</tr>`; }).join('');
+  const rows=M.nodes.filter(n=>n.sup&&RES.idx.has(n.id)&&RES.used[RES.idx.get(n.id)]).map(n=>{ const k=RES.idx.get(n.id), R=supReac(n); const v=d=>RES.hasR(3*k+d)?fq(d===2?'moment':'force',R[d]):'—'; return `<tr data-act="ninfo:${n.id}"><td>${n.id}</td><td>${v(0)}</td><td>${v(1)}</td>${M.opt.truss?'':`<td>${v(2)}</td>`}</tr>`; }).join('');
   h+=`<div class="pt" style="margin-top:10px">Support Reactions</div><table class="mt"><tr><th>Node</th><th>Fx</th><th>Fy</th>${M.opt.truss?'':'<th>Mz</th>'}</tr>${rows}</table><p style="margin:2px 0 0;color:var(--muted)">${U('force')}${M.opt.truss?'':', '+U('moment')}. Inclined supports use their own axes.</p>`;
   return h; }
 function jointEquilibrium(n){ if(!RES||!RES.ok||!M.opt.truss) return ''; const k=RES.idx.get(n.id); if(k==null||!RES.used[k]) return '';
@@ -1247,16 +1303,36 @@ function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+
   if(lbl==null) return; const dx=o[0]-b[0], dy=o[1]-b[1], d=Math.hypot(dx,dy);
   if(d<2){ text(lbl,o[0],o[1]-8,P.sel); return; }
   text(lbl,o[0]+dx/d*9,o[1]+dy/d*9,P.sel,ui.q==='D'?0:(M.disp.transv?readAng(r.s,r.c)+Math.PI/2:readAng(r.c,-r.s))); }
-function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, Lz=34*sz('load'); let mx=0; for(let i=0;i<RES.nd;i++) if(RES.hasR(i)) mx=Math.max(mx,Math.abs(RES.R[i])); const tol=1e-9*Math.max(mx,1e-9);
-  M.nodes.forEach(n=>{ const k=RES.idx.get(n.id); if(!n.sup) return; const [x,y]=toS(n.x,n.y), th=(n.sup.x===1&&n.sup.y===1&&n.sup.r===1?0:n.sup.ang||0)*Math.PI/180, c=Math.cos(th), s=Math.sin(th), R=RES.R, off=18*sz('sup');
-    const dir=(lx,ly)=>[lx*c-ly*s,-(lx*s+ly*c)];
-    // as in Ftool: the arrow starts at the node and points the way the reaction acts; text runs along the arrow
-    const put=(v,dx,dy,cat)=>{ const ex=x+dx*Lz, ey=y+dy*Lz; arrowTo(x,y,ex,ey,col,7*sz('load')); if(M.disp.reacVal){ const vert=Math.abs(dy)>Math.abs(dx); text(fqu(cat,Math.abs(v)),(x+ex)/2+(vert?-8:0),(y+ey)/2+(vert?0:-6),col,vert?-Math.PI/2:0,'center','bottom'); } };
-    if(RES.hasR(3*k)&&Math.abs(R[3*k])>tol){ const [dx,dy]=dir(Math.sign(R[3*k]),0); put(R[3*k],dx,dy,'force'); }
-    if(RES.hasR(3*k+1)&&Math.abs(R[3*k+1])>tol){ const [dx,dy]=dir(0,Math.sign(R[3*k+1])); put(R[3*k+1],dx,dy,'force'); }
-    if(RES.hasR(3*k+2)&&Math.abs(R[3*k+2])>tol){ const rr=off+2; ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.2; const a0=.55*Math.PI, a1=1.45*Math.PI; ctx.beginPath();
-      if(R[3*k+2]>0){ ctx.arc(x,y,rr,a1,a0,true); ctx.stroke(); head(x+rr*Math.cos(a0),y+rr*Math.sin(a0),Math.sin(a0),-Math.cos(a0),7); } else { ctx.arc(x,y,rr,a0,a1,false); ctx.stroke(); head(x+rr*Math.cos(a1),y+rr*Math.sin(a1),-Math.sin(a1),Math.cos(a1),7); }
-      if(M.disp.reacVal) text(fqu('moment',Math.abs(R[3*k+2])),x-rr-8,y+rr+4,col,-Math.PI/2,'right','bottom'); }
+// Reactions of a supported node in the support's axes, as Ftool reports and draws them. The solver keeps a fully fixed support in global
+// axes (its angle only turns the drawing), so those are turned here; other inclined supports are solved in their own axes already.
+function supReac(n){ const k=RES.idx.get(n.id), R=RES.R, s=n.sup; if(k==null||!s) return null; let rx=R[3*k], ry=R[3*k+1]; const mz=R[3*k+2];
+  if(s.x===1&&s.y===1&&s.r===1&&s.ang){ const a=s.ang*Math.PI/180, c=Math.cos(a), si=Math.sin(a); [rx,ry]=[c*rx+si*ry,-si*rx+c*ry]; }
+  return [rx,ry,mz,k]; }
+/* Reaction arrows exactly as Ftool 4.01 draws them (from its SVG export, session 6), in the glyph frame of drawSupport (y toward the ground):
+   each restrained direction (fixed or spring, even when the value is zero) gets a 32 px arrow on the support's side of the node (X: to the
+   left, Y: below), its head 8 px long at the node end when the reaction pushes toward the node (positive), at the far end otherwise, and a
+   small tick across the middle of the shaft. The arrow starts past the support glyph: X 8 px (pinned), 13.5 (fixed), 19 (roller), 24 (guide),
+   30 (spring); Y 19 (pinned, roller), 24 (with a moment reaction), 30 (spring); +8.5 after a support square. The value is centered 12.8 px
+   beside the tail (X: below the arrow, Y: to its left), along it. The moment is a half-circle of radius 20 on the ground side, centered 3 px
+   below the node, with its head at the +x end when positive (counterclockwise). Color #660000. */
+function drawReactions(){ if(!M.disp.reac) return; const P=C(), col=P.react, k=sz('sup');
+  M.nodes.forEach(n=>{ const sp=n.sup, rr=sp&&supReac(n); if(!rr) return; const [rx,ry,mz,i]=rr; if(!RES.used||!RES.used[i]) return;
+    const [x,y]=toS(n.x,n.y), base=-(sp.ang||0)*Math.PI/180, c=Math.cos(base), s=Math.sin(base), f=(a,b)=>[x+k*(a*c-b*s),y+k*(a*s+b*c)];
+    const toff=8.2+4.6*sz('text')/.75; ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
+    const {x:sx,y:sy,r:sr}=sp, sq=sp.r===1&&sx!==1&&sy!==1?8.5:0, mom=sr===1||sr===2;
+    const arrow=(v,d,ox,oy,tx,ty,cat)=>{ /* shaft from d to d+32 along (ox,oy) in the glyph frame; positive v points back toward the node */
+      const p0=f(ox*d,oy*d), p1=f(ox*(d+32),oy*(d+32)), [hx,hy]=v>=0?p0:p1, [bx,by]=v>=0?p1:p0, L=Math.hypot(bx-hx,by-hy)||1, ux=(hx-bx)/L, uy=(hy-by)/L;
+      line(...p0,...p1); const hb=8*k, hw=4*k; ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(hx-ux*hb-uy*hw,hy-uy*hb+ux*hw); ctx.lineTo(hx-ux*hb+uy*hw,hy-uy*hb-ux*hw); ctx.closePath(); ctx.fill();
+      const [mx,my]=f(ox*(d+16),oy*(d+16)); line(mx-uy*4*k,my+ux*4*k,mx+uy*4*k,my-ux*4*k);
+      if(M.disp.reacVal){ const [ex,ey]=f(ox*(d+32)+tx*toff/k,oy*(d+32)+ty*toff/k); text(fqu(cat,Math.abs(v)),ex,ey,col,readAng(ux,uy),'center','middle'); } };
+    if(sx===1||sx===2){ const d=sx===2?30+sq:sy===1&&sr===1?13.5:sy===1?8:sr===1?24:19; arrow(rx,d,-1,0,0,1,'force'); }
+    if(sy===1||sy===2){ const d=sy===2?30+sq:mom?24:19; arrow(ry,d,0,1,-1,0,'force'); }
+    if(mom){ const r=20*k, cx=x, cy=y+3*k, pos=mz>=0, ae=pos?base:base+Math.PI, sg=pos?1:-1;   /* motion runs from the other end through the ground side to the head */
+      ctx.beginPath(); ctx.arc(cx,cy,r,base+Math.PI,base,true); ctx.stroke();
+      const tip=[cx+r*Math.cos(ae),cy+r*Math.sin(ae)], ab=ae+sg*8/20, bm=[cx+r*Math.cos(ab),cy+r*Math.sin(ab)], L=Math.hypot(tip[0]-bm[0],tip[1]-bm[1])||1, ux=(tip[0]-bm[0])/L, uy=(tip[1]-bm[1])/L, hw=4*k;
+      ctx.beginPath(); ctx.moveTo(...tip); ctx.lineTo(bm[0]-uy*hw,bm[1]+ux*hw); ctx.lineTo(bm[0]+uy*hw,bm[1]-ux*hw); ctx.closePath(); ctx.fill();
+      const at=ae+sg*1.27; line(cx+(r-4*k)*Math.cos(at),cy+(r-4*k)*Math.sin(at),cx+(r+4*k)*Math.cos(at),cy+(r+4*k)*Math.sin(at));
+      if(M.disp.reacVal){ const tx=cx+k*(31.45*c-20*s), ty=cy+k*(31.45*s+20*c); text(fqu('moment',Math.abs(mz)),tx,ty,col,readAng(c,s),'center','middle'); } }
   }); }
 function drawTool(){ const P=C(), h=ui.hover; if(!h) return;
   if(trfMouse()&&ui.trfPts.length&&h.snap) drawTrfFeedback(h.snap);
@@ -1561,7 +1637,7 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
   if(i.t==='n'){ const n=nodeById(i.id); if(!n) return '';
     if(ui.res&&RES&&RES.ok){ const k=RES.idx.get(n.id), D=RES.D, R=RES.R, fx=RES.fixed; const r=RES.recs.find(r=>r.m.i===n.id||r.m.j===n.id); const rz=fx[3*k+2]===2&&r?r.rotAt(r.m.i===n.id?0:r.L):D[3*k+2];
       P2(); P2(' Node'); P2(' Results'); P2(); P2(' Support'); P2(' Reactions:');
-      if(n.sup&&[n.sup.x,n.sup.y,n.sup.r].some(Boolean)){ P2(`  Fx = ${fqu('force',R[3*k])}`); P2(`  Fy = ${fqu('force',R[3*k+1])}`); P2(`  Mz = ${fqu('moment',R[3*k+2])}`); } else P2('  None');
+      if(n.sup&&[n.sup.x,n.sup.y,n.sup.r].some(Boolean)){ const [rx,ry]=supReac(n); P2(`  Fx = ${fqu('force',rx)}`); P2(`  Fy = ${fqu('force',ry)}`); P2(`  Mz = ${fqu('moment',R[3*k+2])}`); } else P2('  None');
       P2(); P2(' Nodal'); P2(' Displacements:'); P2(`  Dx = ${fmtNum(toD('disp',D[3*k]),'e',3)} ${U('disp')}`); P2(`  Dy = ${fmtNum(toD('disp',D[3*k+1]),'e',3)} ${U('disp')}`); P2(`  Rz = ${fmtNum(toD('rot',rz),'e',3)} ${U('rot')}`); }
     else { P2(' Node'); P2(' Attributes'); P2(); P2(' Coordinates:'); P2(`  x = ${fqu('len',n.x)}`); P2(`  y = ${fqu('len',n.y)}`); P2(); P2(' Support'); P2(' Conditions:');
       const s=n.sup||{x:0,y:0,r:0}, sup=!!n.sup&&[s.x,s.y,s.r].some(Boolean); P2(`  Dx:    ${supW(s.x)}`); P2(`  Dy:    ${supW(s.y)}`); P2(`  Rz:    ${supW(s.r)}`);
@@ -1569,7 +1645,6 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
         if(s.pr&&[s.x,s.y,s.r].includes(1)){ const v=(d,val)=>[s.x,s.y,s.r][d]===1?val:0; P2(' Prescribed'); P2(' Displacements:'); P2(`  Dx = ${fmtNum(toD('disp',v(0,s.dx)),'e',3)} ${U('disp')}`); P2(`  Dy = ${fmtNum(toD('disp',v(1,s.dy)),'e',3)} ${U('disp')}`); P2(`  Rz = ${fmtNum(toD('rot',v(2,s.rz)),'e',3)} ${U('rot')}`); }
         else { P2(' No Prescribed'); P2(' Displacement'); }
         if([s.x,s.y,s.r].includes(2)){ const k=(d,val)=>[s.x,s.y,s.r][d]===2?val:0; P2(); P2(' Spring'); P2(' Stiffness:'); P2(`  KDx = ${fmtNum(toD('spring',k(0,s.kx)),'e',3)} ${U('spring')}`); P2(`  KDy = ${fmtNum(toD('spring',k(1,s.ky)),'e',3)} ${U('spring')}`); P2(`  KRz = ${fmtNum(toD('rspring',k(2,s.kz)),'e',3)} ${U('rspring')}`); } }
-      if(n.hinge){ P2(); P2(' Rotation release (hinge).'); }
       const ld=item('nodal',n.load); P2(); if(ld){ P2(` Nodal Forces: ${ld.name}`); P2(`  Fx = ${fqu('force',ld.fx)}`); P2(`  Fy = ${fqu('force',ld.fy)}`); P2(`  Mz = ${fqu('moment',ld.mz)}`); } else { P2(' Nodal Forces:'); P2('  None.'); } } }
   if(i.t==='m'){ const m=memById(i.id); if(!m) return ''; const a=nodeById(m.i), b=nodeById(m.j), L=Math.hypot(b.x-a.x,b.y-a.y);
     if(ui.res&&RES&&RES.ok){ const r=RES.rm.get(m.id); if(!r) return '';
@@ -1585,19 +1660,18 @@ function infoText(i){ const o=[], P2=(s='')=>o.push(s);
     else { const mat=item('mat',m.mat), sec=item('sec',m.sec);
       /* layout copied from Ftool 4.01 (session 4). Ftool writes the inertia unit as mm^4 here. */
       P2(' Member'); P2(' Attributes'); P2(); P2(` Length = ${fqu('len',L)}`); P2();
-      if(mat){ P2(` Material: ${mat.name}`); P2('  Type: Isotropic'); P2(`  E       = ${fqu('E',mat.E)}`); P2(`  Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(`  gama    = ${fqu('gamma',mat.gamma??0)}`); P2(`  alpha   = ${fqu('alpha',mat.alpha)}`); } else { P2(' Material:'); P2('  None.'); }
+      if(mat){ P2(` Material: ${mat.name}`); P2('  Type: Isotropic'); P2(`  E       = ${fqu('E',mat.E)}`); P2(`  Poisson = ${fmtNum(mat.nu,'f',2)}`); P2(`  gama    = ${fqu('gamma',mat.gamma??0)}`); P2(`  alpha   = ${fqu('alpha',mat.alpha)}`); } else { P2(' Material:'); P2('  Not defined.'); }
       P2();
       if(sec){ const S=secCalc(sec), on=secOrientName(sec), pr=PROF_DEF[sec.type]?profRec(sec):null; P2(` Section: ${sec.name}`); P2(`  Type: ${pr?pr.n:SEC_INFO[sec.type]||sec.type}`); if(on) P2(`  ${on}`);
         if(pr) for(const [k,v] of profFields(sec).report) P2(`  ${k.padEnd(5)} = ${fqu('sec',v)}`);
         const keys=sec.type==='integral'||pr?[]:SEC_TYPES[sec.type].p; for(const p of keys) P2(`  ${p.padEnd(5)} = ${fqu('sec',sec.p[p])}`);
-        P2(`  A     = ${fqu('area',S.A)}`); P2(`  As    = ${fqu('area',S.As)}`); P2(`  I     = ${fq('inertia',S.I)} ${U('inertia').replace('⁴','^4')}`); P2(`  depth = ${fqu('sec',S.d)}`); P2(`  ygc   = ${fqu('sec',S.yb)}`); } else { P2(' Section:'); P2('  None.'); }
+        P2(`  A     = ${fqu('area',S.A)}`); P2(`  As    = ${fqu('area',S.As)}`); P2(`  I     = ${fq('inertia',S.I)} ${U('inertia').replace('⁴','^4')}`); P2(`  depth = ${fqu('sec',S.d)}`); P2(`  ygc   = ${fqu('sec',S.yb)}`); } else { P2(' Section:'); P2('  Not defined.'); }
       P2(); if(m.rigid){ P2(' Rigid member.'); } else { P2(' Flexible member:'); P2(m.axial?'  Axial deformation.':'  No axial deformation.'); P2(m.shear?'  Shear deformation.':'  No shear deformation.'); }
-      if(m.hi||m.hj){ P2(); P2(` Hinges: ${m.hi&&m.hj?'both ends':m.hi?'initial end':'final end'}.`); }
       P2(); P2(' Load Case:'); P2('  Load Case 01'); P2();
       const le=item('endm',m.ld.e), lu=item('unif',m.ld.u), ll=item('lin',m.ld.l), lt=item('therm',m.ld.t);
       if(le){ P2(` End Moments: ${le.name}`); P2(`  Ma = ${fqu('moment',le.ma)}`); P2(`  Mb = ${fqu('moment',le.mb)}`); } else { P2(' End Moments:'); P2('  None.'); } P2();
-      /* Ftool shows one distributed-load block: "Linear Load" when the member has one, otherwise "Uniform Load" */
-      if(lu||!ll){ if(lu){ P2(` Uniform Load: ${lu.name}`); P2(`  Dir: ${lu.dir==='local'?'Local':'Global'}`); P2(`  Qx = ${fqu('dist',lu.qx)}`); P2(`  Qy = ${fqu('dist',lu.qy)}`); } else { P2(' Uniform Load:'); P2('  None.'); } P2(); }
+      /* Ftool shows one distributed-load block: "Linear Load" when the member has one, otherwise "Uniform Load", or "Distributed Load: None." (templates in Ftool.exe). Hinges are not listed. */
+      if(lu||!ll){ if(lu){ P2(` Uniform Load: ${lu.name}`); P2(`  Dir: ${lu.dir==='local'?'Local':'Global'}`); P2(`  Qx = ${fqu('dist',lu.qx)}`); P2(`  Qy = ${fqu('dist',lu.qy)}`); } else { P2(' Distributed Load:'); P2('  None.'); } P2(); }
       if(ll){ P2(` Linear Load: ${ll.name}`); P2(`  Dir: ${ll.dir==='local'?'Local':'Global'}`); for(const k of ['pxi','pyi','pxj','pyj']) P2(`  ${k[0].toUpperCase()+k.slice(1)} = ${fqu('dist',ll[k])}`); P2(); }
       if(lt){ P2(` Thermal Load: ${lt.name}`); P2(`  Ty+ = ${fqu('temp',lt.tt)}`); P2(`  Ty- = ${fqu('temp',lt.tb)}`); } else { P2(' Thermal Load:'); P2('  None.'); } } }
   return `<pre class="ftxt">\n${esc(o.join('\n'))}</pre>`; }   /* HTML drops the first newline after <pre>; the extra one keeps Ftool's leading empty line */
@@ -1848,7 +1922,7 @@ function pointQuery(hm){ if(ui.res==='env'){ envQuery(hm); return; } const r=RES
     ui.msg=`Influence line ${pos}Value: ${fmtIL(ui.q,best.v)}${ui.q==='M'?' '+U('len'):''}`; return; }
   if(ui.q==='D'){ const d=r.defl(x); ui.msg=`Displ./rotat. ${pos}Dx: ${fmtNum(toD('disp',d[0]),'e',3)} ${U('disp')}  Dy: ${fmtNum(toD('disp',d[1]),'e',3)} ${U('disp')}  Rz: ${fmtNum(toD('rot',r.rotAt(x)),'e',3)} ${U('rot')}`; return; }
   const v=r.val(ui.q,x), nm={N:'Axial force',V:'Shear force',M:'Bending moment'}[ui.q];
-  ui.msg=`${nm} ${pos}Value: ${fqu(QN[ui.q][1],v)}${ui.q==='N'?(v>1e-9?' (tension)':v<-1e-9?' (compression)':''):''}`; }
+  ui.msg=`${nm} ${pos}Value: ${fqu(QN[ui.q][1],v)}${ui.q==='N'?(v>1e-9?' - Tension':v<-1e-9?' - Compression':''):''}`; }
 cv.addEventListener('wheel',e=>{ e.preventDefault(); const [sx,sy]=sp(e); zoomAt(sx,sy,Math.exp(-e.deltaY*.0015)); },{passive:false});
 (()=>{ const d=$('#dial'); let y0=null; d.addEventListener('pointerdown',e=>{ y0=e.clientY; d.setPointerCapture(e.pointerId); });
   d.addEventListener('pointermove',e=>{ if(y0==null) return; zoomAt(W/2,H/2,Math.exp((y0-e.clientY)*.01)); y0=e.clientY; }); d.addEventListener('pointerup',()=>y0=null); })();

@@ -36,6 +36,7 @@ Everything is in one file, `index.html`. Open it in a browser. Nothing to instal
 - Result scale box and slider, step lines and step values (with Ftool's two step modes: equal parts per member, or steps from the member start), point queries by clicking a member (marked on the diagram with the value, as in Ftool), CSV export of line results.
 
 - Right-click reports for nodes and members, and point queries in the message line, in the same wording as Ftool.
+- Supports, springs, hinges, rigid members, thermal loads (flames and snowflakes) and reaction arrows are drawn as Ftool draws them, measured from Ftool's own vector export.
 
 **Files**: opens and saves Ftool `.ftl` files (format 401, Ftool 4.x), including supports, springs, settlements, hinges, load trains, units and display settings; Ftool opens files saved by FOpenTool. Also FOpenTool `.json` models; Import Properties from either; printing; screen image to the clipboard; Export Model Screen to SVG (vector image of the screen) and DXF (the drawing in model coordinates, metres, for CAD).
 
