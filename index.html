@@ -121,6 +121,10 @@ button,input,select{font:inherit;color:inherit}
 .mt td{text-align:right;padding:2px 3px;border-bottom:1px solid #E6E6E6}
 .mt tr[data-act]{cursor:default} .mt tr[data-act]:hover td{background:var(--hot)}
 .tT{color:#C00000} .tC{color:#0000C0} .tZ{color:var(--muted)}
+.main.wide{grid-template-columns:34px minmax(0,1fr) 380px}
+.fbt td,.fbt th{font-size:11.5px;vertical-align:top} .fbt td{white-space:nowrap}
+.feq{font-family:"Cambria Math","Times New Roman",serif;font-size:13px;margin:3px 0;display:flex;flex-direction:column;gap:2px;overflow-x:auto}
+.fbh{margin:8px 0 2px;font-size:12px} .tR{color:#800000} .tL{color:#0000A0}
 .kd{position:absolute;left:8px;top:8px;background:var(--chrome);border:1px solid #888;box-shadow:0 4px 12px rgba(0,0,0,.25);padding:8px;z-index:5;display:flex;flex-direction:column;gap:6px}
 .kd .ttl{font-weight:700}
 .kd .g{display:grid;grid-template-columns:auto 76px auto auto 76px;gap:3px 4px;align-items:center}
@@ -200,6 +204,7 @@ button,input,select{font:inherit;color:inherit}
     <button class="ib" data-q="D" title="Deformed Configuration"></button>
     <select id="defComp" title="Deformed configuration component shown with values" aria-label="Deformed component" style="width:44px;height:22px;border:1px solid var(--chrome-line);background:#fff"><option value="none" title="No values">—</option><option value="Dx" title="Horizontal displacement values">DX</option><option value="Dy" title="Vertical displacement values">DY</option><option value="Du" title="Axial displacement values">DU</option><option value="Dv" title="Transversal displacement values">DV</option><option value="Rz" title="Rotation values">RZ</option></select>
     <button class="ib" data-q="S" title="Section Stresses (normal and shear stresses in a cross-section)"></button>
+    <button class="ib" data-q="F" title="Free-Body Diagram (external forces, reactions and equilibrium equations)"></button>
     <button class="ib" id="bIlPick" title="Select a section for the influence line" hidden></button>
   </div>
   <div class="tb">
@@ -276,6 +281,7 @@ const IC={
  M:'<path d="M3 10h14" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 5a5 5 0 1 0 0 10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.5 5a5 5 0 1 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 3.2l3 1.8-3 1.8zM14 3.2l-3 1.8 3 1.8z" fill="currentColor"/>',
  D:'<path d="M2 8h16" stroke="currentColor" stroke-width="1" opacity=".5"/><path d="M2 8c4 0 4 6 8 6s5-5 8-6" fill="none" stroke="currentColor" stroke-width="1.7"/>',
  S:'<path d="M2 17h16" stroke="currentColor" stroke-width="1"/><text x="3" y="15" font-size="15" font-style="italic" font-family="Times New Roman,serif" fill="currentColor">σ</text><path d="M12 4h5v12h-5z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M12 4l5 12" stroke="#D00000" stroke-width="1.2"/>',
+ F:'<path d="M2 9h16" stroke="currentColor" stroke-width="2"/><path d="M10 2v4" stroke="currentColor" stroke-width="1.4"/><path d="M10 8l-2.3-3h4.6z" fill="currentColor"/><path d="M4 18v-5M16 18v-5" stroke="#800000" stroke-width="1.4"/><path d="M4 10.3l-2.3 3h4.6zM16 10.3l-2.3 3h4.6z" fill="#800000"/>',
  pick:'<path d="M3 15L15 3" stroke="currentColor" stroke-width="1.4"/><path d="M6 6l8 8" stroke="#D00000" stroke-width="2"/><path d="M4 17h12" stroke="currentColor" stroke-width="1"/>',
  stepDiv:'<path d="M2 10h16" stroke="#999" stroke-width="1.6"/><path d="M3 6.5v7M7.7 6.5v7M12.3 6.5v7M17 6.5v7" stroke="#00007A" stroke-width="1.6"/>',
  stepStart:'<path d="M2 10h16" stroke="#999" stroke-width="1.6"/><path d="M3 6.5v7M7 6.5v7M11 6.5v7M15 6.5v7M17 6.5v7" stroke="#00007A" stroke-width="1.6"/>',
@@ -1124,11 +1130,11 @@ function drawModel(resMode){ const P=C();
     if(M.opt.truss){ ctx.strokeStyle=sel||bad?P.sel:P.node; ctx.fillStyle=P.bg; ctx.lineWidth=1.3; ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.stroke(); }
     else { if(n.hinge){ ctx.strokeStyle=sel?P.sel:(resMode?P.rmem:P.mem); ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(x,y,5.5*sz('hinge'),0,7); ctx.stroke(); } ctx.fillStyle=sel||bad?P.sel:P.node; ctx.beginPath(); ctx.arc(x,y,sel||bad?3.4:2.4,0,7); ctx.fill(); }
     if(M.disp.nodeNum) text(String(n.id),x+6,y-6,P.dim,0,'left','bottom'); }
-  M.nodes.forEach(drawSupport);
+  if(!fbdOn()) M.nodes.forEach(drawSupport);   /* a free-body diagram replaces the supports by their reactions */
 }
 /* ---- results drawing ---- */
 const QN={N:['Axial Force','force'],V:['Shear Force','force'],M:['Bending Moment','moment'],D:['Deformed Factor',null],S:['Section Stresses',null]};
-function baseScale(){ if(!RES||!RES.ok||ui.q==='S') return 1; const ext=extent();
+function baseScale(){ if(!RES||!RES.ok||ui.q==='S'||ui.q==='F') return 1; const ext=extent();
   if(ui.res==='il'){ return ui.il&&ui.il.ext>0?0.1*ext/ui.il.ext:1; }   // Ftool: 0.1 x model size / largest ordinate
   if(ui.res==='env'){ let mx=0; ui.env?.mem.forEach(p=>p.forEach(o=>mx=Math.max(mx,Math.abs(o.max),Math.abs(o.min)))); if(!(mx>0)) return 1; return +(toD(QN[ui.q][1],mx)/toD('len',0.1*ext)).toPrecision(4); }
   if(ui.q==='D'){ let dm=0; for(const r of RES.recs) for(let i=0;i<=8;i++){ const d=r.defl(r.L*i/8); dm=Math.max(dm,Math.hypot(d[0],d[1])); } return dm>0?0.1*ext/dm:1; }
@@ -1230,6 +1236,152 @@ function jointEquilibrium(n){ if(!RES||!RES.ok||!M.opt.truss) return ''; const k
   return `<div class="pt" style="margin-top:8px">Joint Equilibrium</div><p style="margin:0;color:var(--muted)">Method of joints. A member in tension pulls on the joint, so its force on the joint is N along the member, pointing away from the joint: (N·cosθ, N·sinθ).</p>
    <table class="mt"><tr><th>Force on joint</th><th>Fx</th><th>Fy</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${fq('force',z(r[1]))}</td><td>${fq('force',z(r[2]))}</td></tr>`).join('')}
    <tr><td><b>ΣFx, ΣFy</b></td><td><b>${fq('force',z(sx))}</b></td><td><b>${fq('force',z(sy))}</b></td></tr></table><p style="margin:2px 0 0;color:var(--muted)">${U('force')}. Both sums are zero, so the joint is in equilibrium.</p>`; }
+/* ================= Free-body diagrams and equilibrium equations (MecSol 1, item 1) =================
+   Results quantity 'F' (button after Section Stresses). Whole structure: every external action in global axes (nodal loads, member loads
+   as resultants, member end moments, support reactions) and ΣFx, ΣFy, ΣM about a chosen point written out with the numbers. When the
+   supports have exactly three unknown components (no springs), the three equations are also solved for them, as done by hand. Clicking a
+   member or a node isolates it: the forces the rest of the structure exerts on it (from the stiffness analysis) become external forces and
+   its own equations are written out. State: ui.fbd (null | {t:'m'|'n', id}), ui.fbdO (node id or 'o' for the origin). */
+const fbdOn=()=>ui.res==='diag'&&ui.q==='F'&&RES&&RES.ok;
+const fbdTol=v=>1e-9*Math.max(1,v);
+// Resultant of a member's distributed load: local P (along x'), W (along y'), the moment of W about end i, and the point where it acts
+function memLoadRes(r){ const L=r.L, P=L*(r.pi+r.pj)/2, W=L*(r.wi+r.wj)/2, Mi=L*L*(r.wi+2*r.wj)/6, sc=Math.max(Math.abs(P),Math.abs(W),Math.abs(Mi)/L);
+  if(!(sc>1e-12)) return null; const xr=Math.abs(W)>1e-9*sc?Mi/W:L/2, couple=Math.abs(W)>1e-9*sc?0:Mi;
+  const a=nodeById(r.m.i); return {P,W,Mi,xr,couple,x:a.x+r.c*xr,y:a.y+r.s*xr,fx:P*r.c-W*r.s,fy:P*r.s+W*r.c}; }
+function memLoadName(r){ const lu=item('unif',r.m.ld.u), ll=item('lin',r.m.ld.l); return [lu,ll].filter(Boolean).map(x=>x.name).join(' + '); }
+// External actions on the whole structure (global axes). kind: 'P' point load, 'Q' resultant of a distributed load, 'C' applied couple, 'R' reaction force, 'RM' reaction moment
+function fbdActions(){ const out=[], truss=!!M.opt.truss;
+  for(const n of M.nodes){ const k=RES.idx.get(n.id); if(k==null||!RES.used[k]) continue; const ld=item('nodal',n.load);
+    if(ld&&(ld.fx||ld.fy)) out.push({kind:'P',lbl:`P${n.id}`,desc:`Load ${ld.name}, node ${n.id}`,x:n.x,y:n.y,fx:ld.fx||0,fy:ld.fy||0,node:n});
+    if(ld&&ld.mz&&RES.fixed[3*k+2]!==2) out.push({kind:'C',lbl:`C${n.id}`,desc:`Moment ${ld.name}, node ${n.id}`,x:n.x,y:n.y,m:ld.mz,node:n}); }
+  for(const r of RES.recs){ const q=memLoadRes(r); if(q){ out.push({kind:'Q',lbl:`Q${r.m.id}`,desc:`Distributed load ${memLoadName(r)}, member ${r.m.id}`,x:q.x,y:q.y,fx:q.fx,fy:q.fy,r,res:q});
+      if(q.couple) out.push({kind:'C',lbl:`Cq${r.m.id}`,desc:`Couple of the distributed load, member ${r.m.id}`,x:q.x,y:q.y,m:q.couple}); }
+    const le=item('endm',r.m.ld.e); if(le&&!truss){ const a=nodeById(r.m.i), b=nodeById(r.m.j);
+      if(le.ma) out.push({kind:'C',lbl:`Ma${r.m.id}`,desc:`End moment ${le.name}, member ${r.m.id} start`,x:a.x,y:a.y,m:le.ma});
+      if(le.mb) out.push({kind:'C',lbl:`Mb${r.m.id}`,desc:`End moment ${le.name}, member ${r.m.id} end`,x:b.x,y:b.y,m:le.mb}); } }
+  return out.concat(fbdReactions()); }
+// Support reactions: a fully fixed support in global axes, other supports in their own axes (as the solver keeps them); springs included (R = −k·D)
+function fbdReactions(){ const out=[], R=RES.R;
+  for(const n of M.nodes){ const sp=n.sup; if(!sp) continue; const k=RES.idx.get(n.id); if(k==null||!RES.used[k]) continue;
+    const full=sp.x===1&&sp.y===1&&sp.r===1, a=full?0:(sp.ang||0), th=a*Math.PI/180, c=Math.cos(th), s=Math.sin(th), pr=a?'′':'';
+    for(const [st,v,e,ax] of [[sp.x,R[3*k],[c,s],'x'],[sp.y,R[3*k+1],[-s,c],'y']]) if(st===1||st===2)
+      out.push({kind:'R',lbl:`R${n.id}${ax}${pr}`,desc:`${st===2?'Spring':'Support'} reaction, node ${n.id}${a?`, axis ${ax}′ at ${fmtNum(a,'f',1)}°`:''}`,x:n.x,y:n.y,e,v,fx:v*e[0],fy:v*e[1],ang:a,ax,spring:st===2,node:n});
+    if((sp.r===1||sp.r===2)&&!M.opt.truss) out.push({kind:'RM',lbl:`M${n.id}`,desc:`${sp.r===2?'Spring':'Support'} moment, node ${n.id}`,x:n.x,y:n.y,m:R[3*k+2],spring:sp.r===2,node:n}); }
+  return out; }
+const isCouple=a=>a.kind==='C'||a.kind==='RM';
+function fbdPoint(){ const o=ui.fbdO; if(o==='o') return {x:0,y:0,name:'O (origin)'}; let n=o!=null&&nodeById(o);
+  if(!n){ /* default: the support with the most unknown force components, so ΣM there has the fewest unknowns */
+    let best=null, bs=-1; for(const nd of M.nodes){ const s=nd.sup; if(!s||!RES.idx.has(nd.id)||!RES.used[RES.idx.get(nd.id)]) continue; const sc=(s.x===1)+(s.y===1)+(s.r===1)*.5; if(sc>bs){ bs=sc; best=nd; } }
+    n=best||M.nodes.find(nd=>RES.idx.has(nd.id)&&RES.used[RES.idx.get(nd.id)]); if(!n) return {x:0,y:0,name:'O (origin)'}; }
+  return {x:n.x,y:n.y,name:`node ${n.id}`,id:n.id}; }
+const momOf=(a,O)=>isCouple(a)?a.m:(a.x-O.x)*a.fy-(a.y-O.y)*a.fx;
+// "a + b − c" from signed values, with a formatter for the magnitudes
+function sumText(vals,fmt){ const v=vals.filter(t=>t!=null); if(!v.length) return 'no terms'; return v.map((t,i)=>{ const neg=t<0&&fmt(Math.abs(t))!==fmt(0); return (i?(neg?' − ':' + '):(neg?'−':''))+fmt(Math.abs(t)); }).join(''); }
+const fF=v=>fq('force',v), fMo=v=>fq('moment',v), fL=v=>fq('len',v);
+const zf=(v,cat)=>{ const s=fq(cat,v); return /^-?0?\.?0*$/.test(s.replace(/[e][-+]\d+$/,''))?0:v; };
+// Solve the three equilibrium equations for three unknown reaction components (Gaussian elimination with pivoting). Returns null if singular.
+function solve3(A,b){ const n=A.length, a=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){ let p=c; for(let r=c+1;r<n;r++) if(Math.abs(a[r][c])>Math.abs(a[p][c])) p=r; if(Math.abs(a[p][c])<1e-10) return null; [a[c],a[p]]=[a[p],a[c]];
+    for(let r=0;r<n;r++) if(r!==c){ const f=a[r][c]/a[c][c]; for(let k=c;k<=n;k++) a[r][k]-=f*a[c][k]; } }
+  return a.map((r,i)=>r[n]/r[i]); }
+function coefText(c,name){ if(Math.abs(c)<1e-12) return null; const s=Math.abs(Math.abs(c)-1)<1e-12?name:`${fmtNum(Math.abs(c),'f',3).replace(/\.?0+$/,'')}·${name}`; return [c<0,s]; }
+function eqnText(terms,known,fmtK){ const parts=[]; terms.forEach(t=>{ if(t) parts.push(t); }); if(Math.abs(known)>0) parts.push([known<0,fmtK(Math.abs(known))]);
+  if(!parts.length) return '0 = 0'; return parts.map(([neg,s],i)=>(i?(neg?' − ':' + '):(neg?'−':''))+s).join('')+' = 0'; }
+function panelFBD(){ return panelFBD0().replace(/ = no terms = /g,' = '); }
+function panelFBD0(){ const f=ui.fbd, h=['<div class="pt">Free-Body Diagram</div>'];
+  if(f&&f.t==='m') return h.join('')+fbdMemberPanel(memById(f.id));
+  if(f&&f.t==='n') return h.join('')+fbdNodePanel(nodeById(f.id));
+  const O=fbdPoint(), acts=fbdActions(), su=`${U('force')}, ${U('moment')}`;
+  const opts=[...M.nodes.filter(n=>RES.idx.has(n.id)&&RES.used[RES.idx.get(n.id)]).map(n=>`<option value="${n.id}"${O.id===n.id?' selected':''}>node ${n.id} (${fL(n.x)}, ${fL(n.y)})${n.sup?' support':''}</option>`),`<option value="o"${O.id==null?' selected':''}>origin (0, 0)</option>`].join('');
+  h.push(`<p style="margin:0 0 4px"><b>Whole structure.</b> Supports are replaced by their reactions. Click a member or a node to isolate it.</p>`);
+  h.push(`<label class="ck" style="margin:4px 0">Moments about <select id="fbdO" style="flex:1;min-width:0">${opts}</select></label>`);
+  const pv=(v,f)=>{ const t=f(Math.abs(v)); return v<0&&t!==f(0)?`(−${t})`:t; }, nz=(v,c)=>zf(v,c)!==0;
+  const armOf=a=>{ if(isCouple(a)) return 'couple'; const dx=a.x-O.x, dy=a.y-O.y, t=[]; if(nz(a.fy,'force')&&nz(dx,'len')) t.push(`${pv(a.fy,fF)}·${pv(dx,fL)}`); if(nz(a.fx,'force')&&nz(dy,'len')) t.push(`${t.length?'− ':'−'}${pv(a.fx,fF)}·${pv(dy,fL)}`); return t.length?t.join(' '):'passes through the point'; };
+  const row=a=>{ const mo=momOf(a,O), arm=armOf(a);
+    return `<tr title="${esc(a.desc)}"><td><b class="${a.kind[0]==='R'?'tR':'tL'}">${a.lbl}</b><br><span style="color:var(--muted);font-size:10.5px">${isCouple(a)?'':`at (${fL(a.x)}, ${fL(a.y)})`}</span></td><td>${isCouple(a)?'':fF(zf(a.fx,'force'))}</td><td>${isCouple(a)?'':fF(zf(a.fy,'force'))}</td><td>${fMo(zf(mo,'moment'))}<br><span style="color:var(--muted);font-size:10.5px">${arm}</span></td></tr>`; };
+  h.push(`<table class="mt fbt"><tr><th>Action</th><th>Fx</th><th>Fy</th><th>M about ${O.name.split(' (')[0]}</th></tr>${acts.map(row).join('')}</table><p style="margin:2px 0 6px;color:var(--muted)">${su}; moments counterclockwise positive, M = Fy·Δx − Fx·Δy. Point (x, y) is where the force acts; a distributed load acts through its centroid.</p>`);
+  const sx=acts.filter(a=>!isCouple(a)).map(a=>zf(a.fx,'force')).filter(v=>v), sy=acts.filter(a=>!isCouple(a)).map(a=>zf(a.fy,'force')).filter(v=>v), sm=acts.map(a=>zf(momOf(a,O),'moment')).filter(v=>v);
+  const tot=(arr)=>arr.reduce((p,q)=>p+q,0);
+  h.push(`<h5 class="fbh">Equilibrium equations</h5><div class="feq"><div>ΣF<sub>x</sub> = ${sumText(sx,fF)} = ${fF(zf(tot(acts.filter(a=>!isCouple(a)).map(a=>a.fx)),'force'))} ${U('force')}</div><div>ΣF<sub>y</sub> = ${sumText(sy,fF)} = ${fF(zf(tot(acts.filter(a=>!isCouple(a)).map(a=>a.fy)),'force'))} ${U('force')}</div><div>ΣM<sub>${O.id!=null?O.id:'O'}</sub> = ${sumText(sm,fMo)} = ${fMo(zf(tot(acts.map(a=>momOf(a,O))),'moment'))} ${U('moment')}</div></div>
+    <p style="margin:2px 0 0;color:var(--muted)">All three sums are zero (to the digits shown), so the structure is in equilibrium.</p>`);
+  h.push(fbdStatics(acts,O)); return h.join(''); }
+// The reactions as unknowns: with exactly three unknown components and no springs, write the three equations and solve them
+function fbdStatics(acts,O){ const unk=acts.filter(a=>(a.kind==='R'||a.kind==='RM')&&!a.spring), known=acts.filter(a=>!unk.includes(a)), c=classify(M,RES);
+  const n=unk.length, hasSpring=acts.some(a=>a.spring); let h=`<h5 class="fbh">Reactions from statics</h5>`;
+  const kx=known.filter(a=>!isCouple(a)).reduce((p,a)=>p+a.fx,0), ky=known.filter(a=>!isCouple(a)).reduce((p,a)=>p+a.fy,0), km=known.reduce((p,a)=>p+momOf(a,O),0);
+  if(n===3&&!hasSpring){ const A=[unk.map(a=>isCouple(a)?0:a.e[0]),unk.map(a=>isCouple(a)?0:a.e[1]),unk.map(a=>isCouple(a)?1:(a.x-O.x)*a.e[1]-(a.y-O.y)*a.e[0])], b=[-kx,-ky,-km], x=solve3(A,b);
+    const names=unk.map(a=>a.lbl);
+    h+=`<p style="margin:0">Three unknown reaction components (${names.join(', ')}) and three equations: the structure is externally isostatic and statics alone gives the reactions. Unknowns taken positive along +x, +y${unk.some(a=>a.ang)?' (or the support axes)':''} and counterclockwise.</p><div class="feq">`;
+    const lab=['ΣF<sub>x</sub> = 0:','ΣF<sub>y</sub> = 0:',`ΣM<sub>${O.id!=null?O.id:'O'}</sub> = 0:`], kf=[fF,fF,fMo];
+    A.forEach((row,i)=>{ h+=`<div>${lab[i]} ${eqnText(row.map((cf,j)=>coefText(cf,names[j])),-b[i],kf[i])}</div>`; });
+    h+='</div>';
+    if(x){ h+=`<p style="margin:2px 0 0">Solving:</p><div class="feq">${unk.map((a,j)=>`<div><b>${names[j]} = ${(isCouple(a)?fMo:fF)(zf(x[j],isCouple(a)?'moment':'force'))} ${U(isCouple(a)?'moment':'force')}</b></div>`).join('')}</div><p style="margin:2px 0 0;color:var(--muted)">Same values as the stiffness analysis (table above).</p>`; }
+    else h+=`<p style="margin:2px 0 0">These equations are not independent: the supports cannot prevent every rigid-body motion (the structure is unstable).</p>`; }
+  else if(hasSpring) h+=`<p style="margin:0">Spring reactions depend on the displacements (R = −k·D), so they come from the stiffness analysis; the equations above check them.</p>`;
+  else if(n<3) h+=`<p style="margin:0">Only ${n} unknown reaction component${n===1?'':'s'}: fewer than the three equations, so the supports cannot hold every load case (${c.cls.toLowerCase()}).</p>`;
+  else h+=`<p style="margin:0">${n} unknown reaction components and three equations of the whole structure.${c.g===0?` The ${n-3} extra equation${n-3>1?'s':''} come from the internal hinges (M = 0 there): isolate the parts by clicking a member or a node.`:` ${c.cls}: equilibrium alone does not give the reactions; the values above come from the stiffness analysis and satisfy the three equations.`}</p>`;
+  return h; }
+// Member: forces the nodes exert on it (r.q, local axes, from the analysis), its loads, and its equations in member axes
+function fbdMemberPanel(m){ const r=m&&RES.rm.get(m.id); if(!r) return ''; const a=nodeById(m.i), b=nodeById(m.j), q=r.q, L=r.L, th=Math.atan2(r.s,r.c)*180/Math.PI, ld=memLoadRes(r), le=item('endm',m.ld.e), su=U('force');
+  const ma=le&&!M.opt.truss?le.ma||0:0, mb=le&&!M.opt.truss?le.mb||0:0, P=ld?ld.P:0, Wv=ld?ld.W:0, Mi=ld?ld.Mi:0, mE=[q[2]-ma,q[5]-mb];   /* r.q includes the applied end moments; the node's own moment is the rest */
+  let h=`<p style="margin:0 0 4px"><b>Member ${m.id}</b>, node ${m.i} → node ${m.j}, L = ${fqu('len',L)}, θ = ${fmtNum(th,'f',2)}°. Member axes: x′ from node ${m.i} to node ${m.j}, y′ = x′ turned 90° counterclockwise.</p>`;
+  const g=(fx,fy)=>[fx*r.c-fy*r.s,fx*r.s+fy*r.c];
+  h+=`<h5 class="fbh">Forces on the member at its ends</h5><table class="mt fbt"><tr><th>End</th><th>F<sub>x′</sub></th><th>F<sub>y′</sub></th><th>M</th></tr>`;
+  for(const [lab,o] of [[`i (node ${m.i})`,0],[`j (node ${m.j})`,3]]) h+=`<tr><td>${lab}</td><td>${fF(zf(q[o],'force'))}</td><td>${fF(zf(q[o+1],'force'))}</td><td>${fMo(zf(mE[o/3],'moment'))}</td></tr>`;
+  h+=`</table><p style="margin:2px 0 0;color:var(--muted)">${su}, ${U('moment')}; exerted by the nodes on the member, from the stiffness analysis. Global components: i (${fF(zf(g(q[0],q[1])[0],'force'))}, ${fF(zf(g(q[0],q[1])[1],'force'))}), j (${fF(zf(g(q[3],q[4])[0],'force'))}, ${fF(zf(g(q[3],q[4])[1],'force'))}).${(m.hi||m.hj)&&!M.opt.truss?' A hinged end carries no moment.':''}</p>`;
+  h+=`<h5 class="fbh">Loads on the member</h5>`;
+  const loads=[]; if(ld){ loads.push(`Distributed load ${esc(memLoadName(r))}: resultant P = ${fqu('force',zf(P,'force'))} along x′, W = ${fqu('force',zf(Wv,'force'))} along y′${Math.abs(Wv)>0?`, acting at x′ = ${fqu('len',ld.xr)}${ld.xr<-1e-9||ld.xr>L+1e-9?', outside the member because the load changes sign':''}`:''} (moment about i: ${fqu('moment',zf(Mi,'moment'))}).`); }
+  if(ma) loads.push(`End moment at i: ${fqu('moment',ma)}.`); if(mb) loads.push(`End moment at j: ${fqu('moment',mb)}.`);
+  const lt=item('therm',m.ld.t); if(lt) loads.push(`Thermal load ${esc(lt.name)}: no external force (only self-equilibrated end forces).`);
+  h+=loads.length?`<ul style="margin:0;padding-left:16px">${loads.map(x=>`<li>${x}</li>`).join('')}</ul>`:`<p style="margin:0">None.</p>`;
+  const ex=[q[0],q[3],P].map(v=>zf(v,'force')).filter(v=>v), ey=[q[1],q[4],Wv].map(v=>zf(v,'force')).filter(v=>v), em=[mE[0],mE[1],ma,mb,zf(q[4]*L,'moment'),Mi].map(v=>zf(v,'moment')).filter(v=>v);
+  h+=`<h5 class="fbh">Equilibrium of the member</h5><div class="feq"><div>ΣF<sub>x′</sub> = ${sumText(ex,fF)} = ${fF(zf(q[0]+q[3]+P,'force'))}</div><div>ΣF<sub>y′</sub> = ${sumText(ey,fF)} = ${fF(zf(q[1]+q[4]+Wv,'force'))}</div><div>ΣM<sub>i</sub> = ${sumText(em,fMo)} = ${fMo(zf(mE[0]+mE[1]+ma+mb+q[4]*L+Mi,'moment'))}</div></div>
+    <p style="margin:2px 0 0;color:var(--muted)">ΣM<sub>i</sub> = M<sub>i</sub> + M<sub>j</sub> + F<sub>y′j</sub>·L + (moment of the loads about i)${ma||mb?' + end moments':''}; F<sub>y′j</sub>·L = ${q[4]<0&&fF(-q[4])!==fF(0)?`(−${fF(-q[4])})`:fF(q[4])}·${fL(L)}.</p>`;
+  h+=`<h5 class="fbh">Internal forces at the ends</h5><p style="margin:0">The end forces are the diagram values at the ends (Ftool's convention): N = ${fqu('force',zf(r.N(0),'force'))} → ${fqu('force',zf(r.N(L),'force'))}, V = ${fqu('force',zf(r.val('V',0),'force'))} → ${fqu('force',zf(r.val('V',L),'force'))}, M = ${fqu('moment',zf(r.val('M',0),'moment'))} → ${fqu('moment',zf(r.val('M',L),'moment'))}.</p>
+    <p style="margin:6px 0 0"><button class="pb" data-act="fbd:whole">Whole structure</button></p>`;
+  return h; }
+// Node: forces from the member ends (opposite of the forces on the members), applied load and reaction, all in global axes at the node
+function fbdNodeActs(n){ const out=[], k=RES.idx.get(n.id);
+  for(const r of RES.recs){ if(r.m.i!==n.id&&r.m.j!==n.id) continue; const o=r.m.i===n.id?0:3, q=r.q, fx=-(q[o]*r.c-q[o+1]*r.s), fy=-(q[o]*r.s+q[o+1]*r.c);
+    const le=item('endm',r.m.ld.e), mm=le&&!M.opt.truss?(o?le.mb:le.ma)||0:0; out.push({lbl:`member ${r.m.id}`,fx,fy,m:-(q[o+2]-mm)}); }
+  const ld=item('nodal',n.load); if(ld&&(ld.fx||ld.fy||ld.mz)) out.push({lbl:`load ${ld.name}`,fx:ld.fx||0,fy:ld.fy||0,m:RES.fixed[3*k+2]===2?0:ld.mz||0});
+  for(const a of fbdReactions().filter(a=>a.node===n)) out.push({lbl:a.lbl,fx:isCouple(a)?0:a.fx,fy:isCouple(a)?0:a.fy,m:isCouple(a)?a.m:0});
+  return out; }
+function fbdNodePanel(n){ if(!n) return ''; const k=RES.idx.get(n.id); if(k==null||!RES.used[k]) return ''; const acts=fbdNodeActs(n);
+  let h=`<p style="margin:0 0 4px"><b>Node ${n.id}</b> at (${fL(n.x)}, ${fL(n.y)}). Each member pushes on the node with the opposite of the force the node exerts on it.</p>`;
+  h+=`<table class="mt fbt"><tr><th>Action on the node</th><th>Fx</th><th>Fy</th><th>M</th></tr>${acts.map(a=>`<tr><td>${esc(a.lbl)}</td><td>${fF(zf(a.fx,'force'))}</td><td>${fF(zf(a.fy,'force'))}</td><td>${M.opt.truss?'—':fMo(zf(a.m,'moment'))}</td></tr>`).join('')}</table>`;
+  const s=(key,cat)=>acts.map(a=>zf(a[key],cat)).filter(v=>v), t=key=>acts.reduce((p,a)=>p+a[key],0);
+  h+=`<h5 class="fbh">Equilibrium of the node</h5><div class="feq"><div>ΣF<sub>x</sub> = ${sumText(s('fx','force'),fF)} = ${fF(zf(t('fx'),'force'))}</div><div>ΣF<sub>y</sub> = ${sumText(s('fy','force'),fF)} = ${fF(zf(t('fy'),'force'))}</div>${M.opt.truss?'':`<div>ΣM = ${sumText(s('m','moment'),fMo)} = ${fMo(zf(t('m'),'moment'))}</div>`}</div>
+    <p style="margin:2px 0 0;color:var(--muted)">${U('force')}, ${U('moment')}. All forces act at the node, so only the moments of couples enter ΣM.</p><p style="margin:6px 0 0"><button class="pb" data-act="fbd:whole">Whole structure</button></p>`;
+  return h; }
+/* Drawing: forces as arrows with their head at the point where they act (loads blue, reactions and end forces dark red), couples as arcs,
+   distributed loads with their resultant dashed through the centroid, the moment point O as a circled cross. Values are magnitudes;
+   the arrow shows the sense. */
+function fbdArrow(px,py,fx,fy,lbl,col,opt={}){ const L=Math.hypot(fx,fy); if(!(L>0)) return; const ux=fx/L, uy=-fy/L, len=(opt.len||42), gap=opt.gap||0;
+  const hx=px-ux*gap, hy=py-uy*gap, tx=hx-ux*len, ty=hy-uy*len; ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.3; if(opt.dash) ctx.setLineDash([5,3]); line(tx,ty,hx,hy); ctx.setLineDash([]); head(hx,hy,ux,uy,8);
+  if(lbl) text(lbl,tx-ux*4,ty-uy*4,col,0,ux>.5?'right':ux<-.5?'left':'center',uy>.5?'bottom':uy<-.5?'top':'middle',C().bg); }
+function fbdCouple(px,py,m,lbl,col,r=17){ if(!m) return; arc(px,py,r,m,col); if(lbl) text(lbl,px+r+3,py-r-2,col,0,'left','bottom',C().bg); }
+function drawFBD(){ if(!fbdOn()) return; const P=C(), cL=P.load, cR=P.react, f=ui.fbd, val=(v,cat)=>fqu(cat,Math.abs(v));
+  if(f&&f.t==='m'){ const r=RES.rm.get(f.id); if(!r) return; const q=r.q, a=nodeById(r.m.i), b=nodeById(r.m.j), [x1,y1]=toS(a.x,a.y), [x2,y2]=toS(b.x,b.y);
+    ctx.strokeStyle=P.sel; ctx.lineWidth=3; line(x1,y1,x2,y2);
+    const le=item('endm',r.m.ld.e); for(const [o,[sx,sy],nm] of [[0,[x1,y1],'i'],[3,[x2,y2],'j']]){ const ax=zf(q[o],'force'), tr=zf(q[o+1],'force'), mo=zf(q[o+2]-(le&&!M.opt.truss?(o?le.mb:le.ma)||0:0),'moment');
+      if(ax) fbdArrow(sx,sy,ax*r.c,ax*r.s,`${val(ax,'force')}`,cR,{gap:3});
+      if(tr) fbdArrow(sx,sy,-tr*r.s,tr*r.c,`${val(tr,'force')}`,cR,{gap:3});
+      if(mo) fbdCouple(sx,sy,mo,val(mo,'moment'),cR,15); }
+    const ld=memLoadRes(r); if(ld&&(ld.fx||ld.fy)){ const [px,py]=toS(ld.x,ld.y); fbdArrow(px,py,ld.fx,ld.fy,`${fqu('force',Math.hypot(ld.fx,ld.fy))}`,cL,{dash:true,len:52}); }
+    return; }
+  if(f&&f.t==='n'){ const n=nodeById(f.id); if(!n) return; const [sx,sy]=toS(n.x,n.y); ctx.strokeStyle=P.sel; ctx.beginPath(); ctx.arc(sx,sy,5,0,7); ctx.stroke();
+    let ang=0; for(const a of fbdNodeActs(n)){ const fx=zf(a.fx,'force'), fy=zf(a.fy,'force'), mo=zf(a.m,'moment');
+      if(fx||fy) fbdArrow(sx,sy,fx,fy,`${fqu('force',Math.hypot(fx,fy))}`,a.lbl.startsWith('member')?cR:a.lbl.startsWith('R')?cR:cL,{gap:4,len:46});
+      if(mo&&!M.opt.truss){ fbdCouple(sx,sy,mo,val(mo,'moment'),a.lbl.startsWith('M')?cR:cL,14+ang); ang+=7; } }
+    return; }
+  const O=fbdPoint(), [ox,oy]=toS(O.x,O.y); ctx.strokeStyle='#C00000'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(ox,oy,6,0,7); ctx.stroke(); line(ox-6,oy,ox+6,oy); line(ox,oy-6,ox,oy+6); text(O.id!=null?`O = ${O.id}`:'O',ox+8,oy+8,'#C00000',0,'left','top',P.bg);
+  for(const a of fbdActions()){ const [px,py]=toS(a.x,a.y);
+    if(a.kind==='Q') fbdArrow(px,py,a.fx,a.fy,`${a.lbl} = ${fqu('force',Math.hypot(a.fx,a.fy))}`,cL,{dash:true,len:52});
+    else if(a.kind==='R'){ const v=zf(a.v,'force'); fbdArrow(px,py,(v||1e-30)*a.e[0],(v||1e-30)*a.e[1],`${a.lbl} = ${val(v,'force')}`,cR,{gap:3}); }
+    else if(a.kind==='RM') fbdCouple(px,py,zf(a.m,'moment')||1e-30,`${a.lbl} = ${val(a.m,'moment')}`,cR,22);
+    else if(a.kind==='C'&&a.lbl.startsWith('Cq')) fbdCouple(px,py,a.m,`${a.lbl} = ${val(a.m,'moment')}`,cL,15); } }
+
 // Chosen deformed-configuration component at local position x: DX, DY (global), DU, DV (member axes) or RZ
 function defVal(r,x){ const d=r.defl(x), k=ui.defComp; if(k==='none') return null;
   const v=k==='Dx'?d[0]:k==='Dy'?d[1]:k==='Du'?d[0]*r.c+d[1]*r.s:k==='Dv'?-d[0]*r.s+d[1]*r.c:r.rotAt(x);
@@ -1294,7 +1446,7 @@ function drawTrainPreview(){ const tr=item('train',M.cur.train), b=bbox(); if(!t
     ctx.font=FONT(); const w=ctx.measureText(lbl).width+8, m=(a+c)/2; if(c-a>w+12){ line(a,y,m-w/2,y); line(m+w/2,y,c,y); head(a,y,-1,0,5); head(c,y,1,0,5); } text(lbl,m,y,P.dim); }
   drawTrainOn(lay,t,Y0-13); }
 // Point query marker, as in Ftool: a red ordinate from the member to the diagram (or to the deformed shape) with the value at its end
-function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+1e-9||ui.q==='S') return; const P=C(), a=nodeById(r.m.i), x=pq.x, bx=a.x+r.c*x, by=a.y+r.s*x, b=toS(bx,by); let o, lbl;
+function drawQuery(){ const pq=ui.pq, r=pq&&RES.rm.get(pq.mid); if(!r||pq.x>r.L+1e-9||ui.q==='S'||ui.q==='F') return; const P=C(), a=nodeById(r.m.i), x=pq.x, bx=a.x+r.c*x, by=a.y+r.s*x, b=toS(bx,by); let o, lbl;
   if(ui.res==='il'){ const il=ui.il, ln=il&&il.lines.find(l=>l.r===r); if(!ln) return; let best=ln.pts[0]; ln.pts.forEach(p=>{ if(Math.abs(p.a-x)<Math.abs(best.a-x)) best=p; });
     const q=ui.q, side=M.opt.ilPos==='lower'?r.low:(q==='M'?r.low.map(v=>v*(M.opt.mPos==='tension'?1:-1)):r.up), w=best.v*curScale(); o=toS(bx+side[0]*w,by+side[1]*w); lbl=fmtIL(q,best.v); }
   else if(ui.q==='D'){ const f=curScale(), d=r.defl(x); o=toS(bx+f*d[0],by+f*d[1]); if(ui.defComp==='none') lbl=null; else lbl=defVal(r,x).txt; }
@@ -1348,7 +1500,7 @@ function draw(){ if(!W) return; ctx.setTransform(dpr,0,0,dpr,0,0); const P=C(); 
   $('#stage').style.background=P.bg; drawGrid(); drawDims();
   const res=ui.res&&RES&&RES.ok;
   drawModel(res);
-  if(res){ if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else drawDiagram(); } else if(ui.res==='il'){ drawIL(); drawILTrain(); } else if(ui.res==='env') drawEnv(); if(ui.res==='env') drawEnvQuery(); else drawQuery(); drawReactions(); if(M.disp.loadRes) drawLoads(); }
+  if(res){ const fb=fbdOn(); if(ui.res==='diag'){ if(ui.q==='D') drawDeformed(); else if(ui.q==='S') drawCut(); else if(fb){ drawLoads(); drawFBD(); } else drawDiagram(); } else if(ui.res==='il'){ drawIL(); drawILTrain(); } else if(ui.res==='env') drawEnv(); if(ui.res==='env') drawEnvQuery(); else drawQuery(); if(!fb){ drawReactions(); if(M.disp.loadRes) drawLoads(); } }
   else if(M.disp.loadEdit){ drawLoads(); drawTrainPreview(); }
   drawTool(); updateStatus(); }
 
@@ -1359,15 +1511,16 @@ function enterResults(mode,q){
     if(!item('train',M.cur.train)){ msgBox('It is not possible to get load-train envelopes.\n\nSelect target load-train.'); return; }
     const ids=selMembers().map(m=>m.id), S=buildSystem(M); if(S.error){ ui.msg=S.error; renderTop(); return; }
     if(!trainPath(analyze(M),ids)){ msgBox('It is not possible to get load-train envelopes.\n\nSelect members forming a continuous load-train path.\nThen press button (axial, shear, or bending)\nfor target load-train envelopes.'); return; }
-    ui.envPath=ids; if(!q&&(ui.q==='D'||ui.q==='S')) ui.q='M'; }
+    ui.envPath=ids; if(!q&&'DSF'.includes(ui.q)) ui.q='M'; }
   if(mode==='il'){ const ids=selMembers().map(m=>m.id); ui.ilPath=ids;
     if(item('train',M.cur.train)){ // as in Ftool: with a target train the influence line needs a load-train path
       const S=analyze(M); if(!S.ok){ ui.msg=S.error; renderTop(); return; }
       if(!(ids.length?trainPath(S,ids):defaultTrainPath(S))){ clearSel(); msgBox(IL_TRAIN_ALERT); renderAll(); return; } } }
-  ui.pq=null; if(q) ui.q=q; ui.res=mode; if(mode==='il'&&(ui.q==='D'||ui.q==='S')) ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
+  ui.pq=null; if(q) ui.q=q; ui.res=mode; if(mode==='il'&&'DSF'.includes(ui.q)) ui.q='M'; ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.tool='results'; ui.pts=[]; ui.info=null; recompute();
   if(mode==='il'&&!ui.il){ ui.ilPick=true; } renderAll(); }
-function exitResults(){ ui.pq=null; ui.res=null; ui.il=null; ui.ilTr=null; ui.env=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
+function exitResults(){ ui.fbd=null; ui.pq=null; ui.res=null; ui.il=null; ui.ilTr=null; ui.env=null; RES=null; ui.info=null; $('#ssv').hidden=true; }
 function resMsg(){ if(!RES||!RES.ok) return RES?RES.error:''; const w=RES.warn&&RES.warn.length?RES.warn[0]+'  ':'';
+  if(ui.res==='diag'&&ui.q==='F') return w+(ui.fbd?`Free-body diagram of ${ui.fbd.t==='m'?'member':'node'} ${ui.fbd.id}. Click another member or node, or empty space for the whole structure.`:'Free-body diagram of the whole structure. Click a member or a node to isolate it.');
   if(ui.res==='diag'&&ui.q==='S') return w+(ui.cut?'Section stresses shown. Click another point on a member to move the cut.':'Select a point on a member to see the stresses in its cross-section.');
   return w+resMsgBase(); }
 function resMsgBase(){ const nm={N:'axial force',V:'shear force',M:'bending moment',D:'deformed configuration'}[ui.q];
@@ -1384,7 +1537,7 @@ function renderTop(){
   $$('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',!ui.res&&b.dataset.tool===ui.tool));
   $$('[data-panel]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.panel===ui.panel));
   $$('[data-rmode]').forEach(b=>b.setAttribute('aria-pressed',ui.res===b.dataset.rmode));
-  $$('[data-q]').forEach(b=>{ b.setAttribute('aria-pressed',!!ui.res&&ui.q===b.dataset.q); b.disabled=(ui.res==='il'||ui.res==='env')&&(b.dataset.q==='D'||b.dataset.q==='S'); });
+  $$('[data-q]').forEach(b=>{ b.setAttribute('aria-pressed',!!ui.res&&ui.q===b.dataset.q); b.disabled=(ui.res==='il'||ui.res==='env')&&'DSF'.includes(b.dataset.q); });
   $('#bIlPick').hidden=ui.res!=='il'; $('#bIlPick').setAttribute('aria-pressed',ui.ilPick);
   { const ts=$('#trainSel'), opts=`<option value="">NONE</option>`+L_('train').map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); if(ts.dataset.o!==opts){ ts.innerHTML=opts; ts.dataset.o=opts; } ts.value=M.cur.train||''; ts.disabled=!!ui.res&&ui.res!=='il'; $('#bTrain').setAttribute('aria-pressed',ui.panel==='train'); }
   $('#bKbd').setAttribute('aria-pressed',ui.kbd); $('#bTrf').setAttribute('aria-pressed',ui.panel==='trf');
@@ -1392,7 +1545,7 @@ function renderTop(){
   $('#bDel').disabled=!ui.sel.t||!!ui.res; $('#pot').disabled=!ui.res; $('#defComp').value=ui.defComp;
   $('#bStepDiv').setAttribute('aria-pressed',M.opt.stepMode!=='start'); $('#bStepStart').setAttribute('aria-pressed',M.opt.stepMode==='start');
   const mb=$('#modeBox');
-  if(ui.res==='diag'&&ui.q==='S'&&RES&&RES.ok){ mb.innerHTML=`<span class="lbl">Results:</span><span class="box">Section Stresses</span>`; $('#pot').disabled=true; }
+  if(ui.res==='diag'&&(ui.q==='S'||ui.q==='F')&&RES&&RES.ok){ mb.innerHTML=`<span class="lbl">Results:</span><span class="box">${ui.q==='S'?'Section Stresses':'Free-Body Diagram'}</span>`; $('#pot').disabled=true; }
   else if(ui.res&&RES&&RES.ok){ const il=ui.res==='il', [lab,cat]=il?['Infl. Line Factor',null]:QN[ui.q];
     const unit=cat?`${U(cat)}:1${U('len')}`:'', val=il&&!ui.il?'':fmtNum(curScale(),'f',il?2:1);
     mb.innerHTML=`<span class="lbl">${lab}:</span><input class="num" id="scaleIn" value="${val}" aria-label="Scale"><span>${unit}</span>`; }
@@ -1679,8 +1832,9 @@ function panelInfo(){ const i=ui.info; if(!i) return ''; let h=infoText(i);
   if(i.t==='n'&&RES&&RES.ok&&ui.res){ const n=nodeById(i.id); if(n) h+=jointEquilibrium(n); }
   return h; }
 function renderSide(){ const fk=document.activeElement&&side.contains(document.activeElement)?document.activeElement.dataset.k:null;
-  let h=''; if(ui.info) h=panelInfo(); else if(ui.res==='diag'&&ui.q==='S') h=panelSection(); else if(ui.res&&ui.panel!=='trf') h=panelResults(); else if(ui.panel==='sup') h=panelSup(); else if(ui.panel==='hinge') h=panelHinge(); else if(ui.panel==='dc') h=panelDC(); else if(ui.panel==='trf') h=panelTrf(); else if(ui.panel==='train') h=panelTrain();
+  let h=''; if(ui.info) h=panelInfo(); else if(ui.res==='diag'&&ui.q==='S') h=panelSection(); else if(fbdOn()&&ui.panel!=='trf') h=panelFBD(); else if(ui.res&&ui.panel!=='trf') h=panelResults(); else if(ui.panel==='sup') h=panelSup(); else if(ui.panel==='hinge') h=panelHinge(); else if(ui.panel==='dc') h=panelDC(); else if(ui.panel==='trf') h=panelTrf(); else if(ui.panel==='train') h=panelTrain();
   else { h=listHead(ui.panel); if(ui.creating!==ui.panel&&ui.renaming!==ui.panel) h+=panelBody(ui.panel); }
+  { const mn=$('.main'), wide=fbdOn()&&!ui.info; if(mn.classList.contains('wide')!==wide){ mn.classList.toggle('wide',wide); requestAnimationFrame(()=>{ resize(); fit(); }); } }   /* the equations need a wider panel; refit the view to the new canvas */
   side.innerHTML=h; side.classList.remove('off'); if(ui.res==='diag'&&ui.q==='S') updateSectionView(); else drawSectionView();
   if(fk){ const el=side.querySelector(`[data-k="${fk}"]`); if(el&&el.tagName==='INPUT'&&el.type!=='checkbox') el.focus(); }
   const ni=$('#newName')||$('#renIn'); if(ni){ ni.focus(); ni.select(); } }
@@ -1704,6 +1858,7 @@ side.addEventListener('change',e=>{ const el=e.target, k=el.dataset.k; if(!k) re
   const v=pnum(el.value); if(v==null){ renderSide(); return; }
   commit(()=>{ const val=fromD(el.dataset.cat,v); if(k.startsWith('p.')) cur.p[k.slice(2)]=val; else cur[k]=val; });
 });
+side.addEventListener('change',e=>{ if(e.target.id==='fbdO'){ ui.fbdO=e.target.value==='o'?'o':+e.target.value; renderSide(); draw(); } });
 side.addEventListener('input',e=>{ if(e.target.id==='cutX'&&ui.cut){ ui.cut.xi=+e.target.value; updateSectionView(); draw(); } });
 side.addEventListener('keydown',e=>{ if(e.key==='Enter'){ if($('#newName')) { e.preventDefault(); act('new-ok'); } else if($('#renIn')){ e.preventDefault(); act('ren-ok'); } else if(e.target.dataset.k&&e.target.dataset.k.startsWith('t.')){ e.target.dispatchEvent(new Event('change',{bubbles:true})); act(e.ctrlKey?'t-back':'t-fwd'); } } if(e.key==='Escape'&&($('#newName')||$('#renIn'))) act('cancel'); });
 side.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b||b.disabled) return; act(b.dataset.act); });
@@ -1712,6 +1867,7 @@ const MEMBER_LOAD={unif:'u',lin:'l',therm:'t',endm:'e'};
 function act(a){ const P=ui.panel, [cmd,arg]=a.split(':'); ui.msg='';
   if(cmd==='cancel'){ ui.creating=null; ui.renaming=null; renderSide(); return; }
   if(cmd==='info-close'){ ui.info=null; renderSide(); return; }
+  if(cmd==='fbd'){ ui.fbd=null; renderAll(); return; }
   if(cmd==='scut'&&ui.cut){ ui.cut.xi=Math.min(1,Math.max(0,+arg)); renderAll(); return; }
   if(cmd==='smax'&&RES&&RES.ok){ const b=maxStress(arg), nm=arg==='t'?'tension':'compression';
     if(!b||(arg==='t'?b.v<=0:b.v>=0)){ ui.msg=`No fiber is in ${nm}.`; renderAll(); return; }
@@ -1910,7 +2066,8 @@ function clickSelect(sx,sy,shift){ const hm=hitMember(sx,sy), hn=hitNode(sx,sy),
   if(shift&&ui.sel.t===t){ ui.sel.ids.has(id)?ui.sel.ids.delete(id):ui.sel.ids.add(id); if(!ui.sel.ids.size) ui.sel.t=null; }
   else ui.sel={t,ids:new Set([id])};
   renderAll(); }
-function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8); if(!hm){ ui.msg=''; ui.pq=null; renderTop(); draw(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
+function resultClick(sx,sy){ if(!RES||!RES.ok) return; const hm=hitMember(sx,sy,8);
+  if(fbdOn()){ const hn=hitNode(sx,sy); ui.fbd=hn&&RES.idx.has(hn.id)?{t:'n',id:hn.id}:hm?{t:'m',id:hm.m.id}:null; ui.info=null; renderAll(); return; } if(!hm){ ui.msg=''; ui.pq=null; renderTop(); draw(); return; } const r=RES.rm.get(hm.m.id); if(!r) return; const x=hm.t*r.L;
   if(ui.res==='il'){ if(ui.ilPick){ ui.pq=null; ui.il=influence(RES,r.m.id,x,ui.q); ilTrainCalc(); ui.scaleVal={}; ui.pot=0; $('#pot').value=0; ui.msg=''; renderAll(); return; }
     pointQuery(hm); renderTop(); draw(); return; }
   if(ui.res==='env'){ envQuery(hm); renderTop(); draw(); return; }
@@ -1977,7 +2134,7 @@ let openMenu=null;
 // Menu tree mirrors Ftool 4.01: [label, action, shortcut, disabled, mark, children]
 function menuItems(name){ const d=M.disp, o=M.opt, ck=(on)=>on?'chk':'';
   const sizes=(k,cur)=>['S','M','L'].map(s=>[{S:'Small',M:'Medium',L:'Large'}[s],`size:${k}:${s}`,'',false,cur===s?'chk':'']);
-  const noRes=!ui.res||ui.res!=='diag'||ui.q==='S'||!RES?.ok;
+  const noRes=!ui.res||ui.res!=='diag'||ui.q==='S'||ui.q==='F'||!RES?.ok;
   if(name==='file') return [['About FOpenTool','about'],['Upgrade...',null,'',true],['Sign Convention','sign'],'-',
     ['New...','new','Ctrl+N'],['Open...','open','Ctrl+O'],['Save','save','Ctrl+S'],['Save as...','save'],'-',['Import Properties...','import'],'-',
     ['Export Line Results',null,'',false,'',[['Step Values...','lines:step','',noRes||!(M.step>0)],['Display Resolution...','lines:disp','',noRes]]],'-',

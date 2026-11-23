@@ -35,8 +35,8 @@ Still to do:
 Follows the course content in order: rigid-body equilibrium, structural analysis, stresses and strains, axial deformation, and geometry of masses.
 
 **1. Equilibrium of rigid bodies**
-- [ ] Free-body diagram of the whole structure or of any member, with loads and reactions drawn as vectors
-- [ ] Equilibrium equations written out (ΣFx = 0, ΣFy = 0, ΣM = 0) with the numbers substituted
+- [x] Free-body diagram of the whole structure or of any member or node, with loads and reactions drawn as vectors
+- [x] Equilibrium equations written out (ΣFx = 0, ΣFy = 0, ΣM = 0) with the numbers substituted, and solved for the reactions when there are three unknowns
 - [x] Supports and static determinacy: count reactions and releases, and classify the structure as hypostatic (unstable), isostatic (determinate) or hyperstatic (indeterminate), with its degree
 
 **2. Structural analysis**
