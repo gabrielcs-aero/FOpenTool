@@ -41,10 +41,10 @@ Follows the course content in order: rigid-body equilibrium, structural analysis
 
 **2. Structural analysis**
 - [x] External forces (loads and reactions) and internal-force diagrams N, V, M
-- [ ] Internal forces at a chosen cut, shown as a free-body diagram of each side
-- [ ] Equations of N(x), V(x) and M(x) for each member, and the relations dV/dx = −q and dM/dx = V
+- [x] Internal forces at a chosen cut, shown as a free-body diagram of each side
+- [x] Equations of N(x), V(x) and M(x) for each member, and the relations dV/dx = −q and dM/dx = V
 - [x] Truss analysis: a truss mode with pin-jointed, axial-only members, a member-force table marked tension or compression, zero-force members highlighted, and the method of joints shown for any joint
-- [ ] Method of sections shown step by step for a chosen cut
+- [x] Method of sections shown step by step for a chosen cut (frames: one cut; trusses: the members a section crosses)
 
 **3. Stresses and strains**
 - [ ] Concept of stress: normal and shear stress on a cut, σ = N/A and average τ = V/A
